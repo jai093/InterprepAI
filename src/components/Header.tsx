@@ -5,6 +5,13 @@ import { Link } from "react-router-dom";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 shadow-sm">
@@ -18,15 +25,29 @@ const Header = () => {
           <Link to="/" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
             Home
           </Link>
-          <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-            Dashboard
-          </Link>
-          <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-            Practice
-          </Link>
-          <Button className="bg-interprepai-700 hover:bg-interprepai-800 transition-colors">
-            Sign In
-          </Button>
+          {user ? (
+            <>
+              <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                Dashboard
+              </Link>
+              <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                Practice
+              </Link>
+              <Button 
+                variant="outline"
+                onClick={handleSignOut}
+              >
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <Button 
+              className="bg-interprepai-700 hover:bg-interprepai-800 transition-colors"
+              onClick={() => navigate("/auth")}
+            >
+              Sign In
+            </Button>
+          )}
         </nav>
         
         {/* Mobile Menu Button */}
@@ -47,15 +68,30 @@ const Header = () => {
             <Link to="/" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
               Home
             </Link>
-            <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-              Dashboard
-            </Link>
-            <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-              Practice
-            </Link>
-            <Button className="w-full bg-interprepai-700 hover:bg-interprepai-800 transition-colors">
-              Sign In
-            </Button>
+            {user ? (
+              <>
+                <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                  Dashboard
+                </Link>
+                <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                  Practice
+                </Link>
+                <Button 
+                  className="w-full"
+                  variant="outline"
+                  onClick={handleSignOut}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button 
+                className="w-full bg-interprepai-700 hover:bg-interprepai-800 transition-colors"
+                onClick={() => navigate("/auth")}
+              >
+                Sign In
+              </Button>
+            )}
           </nav>
         </div>
       )}
