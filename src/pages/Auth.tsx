@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,60 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  
+  // Check for verification token in the URL
+  useEffect(() => {
+    // Extract the token from the URL if present
+    const params = new URLSearchParams(location.hash.substring(1));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
+    
+    // If this is a verification callback with tokens
+    if (accessToken && type === 'recovery') {
+      handlePasswordReset(accessToken);
+    } else if (accessToken && refreshToken) {
+      // Handle successful email verification
+      handleSuccessfulAuth(accessToken, refreshToken);
+    }
+  }, [location]);
+
+  const handlePasswordReset = async (token) => {
+    // Handle password reset flow here
+    toast({
+      title: "Password Reset",
+      description: "Please enter a new password",
+    });
+    // Additional logic for password reset if needed
+  };
+
+  const handleSuccessfulAuth = async (accessToken, refreshToken) => {
+    try {
+      // Set the session using the tokens
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Authentication successful!",
+        description: "You are now signed in.",
+      });
+      
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Error setting session:", error);
+      toast({
+        title: "Authentication error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +85,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
+            emailRedirectTo: window.location.origin + '/auth',
           },
         });
         if (error) throw error;
