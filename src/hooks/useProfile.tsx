@@ -8,6 +8,11 @@ export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  phone_number: string | null;
+  linkedin_url: string | null;
+  skills: string | null;
+  languages: string | null;
+  resume_url: string | null;
   interview_preferences: any;
   created_at: string;
   updated_at: string;

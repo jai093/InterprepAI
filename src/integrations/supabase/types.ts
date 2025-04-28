@@ -16,6 +16,11 @@ export type Database = {
           full_name: string | null
           id: string
           interview_preferences: Json | null
+          languages: string | null
+          linkedin_url: string | null
+          phone_number: string | null
+          resume_url: string | null
+          skills: string | null
           updated_at: string
         }
         Insert: {
@@ -24,6 +29,11 @@ export type Database = {
           full_name?: string | null
           id: string
           interview_preferences?: Json | null
+          languages?: string | null
+          linkedin_url?: string | null
+          phone_number?: string | null
+          resume_url?: string | null
+          skills?: string | null
           updated_at?: string
         }
         Update: {
@@ -32,6 +42,11 @@ export type Database = {
           full_name?: string | null
           id?: string
           interview_preferences?: Json | null
+          languages?: string | null
+          linkedin_url?: string | null
+          phone_number?: string | null
+          resume_url?: string | null
+          skills?: string | null
           updated_at?: string
         }
         Relationships: []

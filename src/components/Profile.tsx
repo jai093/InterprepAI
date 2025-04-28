@@ -9,6 +9,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Profile = () => {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export const Profile = () => {
   const [languages, setLanguages] = useState(profile?.languages || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [resumeUrl, setResumeUrl] = useState(profile?.resume_url || "");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -33,30 +35,45 @@ export const Profile = () => {
     }
   }, [profile]);
 
-  if (isLoading) {
-    return <div>Loading profile...</div>;
-  }
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'resume') => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user?.id}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-    const filePath = `${type}s/${fileName}`;
+    const bucketId = type === 'avatar' ? 'avatars' : 'resumes';
+    const filePath = `${user?.id}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
     try {
-      // Handle file upload logic here
+      setUploading(true);
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucketId)
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketId)
+        .getPublicUrl(filePath);
+
+      if (type === 'avatar') {
+        setAvatarUrl(publicUrl);
+      } else {
+        setResumeUrl(publicUrl);
+      }
+
       toast({
-        title: "File uploaded successfully",
-        description: `Your ${type} has been updated.`,
+        title: `${type === 'avatar' ? 'Profile photo' : 'Resume'} uploaded`,
+        description: "Your file has been uploaded successfully.",
       });
     } catch (error: any) {
       toast({
-        title: `Error uploading ${type}`,
+        title: "Upload failed",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -72,6 +89,10 @@ export const Profile = () => {
       resume_url: resumeUrl,
     });
   };
+
+  if (isLoading) {
+    return <div>Loading profile...</div>;
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -92,11 +113,12 @@ export const Profile = () => {
                 type="file"
                 accept="image/*"
                 onChange={(e) => handleFileUpload(e, 'avatar')}
+                disabled={uploading}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -106,7 +128,7 @@ export const Profile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="fullName">Full Name</Label>
             <Input
               id="fullName"
@@ -116,7 +138,7 @@ export const Profile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="phoneNumber">Phone Number</Label>
             <Input
               id="phoneNumber"
@@ -126,7 +148,7 @@ export const Profile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="linkedinUrl">LinkedIn Profile</Label>
             <Input
               id="linkedinUrl"
@@ -136,13 +158,14 @@ export const Profile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="resume">Resume</Label>
             <Input
               id="resume"
               type="file"
               accept=".pdf,.doc,.docx"
               onChange={(e) => handleFileUpload(e, 'resume')}
+              disabled={uploading}
             />
             {resumeUrl && (
               <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
@@ -151,7 +174,7 @@ export const Profile = () => {
             )}
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="skills">Skills</Label>
             <Textarea
               id="skills"
@@ -161,7 +184,7 @@ export const Profile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="languages">Languages</Label>
             <Textarea
               id="languages"
@@ -174,7 +197,7 @@ export const Profile = () => {
           <Button 
             type="submit"
             className="w-full"
-            disabled={updateProfile.isPending}
+            disabled={updateProfile.isPending || uploading}
           >
             {updateProfile.isPending ? "Saving..." : "Save Changes"}
           </Button>
