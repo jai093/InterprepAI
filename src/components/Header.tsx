@@ -1,18 +1,37 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useProfile } from "@/hooks/useProfile";
+import { User, LogIn, Settings } from "lucide-react";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
+  const { profile } = useProfile();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const handlePracticeClick = () => {
+    if (!user) {
+      navigate("/auth");
+    } else {
+      navigate("/simulation");
+    }
   };
 
   return (
@@ -27,26 +46,48 @@ const Header = () => {
           <Link to="/" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
             Home
           </Link>
+          <Button 
+            onClick={handlePracticeClick}
+            className="bg-interprepai-700 hover:bg-interprepai-800 transition-colors"
+          >
+            {user ? "Start Practice" : "Sign In to Practice"}
+          </Button>
+          
           {user ? (
-            <>
-              <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-                Dashboard
-              </Link>
-              <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
-                Practice
-              </Link>
-              <Button 
-                variant="outline"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </Button>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar>
+                    <AvatarImage src={profile?.avatar_url} />
+                    <AvatarFallback>
+                      {profile?.full_name?.charAt(0) || user.email?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <User className="mr-2 h-4 w-4" />
+                  Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Profile Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button 
-              className="bg-interprepai-700 hover:bg-interprepai-800 transition-colors"
+              variant="outline"
               onClick={() => navigate("/auth")}
             >
+              <LogIn className="mr-2 h-4 w-4" />
               Sign In
             </Button>
           )}
