@@ -1,11 +1,14 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaDevices } from "@/hooks/useMediaDevices";
+import { Video } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface InterviewSetupProps {
   onStart: (config: InterviewConfig) => void;
@@ -20,12 +23,24 @@ export interface InterviewConfig {
 
 const InterviewSetup: React.FC<InterviewSetupProps> = ({ onStart }) => {
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [selectedType, setSelectedType] = useState<"behavioral" | "technical" | "roleSpecific">("behavioral");
   const [difficultyLevel, setDifficultyLevel] = useState<"easy" | "medium" | "hard">("medium");
   const [interviewerPersona, setInterviewerPersona] = useState<"friendly" | "neutral" | "strict">("neutral");
   const [jobRole, setJobRole] = useState("Software Engineer");
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const { stream, cameraReady, microphoneReady, error, requestMediaPermissions } = useMediaDevices();
 
   const handleStartInterview = () => {
+    if (!cameraReady || !microphoneReady) {
+      toast({
+        title: "Device access required",
+        description: "Please enable your camera and microphone to start the interview.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const config: InterviewConfig = {
       type: selectedType,
       difficultyLevel,
@@ -40,6 +55,23 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onStart }) => {
     
     onStart(config);
   };
+
+  const testCamera = async () => {
+    setIsCameraLoading(true);
+    const newStream = await requestMediaPermissions();
+    setIsCameraLoading(false);
+    
+    if (newStream && videoRef.current) {
+      videoRef.current.srcObject = newStream;
+    }
+  };
+  
+  // Connect camera feed to video element when stream is available
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, videoRef]);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -148,6 +180,9 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onStart }) => {
                   <SelectItem value="default">Default Camera</SelectItem>
                 </SelectContent>
               </Select>
+              <p className={`text-sm mt-1 ${cameraReady ? "text-green-600" : "text-amber-600"}`}>
+                {cameraReady ? "Camera connected" : "Camera not connected"}
+              </p>
             </div>
             <div>
               <label className="font-medium mb-2 block">Microphone</label>
@@ -159,20 +194,50 @@ const InterviewSetup: React.FC<InterviewSetupProps> = ({ onStart }) => {
                   <SelectItem value="default">Default Microphone</SelectItem>
                 </SelectContent>
               </Select>
+              <p className={`text-sm mt-1 ${microphoneReady ? "text-green-600" : "text-amber-600"}`}>
+                {microphoneReady ? "Microphone connected" : "Microphone not connected"}
+              </p>
             </div>
           </div>
           
-          <div className="aspect-video bg-gray-100 rounded-lg flex flex-col items-center justify-center mb-6">
-            <div className="text-gray-500 mb-2">Camera Preview</div>
-            <Button variant="outline" size="sm">
-              Test Camera
-            </Button>
+          <div className="aspect-video bg-gray-100 rounded-lg flex flex-col items-center justify-center mb-6 relative">
+            {!cameraReady ? (
+              <div className="text-center">
+                <Video className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+                <div className="text-gray-500 mb-2">Camera Preview</div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={testCamera}
+                  disabled={isCameraLoading}
+                >
+                  {isCameraLoading ? "Connecting..." : "Test Camera"}
+                </Button>
+              </div>
+            ) : (
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full rounded-lg object-cover"
+              />
+            )}
           </div>
+          
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>
+                Error accessing devices: {error}. Please check your permissions and try again.
+              </AlertDescription>
+            </Alert>
+          )}
           
           <div className="flex justify-end">
             <Button 
               className="bg-interprepai-700 hover:bg-interprepai-800"
               onClick={handleStartInterview}
+              disabled={!cameraReady || !microphoneReady}
             >
               Start Interview
             </Button>
