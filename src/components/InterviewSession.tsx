@@ -17,7 +17,7 @@ interface Question {
   tips: string[];
 }
 
-// New speech recognition interface
+// Speech recognition interface
 interface SpeechRecognitionData {
   transcript: string;
   isListening: boolean;
@@ -139,8 +139,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       return;
     }
     
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    // Use the type-safe way to access SpeechRecognition
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognitionAPI) {
+      toast({
+        title: "Speech Recognition Not Available",
+        description: "Your browser doesn't support speech recognition.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const recognition = new SpeechRecognitionAPI();
     
     recognition.continuous = true;
     recognition.interimResults = true;

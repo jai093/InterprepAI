@@ -20,6 +20,11 @@ export const useMediaDevices = () => {
   
   const requestMediaPermissions = async () => {
     try {
+      // Check if the browser supports getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Browser doesn't support media devices access");
+      }
+      
       // Request access to camera and microphone
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: true, 
