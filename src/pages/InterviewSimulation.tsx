@@ -41,6 +41,13 @@ const InterviewSimulation = () => {
     if (user) {
       setIsSaving(true);
       try {
+        console.log('Saving interview data:', {
+          user_id: user.id,
+          type: interviewConfig?.type || 'General',
+          position: interviewConfig?.position || 'General',
+          feedback: feedbackData
+        });
+        
         // Save interview data to Supabase
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
@@ -55,7 +62,10 @@ const InterviewSimulation = () => {
           video_url: feedbackData.videoUrl
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Failed to save interview data:", error);
+          throw error;
+        }
         
         // Invalidate interviews query to refresh dashboard
         queryClient.invalidateQueries({ queryKey: ['interviews'] });
