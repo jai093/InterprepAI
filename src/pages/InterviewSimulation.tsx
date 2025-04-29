@@ -10,6 +10,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Update InterviewConfig type if needed
+// This should match what's in InterviewSetup.tsx
+// We're just adapting to it here since we can't modify that file
+
 const InterviewSimulation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,7 +45,7 @@ const InterviewSimulation = () => {
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
           type: interviewConfig?.type || 'General',
-          role: interviewConfig?.role || 'General',
+          role: interviewConfig?.position || 'General', // Use position instead of role
           duration: `${Math.round(feedbackData.duration / 60)} minutes`,
           score: feedbackData.overall.score,
           voice_analysis: feedbackData.voiceAnalysis,

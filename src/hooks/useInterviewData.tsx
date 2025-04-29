@@ -48,7 +48,24 @@ export const useInterviewData = () => {
         throw error;
       }
 
-      return data as InterviewSession[];
+      // Transform the data to match our expected types
+      return data.map(interview => ({
+        ...interview,
+        voice_analysis: {
+          clarity: interview.voice_analysis?.clarity || 0,
+          pace: interview.voice_analysis?.pace || 0,
+          pitch: interview.voice_analysis?.pitch || 0,
+          tone: interview.voice_analysis?.tone || 0,
+          confidence: interview.voice_analysis?.confidence || 0,
+        },
+        facial_analysis: {
+          smile: interview.facial_analysis?.smile || 0,
+          eyeContact: interview.facial_analysis?.eyeContact || 0,
+          engagement: interview.facial_analysis?.engagement || 0,
+          posture: interview.facial_analysis?.posture || 0,
+          gestures: interview.facial_analysis?.gestures || 0,
+        }
+      })) as InterviewSession[];
     },
     enabled: !!user?.id,
   });
