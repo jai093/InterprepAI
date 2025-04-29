@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,7 +60,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     clarity: 0,
     pace: 0,
     pitch: 0,
-    tone: 0
+    tone: 0,
+    confidence: 0
   });
   
   // Canvas for facial analysis
@@ -255,7 +255,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         clarity: Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15)),
         pace: Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20)),
         pitch: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.06) * 15)),
-        tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10))
+        tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10)),
+        confidence: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.07) * 15))
       });
     }
   };
@@ -533,7 +534,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         pace: voiceAnalysis.pace,
         tone: voiceAnalysis.tone,
         clarity: voiceAnalysis.clarity,
-        confidence: voiceAnalysis.confidence || Math.floor(65 + Math.random() * 20)
+        confidence: voiceAnalysis.confidence
       },
       facialAnalysis: {
         smile: facialAnalysis.smile,
