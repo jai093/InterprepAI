@@ -4,8 +4,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { Download } from "lucide-react";
+import { Download, LineChart, Video, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FeedbackReportProps {
   interviewData: {
@@ -28,6 +29,12 @@ interface FeedbackReportProps {
       tone: number;
       clarity: number;
       confidence: number;
+    };
+    facialAnalysis?: {
+      smile: number;
+      neutrality: number;
+      confidence: number;
+      engagement: number;
     };
     strengths: string[];
     improvements: string[];
@@ -227,66 +234,182 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               </div>
               <div>
                 <p className="font-medium">Overall Score</p>
-                <p className="text-sm text-gray-500">Above average</p>
+                <p className="text-sm text-gray-500">
+                  {interviewData.overallScore > 80 ? "Excellent" : 
+                   interviewData.overallScore > 70 ? "Very Good" : 
+                   interviewData.overallScore > 60 ? "Good" : 
+                   interviewData.overallScore > 50 ? "Average" : "Needs Improvement"}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <AnalysisCard 
-              title="Response Quality" 
-              data={interviewData.responsesAnalysis} 
-            />
-            <AnalysisCard 
-              title="Non-verbal Communication" 
-              data={interviewData.nonVerbalAnalysis} 
-            />
-            <AnalysisCard 
-              title="Voice Analysis" 
-              data={interviewData.voiceAnalysis} 
-            />
-          </div>
+          <Tabs defaultValue="analysis" className="mb-6">
+            <TabsList className="mb-4">
+              <TabsTrigger value="analysis">Performance Analysis</TabsTrigger>
+              <TabsTrigger value="recordings">Recordings</TabsTrigger>
+              <TabsTrigger value="transcript">Transcript</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="analysis">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <AnalysisCard 
+                  title="Response Quality" 
+                  data={interviewData.responsesAnalysis} 
+                />
+                <AnalysisCard 
+                  title="Non-verbal Communication" 
+                  data={interviewData.nonVerbalAnalysis} 
+                />
+                <AnalysisCard 
+                  title="Voice Analysis" 
+                  data={interviewData.voiceAnalysis} 
+                />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Strengths</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc pl-5 space-y-1">
-                  {interviewData.strengths.map((strength, i) => (
-                    <li key={i} className="text-sm">{strength}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+              {interviewData.facialAnalysis && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Facial Expression Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <FacialAnalysisCard label="Smile" value={interviewData.facialAnalysis.smile} />
+                    <FacialAnalysisCard label="Neutrality" value={interviewData.facialAnalysis.neutrality} />
+                    <FacialAnalysisCard label="Confidence" value={interviewData.facialAnalysis.confidence} />
+                    <FacialAnalysisCard label="Engagement" value={interviewData.facialAnalysis.engagement} />
+                  </div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Strengths</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {interviewData.strengths.map((strength, i) => (
+                        <li key={i} className="text-sm">{strength}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Areas for Improvement</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc pl-5 space-y-1">
-                  {interviewData.improvements.map((improvement, i) => (
-                    <li key={i} className="text-sm">{improvement}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Areas for Improvement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {interviewData.improvements.map((improvement, i) => (
+                        <li key={i} className="text-sm">{improvement}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc pl-5 space-y-1">
-                  {interviewData.recommendations.map((recommendation, i) => (
-                    <li key={i} className="text-sm">{recommendation}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Recommendations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {interviewData.recommendations.map((recommendation, i) => (
+                        <li key={i} className="text-sm">{recommendation}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="recordings">
+              <div className="grid grid-cols-1 gap-6">
+                {/* Video Recording */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Video Recording</h3>
+                  {videoUrl ? (
+                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <video 
+                        ref={videoRef}
+                        src={videoUrl}
+                        controls
+                        className="w-full h-full"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <Video className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">No video recording available</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {videoUrl && (
+                    <div className="flex justify-end mt-3">
+                      <Button 
+                        variant="outline" 
+                        onClick={downloadRecording}
+                        className="flex items-center"
+                      >
+                        <Download className="mr-2 h-4 w-4" /> Download Video
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Audio Recording */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Audio Recording</h3>
+                  {audioUrl ? (
+                    <div className="bg-gray-100 rounded-lg p-4">
+                      <audio 
+                        ref={audioRef} 
+                        src={audioUrl} 
+                        controls 
+                        className="w-full" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-gray-100 rounded-lg p-10 flex items-center justify-center">
+                      <div className="text-center">
+                        <Mic className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">No audio recording available</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {audioUrl && (
+                    <div className="flex justify-end mt-3">
+                      <Button 
+                        variant="outline" 
+                        onClick={downloadAudio}
+                        className="flex items-center"
+                      >
+                        <Download className="mr-2 h-4 w-4" /> Download Audio
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="transcript">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h3 className="text-lg font-semibold mb-3">Interview Transcript</h3>
+                
+                {interviewData.transcripts && interviewData.transcripts.length > 0 ? (
+                  interviewData.transcripts.map((transcript, index) => (
+                    <div key={index} className="mb-4 pb-4 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
+                      <p className="font-medium mb-2">Question: {transcript.question}</p>
+                      <p className="text-gray-700">{transcript.answer || "No answer recorded"}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No transcript available</p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
         <CardFooter className="flex-col gap-4 sm:flex-row">
           <Button 
@@ -377,6 +500,30 @@ const AnalysisCard = ({ title, data }: AnalysisCardProps) => {
             </div>
           </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+interface FacialAnalysisCardProps {
+  label: string;
+  value: number;
+}
+
+const FacialAnalysisCard = ({ label, value }: FacialAnalysisCardProps) => {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium">{label}</span>
+          <span className="text-xs">{value}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className={`h-2 rounded-full ${getScoreColorClass(value)}`}
+            style={{ width: `${value}%` }}
+          ></div>
+        </div>
       </CardContent>
     </Card>
   );

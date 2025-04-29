@@ -33,6 +33,12 @@ const InterviewSimulation = () => {
     });
   };
 
+  const handleStartNewInterview = () => {
+    setStage("setup");
+    setInterviewConfig(null);
+    setFeedbackData(null);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -46,10 +52,20 @@ const InterviewSimulation = () => {
           )}
           
           {stage === "feedback" && feedbackData && (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <div className="mb-6">
-                <h1 className="text-3xl font-bold mb-2">Interview Feedback</h1>
-                <p className="text-gray-600">Review your performance and areas for improvement</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">Interview Feedback</h1>
+                    <p className="text-gray-600">Review your performance and areas for improvement</p>
+                  </div>
+                  <button 
+                    onClick={handleStartNewInterview} 
+                    className="px-4 py-2 bg-interprepai-600 hover:bg-interprepai-700 text-white rounded-lg transition-colors"
+                  >
+                    Start New Interview
+                  </button>
+                </div>
               </div>
               <FeedbackReport interviewData={feedbackData} />
             </div>

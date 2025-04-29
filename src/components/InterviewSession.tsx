@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InterviewConfig } from "@/components/InterviewSetup";
-import { MicOff, Mic, Download } from "lucide-react";
+import { MicOff, Mic, Download, Video, VideoOff } from "lucide-react";
 
 interface InterviewSessionProps {
   config: InterviewConfig;
@@ -48,6 +49,24 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const [audioRecorder, setAudioRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [videoRecorded, setVideoRecorded] = useState<boolean>(false);
+  const [audioRecorded, setAudioRecorded] = useState<boolean>(false);
+  const [facialAnalysis, setFacialAnalysis] = useState({
+    smile: 0,
+    neutrality: 0,
+    confidence: 0,
+    engagement: 0
+  });
+  const [voiceAnalysis, setVoiceAnalysis] = useState({
+    clarity: 0,
+    pace: 0,
+    pitch: 0,
+    tone: 0
+  });
+  
+  // Canvas for facial analysis
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const faceAnalysisInterval = useRef<number | null>(null);
   
   // Mock interview questions based on type and job role
   const getQuestionsByType = () => {
@@ -108,6 +127,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+
+        // Start simulating facial analysis when stream is ready
+        if (canvasRef.current && stream) {
+          startSimulatedFacialAnalysis();
+        }
       } catch (error) {
         console.error("Error accessing media devices:", error);
         toast({
@@ -131,8 +155,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       if (audioRecorder && audioRecorder.state !== 'inactive') {
         audioRecorder.stop();
       }
+      if (faceAnalysisInterval.current) {
+        clearInterval(faceAnalysisInterval.current);
+      }
     };
   }, [toast]);
+  
+  // Simulate facial analysis (in a real implementation this would use computer vision APIs)
+  const startSimulatedFacialAnalysis = () => {
+    if (faceAnalysisInterval.current) {
+      clearInterval(faceAnalysisInterval.current);
+    }
+
+    faceAnalysisInterval.current = window.setInterval(() => {
+      if (isRecording) {
+        setFacialAnalysis({
+          smile: Math.min(100, Math.floor(60 + Math.sin(Date.now() * 0.001) * 20)),
+          neutrality: Math.min(100, Math.floor(70 + Math.cos(Date.now() * 0.0008) * 15)),
+          confidence: Math.min(100, Math.floor(65 + Math.sin(Date.now() * 0.0006) * 25)),
+          engagement: Math.min(100, Math.floor(75 + Math.cos(Date.now() * 0.0009) * 15))
+        });
+      }
+    }, 1000);
+  };
   
   // Set up speech recognition
   const startSpeechRecognition = () => {
@@ -142,7 +187,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         description: "Your browser doesn't support speech recognition.",
         variant: "destructive"
       });
-      return;
+      return null;
     }
     
     // Use the type-safe way to access SpeechRecognition
@@ -154,7 +199,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         description: "Your browser doesn't support speech recognition.",
         variant: "destructive"
       });
-      return;
+      return null;
     }
     
     const recognition = new SpeechRecognitionAPI();
@@ -185,6 +230,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         ...prev,
         transcript: prev.transcript + transcript
       }));
+
+      // Simulate voice analysis based on transcript content
+      simulateVoiceAnalysis(transcript);
     };
     
     recognition.onend = () => {
@@ -197,6 +245,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     setSpeechData(prev => ({ ...prev, isListening: true }));
     
     return recognition;
+  };
+  
+  const simulateVoiceAnalysis = (transcript: string) => {
+    // In a real implementation, this would use audio analysis APIs
+    // Here we're just simulating voice metrics
+    if (transcript && transcript.length > 0) {
+      setVoiceAnalysis({
+        clarity: Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15)),
+        pace: Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20)),
+        pitch: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.06) * 15)),
+        tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10))
+      });
+    }
   };
   
   const stopSpeechRecognition = (recognition: any) => {
@@ -221,6 +282,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     setAudioChunks([]);
     setRecordedVideoURL(null);
     setAudioURL(null);
+    setVideoRecorded(false);
+    setAudioRecorded(false);
     
     // Video recording setup
     try {
@@ -228,7 +291,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const mediaRecorder = new MediaRecorder(mediaStream, videoOptions);
       
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           setRecordedChunks(prev => [...prev, event.data]);
         }
       };
@@ -239,6 +302,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
           const videoUrl = URL.createObjectURL(videoBlob);
           setRecordedVideoURL(videoUrl);
+          setVideoRecorded(true);
+          
+          console.log("Video recording stopped, blob created:", videoBlob);
         }
       };
       
@@ -251,7 +317,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const audioMediaRecorder = new MediaRecorder(audioStream, audioOptions);
       
       audioMediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           setAudioChunks(prev => [...prev, event.data]);
         }
       };
@@ -262,6 +328,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
           const audioUrl = URL.createObjectURL(audioBlob);
           setAudioURL(audioUrl);
+          setAudioRecorded(true);
+          
+          console.log("Audio recording stopped, blob created:", audioBlob);
         }
       };
       
@@ -304,8 +373,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     setIsRecording(false);
     
     toast({
-      title: "Recording Paused",
-      description: "Your response recording has been paused.",
+      title: "Recording Complete",
+      description: "Your response recording has been saved.",
     });
   };
   
@@ -330,6 +399,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Video Downloaded",
+        description: "Your interview video has been downloaded.",
+      });
     } catch (error) {
       console.error("Error downloading video:", error);
       toast({
@@ -361,6 +435,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Audio Downloaded",
+        description: "Your interview audio has been downloaded.",
+      });
     } catch (error) {
       console.error("Error downloading audio:", error);
       toast({
@@ -430,7 +509,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     }
     
-    // Generate mock feedback data
+    // Generate mock feedback data with enhanced analysis
     const mockFeedback = {
       date: new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -447,14 +526,20 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       },
       nonVerbalAnalysis: {
         eyeContact: userMetrics.eyeContact,
-        facialExpressions: Math.floor(65 + Math.random() * 20),
-        bodyLanguage: Math.floor(60 + Math.random() * 15)
+        facialExpressions: facialAnalysis.smile,
+        bodyLanguage: facialAnalysis.engagement
       },
       voiceAnalysis: {
-        pace: userMetrics.speakingPace,
-        tone: Math.floor(70 + Math.random() * 20),
-        clarity: Math.floor(75 + Math.random() * 15),
-        confidence: Math.floor(65 + Math.random() * 20)
+        pace: voiceAnalysis.pace,
+        tone: voiceAnalysis.tone,
+        clarity: voiceAnalysis.clarity,
+        confidence: voiceAnalysis.confidence || Math.floor(65 + Math.random() * 20)
+      },
+      facialAnalysis: {
+        smile: facialAnalysis.smile,
+        neutrality: facialAnalysis.neutrality,
+        confidence: facialAnalysis.confidence,
+        engagement: facialAnalysis.engagement
       },
       strengths: [
         "Strong use of concrete examples",
@@ -465,8 +550,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       improvements: [
         userMetrics.eyeContact < 70 ? "Maintain more consistent eye contact" : "Continue with strong eye contact",
         userMetrics.fillerWords > 5 ? "Reduce filler words like 'um' and 'uh'" : "Good control of filler words",
-        "Improve structure in longer responses",
-        "Use more hand gestures to emphasize points"
+        facialAnalysis.engagement < 70 ? "Show more engagement through facial expressions" : "Good facial engagement",
+        voiceAnalysis.pace < 65 ? "Consider speaking at a slightly faster pace" : "Well-paced delivery"
       ],
       recommendations: [
         "Practice the STAR method for behavioral questions",
@@ -519,39 +604,39 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="bg-white/20 hover:bg-white/30 text-white flex items-center"
+                className={`${isRecording ? 'bg-red-500/80 hover:bg-red-500' : 'bg-white/20 hover:bg-white/30'} text-white flex items-center`}
                 onClick={toggleRecording}
               >
                 {isRecording ? (
                   <>
-                    <MicOff className="mr-2 h-4 w-4" /> Pause
+                    <MicOff className="mr-2 h-4 w-4" /> Stop Recording
                   </>
                 ) : (
                   <>
-                    <Mic className="mr-2 h-4 w-4" /> Record
+                    <Mic className="mr-2 h-4 w-4" /> Start Recording
                   </>
                 )}
               </Button>
               
-              {recordedVideoURL && (
+              {videoRecorded && (
                 <Button 
                   size="sm" 
                   variant="outline" 
                   className="bg-white/20 hover:bg-white/30 text-white flex items-center"
                   onClick={downloadVideo}
                 >
-                  <Download className="mr-2 h-4 w-4" /> Video
+                  <Download className="mr-2 h-4 w-4" /> Download Video
                 </Button>
               )}
               
-              {audioURL && (
+              {audioRecorded && (
                 <Button 
                   size="sm" 
                   variant="outline" 
                   className="bg-white/20 hover:bg-white/30 text-white flex items-center"
                   onClick={downloadAudio}
                 >
-                  <Download className="mr-2 h-4 w-4" /> Audio
+                  <Download className="mr-2 h-4 w-4" /> Download Audio
                 </Button>
               )}
               
@@ -574,6 +659,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               </Button>
             </div>
           </div>
+          
+          {/* Hidden canvas for facial analysis */}
+          <canvas 
+            ref={canvasRef} 
+            width="640" 
+            height="480" 
+            className="hidden"
+          />
         </div>
         
         <Card>
@@ -613,8 +706,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             
             {speechData.transcript && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-sm font-medium mb-2">Your response:</p>
+                <p className="text-sm font-medium mb-2">Your response (transcribed):</p>
                 <p className="text-sm text-gray-700">{speechData.transcript}</p>
+              </div>
+            )}
+            
+            {recordedVideoURL && (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Interview Recording:</p>
+                <video 
+                  controls 
+                  src={recordedVideoURL} 
+                  className="w-full h-auto rounded-lg border border-gray-200"
+                />
               </div>
             )}
           </CardContent>
@@ -627,66 +731,144 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             <h2 className="font-bold text-xl mb-4">Real-time Feedback</h2>
             
             <div className="space-y-6">
+              {/* Speech metrics */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm">Speaking Pace</span>
-                  <span className="text-xs font-medium">
-                    {userMetrics.speakingPace > 80 ? "Good" : userMetrics.speakingPace > 60 ? "Average" : "Needs Improvement"}
-                  </span>
+                <h3 className="text-sm font-semibold mb-3">Speech Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Speaking Pace</span>
+                    <span className="text-xs font-medium">
+                      {userMetrics.speakingPace > 80 ? "Good" : userMetrics.speakingPace > 60 ? "Average" : "Needs Improvement"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.speakingPace > 80 ? "bg-green-500" : userMetrics.speakingPace > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${userMetrics.speakingPace}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${userMetrics.speakingPace > 80 ? "bg-green-500" : userMetrics.speakingPace > 60 ? "bg-amber-500" : "bg-red-500"}`} 
-                    style={{ width: `${userMetrics.speakingPace}%` }}
-                  ></div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Filler Words</span>
+                    <span className="text-xs font-medium">{userMetrics.fillerWords} detected</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.fillerWords < 3 ? "bg-green-500" : userMetrics.fillerWords < 6 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${Math.min(100, userMetrics.fillerWords * 10)}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
               
+              {/* Facial metrics */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm">Eye Contact</span>
-                  <span className="text-xs font-medium">
-                    {userMetrics.eyeContact > 80 ? "Good" : userMetrics.eyeContact > 60 ? "Average" : "Needs Improvement"}
-                  </span>
+                <h3 className="text-sm font-semibold mb-3">Facial Expression Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Eye Contact</span>
+                    <span className="text-xs font-medium">
+                      {userMetrics.eyeContact > 80 ? "Excellent" : userMetrics.eyeContact > 60 ? "Good" : "Needs Improvement"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${userMetrics.eyeContact}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`}
-                    style={{ width: `${userMetrics.eyeContact}%` }}
-                  ></div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Engagement</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.engagement > 80 ? "Excellent" : facialAnalysis.engagement > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.engagement > 80 ? "bg-green-500" : facialAnalysis.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.engagement}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Confidence Expression</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.confidence > 80 ? "Excellent" : facialAnalysis.confidence > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.confidence > 80 ? "bg-green-500" : facialAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.confidence}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
               
+              {/* Voice metrics */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm">Filler Words</span>
-                  <span className="text-xs font-medium">{userMetrics.fillerWords} detected</span>
+                <h3 className="text-sm font-semibold mb-3">Voice Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Clarity</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.clarity > 80 ? "Excellent" : voiceAnalysis.clarity > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.clarity > 80 ? "bg-green-500" : voiceAnalysis.clarity > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${voiceAnalysis.clarity}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${userMetrics.fillerWords < 3 ? "bg-green-500" : userMetrics.fillerWords < 6 ? "bg-amber-500" : "bg-red-500"}`}
-                    style={{ width: `${Math.min(100, userMetrics.fillerWords * 10)}%` }}
-                  ></div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Tone</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.tone > 80 ? "Excellent" : voiceAnalysis.tone > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.tone > 80 ? "bg-green-500" : voiceAnalysis.tone > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${voiceAnalysis.tone}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
               
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm">Engagement</span>
-                  <span className="text-xs font-medium">
-                    {userMetrics.engagement > 80 ? "Excellent" : userMetrics.engagement > 60 ? "Good" : "Average"}
-                  </span>
+              {/* Brief feedback tips */}
+              {isRecording && (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <h3 className="text-sm font-semibold text-blue-700 mb-1">Live Coaching Tips</h3>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {userMetrics.eyeContact < 70 && (
+                      <li className="text-xs text-blue-700">Try to look more directly at the camera</li>
+                    )}
+                    {userMetrics.fillerWords > 3 && (
+                      <li className="text-xs text-blue-700">Try to reduce filler words like "um" and "uh"</li>
+                    )}
+                    {userMetrics.speakingPace < 65 && (
+                      <li className="text-xs text-blue-700">Try to speak at a slightly faster pace</li>
+                    )}
+                    {facialAnalysis.engagement < 70 && (
+                      <li className="text-xs text-blue-700">Show more engagement through facial expressions</li>
+                    )}
+                    {voiceAnalysis.tone < 70 && (
+                      <li className="text-xs text-blue-700">Try to vary your tone more for emphasis</li>
+                    )}
+                  </ul>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${userMetrics.engagement > 80 ? "bg-green-500" : userMetrics.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`}
-                    style={{ width: `${userMetrics.engagement}%` }}
-                  ></div>
-                </div>
-              </div>
-              
-              {/* Suggestions based on metrics */}
-              {/* ... keep existing code (suggestion components) */}
+              )}
             </div>
           </CardContent>
         </Card>
