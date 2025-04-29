@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeedbackReportProps {
   interviewData: {
@@ -29,10 +32,183 @@ interface FeedbackReportProps {
     strengths: string[];
     improvements: string[];
     recommendations: string[];
+    videoBlob?: Blob | null;
+    audioBlob?: Blob | null;
+    videoURL?: string | null;
+    audioURL?: string | null;
+    transcripts?: Array<{
+      question: string;
+      answer: string;
+    }>;
   };
 }
 
 const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
+  const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Create URL from blobs if available
+    if (interviewData.videoURL) {
+      setVideoUrl(interviewData.videoURL);
+    } else if (interviewData.videoBlob) {
+      const url = URL.createObjectURL(interviewData.videoBlob);
+      setVideoUrl(url);
+      
+      // Clean up URL object on unmount
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+    
+    if (interviewData.audioURL) {
+      setAudioUrl(interviewData.audioURL);
+    } else if (interviewData.audioBlob) {
+      const url = URL.createObjectURL(interviewData.audioBlob);
+      setAudioUrl(url);
+      
+      // Clean up URL object on unmount
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+    
+  }, [interviewData]);
+  
+  const downloadReport = () => {
+    try {
+      // Create report content
+      const reportContent = `
+        INTERVIEW FEEDBACK REPORT
+        
+        Date: ${interviewData.date}
+        Duration: ${interviewData.duration}
+        Overall Score: ${interviewData.overallScore}%
+        
+        RESPONSE QUALITY
+        - Clarity: ${interviewData.responsesAnalysis.clarity}%
+        - Relevance: ${interviewData.responsesAnalysis.relevance}%
+        - Structure: ${interviewData.responsesAnalysis.structure}%
+        - Examples: ${interviewData.responsesAnalysis.examples}%
+        
+        NON-VERBAL COMMUNICATION
+        - Eye Contact: ${interviewData.nonVerbalAnalysis.eyeContact}%
+        - Facial Expressions: ${interviewData.nonVerbalAnalysis.facialExpressions}%
+        - Body Language: ${interviewData.nonVerbalAnalysis.bodyLanguage}%
+        
+        VOICE ANALYSIS
+        - Pace: ${interviewData.voiceAnalysis.pace}%
+        - Tone: ${interviewData.voiceAnalysis.tone}%
+        - Clarity: ${interviewData.voiceAnalysis.clarity}%
+        - Confidence: ${interviewData.voiceAnalysis.confidence}%
+        
+        STRENGTHS
+        ${interviewData.strengths.map(s => `- ${s}`).join('\n')}
+        
+        AREAS FOR IMPROVEMENT
+        ${interviewData.improvements.map(i => `- ${i}`).join('\n')}
+        
+        RECOMMENDATIONS
+        ${interviewData.recommendations.map(r => `- ${r}`).join('\n')}
+        
+        TRANSCRIPTS
+        ${interviewData.transcripts?.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n\n') || ''}
+      `;
+      
+      // Create a blob from the report content
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a download link and trigger it
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `interview-feedback-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Report Downloaded",
+        description: "Your interview feedback report has been downloaded.",
+      });
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      toast({
+        title: "Download Error",
+        description: "Could not download the report.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const downloadRecording = () => {
+    if (!videoUrl) {
+      toast({
+        title: "No recording available",
+        description: "There is no video recording to download.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const a = document.createElement('a');
+      a.href = videoUrl;
+      a.download = `interview-recording-${new Date().toISOString().split('T')[0]}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Video Downloaded",
+        description: "Your interview video has been downloaded.",
+      });
+    } catch (error) {
+      console.error("Error downloading video:", error);
+      toast({
+        title: "Download Error",
+        description: "Could not download the video.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const downloadAudio = () => {
+    if (!audioUrl) {
+      toast({
+        title: "No audio available",
+        description: "There is no audio recording to download.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const a = document.createElement('a');
+      a.href = audioUrl;
+      a.download = `interview-audio-${new Date().toISOString().split('T')[0]}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Audio Downloaded",
+        description: "Your interview audio has been downloaded.",
+      });
+    } catch (error) {
+      console.error("Error downloading audio:", error);
+      toast({
+        title: "Download Error",
+        description: "Could not download the audio.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <Card className="mb-6">
@@ -113,8 +289,11 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-4 sm:flex-row">
-          <Button className="w-full sm:w-auto bg-interprepai-700 hover:bg-interprepai-800">
-            Download Report
+          <Button 
+            className="w-full sm:w-auto bg-interprepai-700 hover:bg-interprepai-800 flex items-center"
+            onClick={downloadReport}
+          >
+            <Download className="mr-2 h-4 w-4" /> Download Report
           </Button>
           
           <Dialog>
@@ -125,11 +304,40 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               <DialogHeader>
                 <DialogTitle>Interview Recording</DialogTitle>
               </DialogHeader>
-              <div className="aspect-video bg-gray-100 rounded-md flex items-center justify-center">
-                <p className="text-gray-500">Video recording would appear here</p>
-              </div>
-              <DialogFooter>
-                <Button variant="outline">Download Recording</Button>
+              {videoUrl ? (
+                <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
+                  <video 
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    className="w-full h-full"
+                  />
+                </div>
+              ) : (
+                <div className="aspect-video bg-gray-100 rounded-md flex items-center justify-center">
+                  <p className="text-gray-500">No video recording available</p>
+                </div>
+              )}
+              
+              {audioUrl && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium mb-2">Audio Only:</h3>
+                  <audio ref={audioRef} src={audioUrl} controls className="w-full" />
+                </div>
+              )}
+              
+              <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                {videoUrl && (
+                  <Button variant="outline" onClick={downloadRecording} className="flex items-center">
+                    <Download className="mr-2 h-4 w-4" /> Download Video
+                  </Button>
+                )}
+                
+                {audioUrl && (
+                  <Button variant="outline" onClick={downloadAudio} className="flex items-center">
+                    <Download className="mr-2 h-4 w-4" /> Download Audio
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>

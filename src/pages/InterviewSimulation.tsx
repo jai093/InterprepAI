@@ -13,7 +13,7 @@ const InterviewSimulation = () => {
   // States for different interview stages
   const [stage, setStage] = useState<"setup" | "interview" | "feedback">("setup");
   const [interviewConfig, setInterviewConfig] = useState<InterviewConfig | null>(null);
-  const [feedbackData, setFeedbackData] = useState(null);
+  const [feedbackData, setFeedbackData] = useState<any>(null);
   
   const handleStartInterview = (config: InterviewConfig) => {
     setInterviewConfig(config);
