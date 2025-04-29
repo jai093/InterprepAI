@@ -6,14 +6,20 @@ import Footer from "@/components/Footer";
 import FeedbackReport from "@/components/FeedbackReport";
 import InterviewSetup, { InterviewConfig } from "@/components/InterviewSetup";
 import InterviewSession from "@/components/InterviewSession";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const InterviewSimulation = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   // States for different interview stages
   const [stage, setStage] = useState<"setup" | "interview" | "feedback">("setup");
   const [interviewConfig, setInterviewConfig] = useState<InterviewConfig | null>(null);
   const [feedbackData, setFeedbackData] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   const handleStartInterview = (config: InterviewConfig) => {
     setInterviewConfig(config);
@@ -24,13 +30,52 @@ const InterviewSimulation = () => {
     });
   };
   
-  const handleEndInterview = (feedbackData: any) => {
+  const handleEndInterview = async (feedbackData: any) => {
     setFeedbackData(feedbackData);
     setStage("feedback");
-    toast({
-      title: "Interview Completed",
-      description: "Generating your feedback report...",
-    });
+    
+    if (user) {
+      setIsSaving(true);
+      try {
+        // Save interview data to Supabase
+        const { data, error } = await supabase.from('interview_sessions').insert({
+          user_id: user.id,
+          type: interviewConfig?.type || 'General',
+          role: interviewConfig?.role || 'General',
+          duration: `${Math.round(feedbackData.duration / 60)} minutes`,
+          score: feedbackData.overall.score,
+          voice_analysis: feedbackData.voiceAnalysis,
+          facial_analysis: feedbackData.facialAnalysis,
+          transcript: feedbackData.transcript,
+          feedback: feedbackData.feedback,
+          video_url: feedbackData.videoUrl
+        });
+        
+        if (error) throw error;
+        
+        // Invalidate interviews query to refresh dashboard
+        queryClient.invalidateQueries({ queryKey: ['interviews'] });
+        
+        toast({
+          title: "Interview Completed",
+          description: "Your feedback report is ready and results have been saved.",
+        });
+      } catch (error) {
+        console.error("Failed to save interview data:", error);
+        toast({
+          title: "Saving Error",
+          description: "Failed to save your interview data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      toast({
+        title: "Interview Completed",
+        description: "Generating your feedback report...",
+      });
+    }
   };
 
   const handleStartNewInterview = () => {
@@ -62,8 +107,9 @@ const InterviewSimulation = () => {
                   <button 
                     onClick={handleStartNewInterview} 
                     className="px-4 py-2 bg-interprepai-600 hover:bg-interprepai-700 text-white rounded-lg transition-colors"
+                    disabled={isSaving}
                   >
-                    Start New Interview
+                    {isSaving ? 'Saving...' : 'Start New Interview'}
                   </button>
                 </div>
               </div>

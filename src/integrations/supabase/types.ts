@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      interview_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          duration: string
+          facial_analysis: Json
+          feedback: string | null
+          id: string
+          role: string
+          score: number
+          transcript: string | null
+          type: string
+          user_id: string
+          video_url: string | null
+          voice_analysis: Json
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          duration: string
+          facial_analysis?: Json
+          feedback?: string | null
+          id?: string
+          role: string
+          score: number
+          transcript?: string | null
+          type: string
+          user_id: string
+          video_url?: string | null
+          voice_analysis?: Json
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          duration?: string
+          facial_analysis?: Json
+          feedback?: string | null
+          id?: string
+          role?: string
+          score?: number
+          transcript?: string | null
+          type?: string
+          user_id?: string
+          video_url?: string | null
+          voice_analysis?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

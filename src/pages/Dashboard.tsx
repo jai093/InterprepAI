@@ -5,54 +5,84 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ChartBar, TrendingUp } from "lucide-react";
-
-// Mock data for progress tracking
-const mockInterviewHistory = [
-  {
-    id: 1,
-    date: "2023-06-15",
-    type: "Behavioral",
-    role: "Product Manager",
-    score: 78,
-    duration: "18 minutes"
-  },
-  {
-    id: 2,
-    date: "2023-06-21",
-    type: "Technical",
-    role: "Software Engineer",
-    score: 65,
-    duration: "22 minutes"
-  },
-  {
-    id: 3,
-    date: "2023-07-02",
-    type: "Behavioral",
-    role: "Software Engineer",
-    score: 82,
-    duration: "15 minutes"
-  }
-];
-
-const mockSkillsData = {
-  communication: 75,
-  technicalKnowledge: 68,
-  problemSolving: 82,
-  confidence: 70,
-  bodyLanguage: 65
-};
-
-const mockAITips = [
-  "Try using the STAR method (Situation, Task, Action, Result) for behavioral questions.",
-  "For technical interviews, explain your thought process out loud as you solve problems.",
-  "Maintain eye contact with the camera to demonstrate confidence and engagement.",
-  "Prepare 3-5 concrete examples from your past experience to illustrate key skills.",
-  "Practice concise answers that stay on topic and directly address the question."
-];
+import { ChartBar, TrendingUp, BarChart } from "lucide-react";
+import { useInterviewData } from "@/hooks/useInterviewData";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid
+} from "recharts";
+import { format, parseISO } from "date-fns";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const { 
+    interviews, 
+    isLoading, 
+    totalInterviews, 
+    averageScore, 
+    lastInterviewDate,
+    skillScores,
+    aiTips
+  } = useInterviewData();
+
+  // Format interview data for chart
+  const chartData = interviews.slice(0).reverse().map(interview => ({
+    date: format(parseISO(interview.date), 'MM/dd'),
+    score: interview.score,
+    name: interview.type
+  }));
+
+  // Create skill improvement data
+  const skillImprovements = [
+    {
+      name: "Body Language",
+      improvement: interviews.length > 1 ? "+5%" : "N/A",
+      value: skillScores.bodyLanguage,
+      color: skillScores.bodyLanguage > 70 ? "bg-green-500" : "bg-amber-500"
+    },
+    {
+      name: "Technical Depth",
+      improvement: interviews.length > 1 ? "+3%" : "N/A",
+      value: skillScores.technicalKnowledge,
+      color: skillScores.technicalKnowledge > 70 ? "bg-green-500" : "bg-amber-500"
+    },
+    {
+      name: "Communication",
+      improvement: interviews.length > 1 ? "-5%" : "N/A",
+      value: skillScores.communication,
+      color: skillScores.communication > 70 ? "bg-green-500" : "bg-amber-500"
+    }
+  ];
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-interprepai-600"></div>
+        </div>
+      );
+    }
+
+    if (interviews.length === 0) {
+      return (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-medium mb-4">No interview data available yet</h3>
+          <p className="text-gray-500 mb-6">Complete your first interview to see statistics and insights.</p>
+          <Button asChild>
+            <Link to="/simulation">Start Your First Interview</Link>
+          </Button>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -67,6 +97,8 @@ const Dashboard = () => {
               <TabsTrigger value="tips">AI Tips</TabsTrigger>
             </TabsList>
             
+            {renderContent()}
+
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card>
@@ -79,17 +111,19 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Total Interviews</span>
-                        <span className="font-medium">{mockInterviewHistory.length}</span>
+                        <span className="font-medium">{totalInterviews}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Average Score</span>
                         <span className="font-medium">
-                          {Math.round(mockInterviewHistory.reduce((acc, item) => acc + item.score, 0) / mockInterviewHistory.length)}%
+                          {averageScore}%
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Last Interview</span>
-                        <span className="font-medium">{mockInterviewHistory[mockInterviewHistory.length - 1].date}</span>
+                        <span className="font-medium">
+                          {lastInterviewDate ? format(parseISO(lastInterviewDate), 'yyyy-MM-dd') : 'N/A'}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -103,7 +137,7 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {Object.entries(mockSkillsData).map(([skill, value]) => (
+                      {Object.entries(skillScores).map(([skill, value]) => (
                         <div key={skill} className="space-y-1">
                           <div className="flex justify-between">
                             <span className="text-xs capitalize">{skill.replace(/([A-Z])/g, ' $1').trim()}</span>
@@ -128,11 +162,13 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockInterviewHistory.slice(0).reverse().map(interview => (
+                    {interviews.slice(0, 3).map(interview => (
                       <div key={interview.id} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
                         <div>
                           <p className="font-medium">{interview.type} Interview - {interview.role}</p>
-                          <p className="text-sm text-gray-500">{interview.date} · {interview.duration}</p>
+                          <p className="text-sm text-gray-500">
+                            {format(parseISO(interview.date), 'yyyy-MM-dd')} · {interview.duration}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-interprepai-700">{interview.score}%</p>
@@ -160,49 +196,60 @@ const Dashboard = () => {
                   <div className="space-y-6">
                     <div>
                       <h3 className="font-medium mb-2">Score Trend</h3>
-                      <div className="h-40 bg-gray-100 flex items-end justify-between px-2 rounded-md">
-                        {mockInterviewHistory.map((interview, i) => (
-                          <div key={i} className="flex flex-col items-center">
-                            <div 
-                              className="w-10 bg-interprepai-600 rounded-t-sm" 
-                              style={{ height: `${interview.score * 0.4}%` }}
-                            ></div>
-                            <p className="text-xs mt-2">{interview.date.split('-')[2]}/{interview.date.split('-')[1]}</p>
+                      <div className="h-64">
+                        {chartData.length > 0 ? (
+                          <ChartContainer
+                            config={{
+                              score: {
+                                label: "Score",
+                                theme: {
+                                  light: "#3b82f6",
+                                  dark: "#60a5fa",
+                                },
+                              },
+                            }}
+                          >
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                              <XAxis dataKey="date" />
+                              <YAxis domain={[0, 100]} />
+                              <ChartTooltip
+                                content={
+                                  <ChartTooltipContent indicator="line" nameKey="name" />
+                                }
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="score"
+                                name="Score"
+                                stroke="var(--color-score)"
+                                activeDot={{ r: 8 }}
+                                strokeWidth={2}
+                              />
+                            </LineChart>
+                          </ChartContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full bg-gray-100 rounded-md">
+                            <p className="text-gray-500">Complete more interviews to see your progress</p>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                     
                     <div>
                       <h3 className="font-medium mb-2">Improvement Areas</h3>
                       <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm">Body Language</span>
-                            <span className="text-xs">+5% since last interview</span>
+                        {skillImprovements.map((skill, index) => (
+                          <div key={index}>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">{skill.name}</span>
+                              <span className="text-xs">{skill.improvement}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div className={`h-2 rounded-full ${skill.color}`} style={{ width: `${skill.value}%` }}></div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="h-2 rounded-full bg-green-500" style={{ width: '65%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm">Technical Depth</span>
-                            <span className="text-xs">+3% since last interview</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="h-2 rounded-full bg-amber-500" style={{ width: '58%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm">Filler Words</span>
-                            <span className="text-xs">-20% since last interview</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="h-2 rounded-full bg-green-500" style={{ width: '72%' }}></div>
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -218,11 +265,11 @@ const Dashboard = () => {
                 <CardContent>
                   <div className="space-y-4">
                     <p className="text-sm text-gray-600">
-                      Based on your past interview performance, here are personalized tips to help you improve:
+                      Based on your interview performance, here are personalized tips to help you improve:
                     </p>
                     
                     <div className="space-y-3">
-                      {mockAITips.map((tip, index) => (
+                      {aiTips.map((tip, index) => (
                         <div key={index} className="flex gap-3">
                           <div className="w-6 h-6 rounded-full bg-interprepai-100 text-interprepai-700 flex items-center justify-center flex-shrink-0">
                             {index + 1}
