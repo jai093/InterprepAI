@@ -49,18 +49,21 @@ const InterviewSimulation = () => {
           feedback: feedbackData
         });
         
+        // Check feedback data structure and use appropriate fields
+        const score = feedbackData.overallScore || 0;
+        
         // Save interview data to Supabase
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
           type: interviewConfig?.type || 'General',
           role: interviewConfig?.jobRole || 'General', // Use jobRole instead of position
-          duration: `${Math.round(feedbackData.duration / 60)} minutes`,
-          score: feedbackData.overall.score,
-          voice_analysis: feedbackData.voiceAnalysis,
-          facial_analysis: feedbackData.facialAnalysis,
-          transcript: feedbackData.transcript,
-          feedback: feedbackData.feedback,
-          video_url: feedbackData.videoUrl
+          duration: feedbackData.duration || '0 minutes',
+          score: score,
+          voice_analysis: feedbackData.voiceAnalysis || feedbackData.voice_analysis || {},
+          facial_analysis: feedbackData.facialAnalysis || feedbackData.facial_analysis || {},
+          transcript: feedbackData.transcript || feedbackData.transcripts?.[0]?.answer || '',
+          feedback: feedbackData.feedback || JSON.stringify(feedbackData.recommendations || []),
+          video_url: feedbackData.videoURL || feedbackData.videoUrl || null
         });
         
         if (error) {
