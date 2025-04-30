@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Json } from "@/integrations/supabase/types";
 
 export interface InterviewSession {
   id: string;
@@ -49,23 +50,29 @@ export const useInterviewData = () => {
       }
 
       // Transform the data to match our expected types
-      return data.map(interview => ({
-        ...interview,
-        voice_analysis: {
-          clarity: interview.voice_analysis?.clarity || 0,
-          pace: interview.voice_analysis?.pace || 0,
-          pitch: interview.voice_analysis?.pitch || 0,
-          tone: interview.voice_analysis?.tone || 0,
-          confidence: interview.voice_analysis?.confidence || 0,
-        },
-        facial_analysis: {
-          smile: interview.facial_analysis?.smile || 0,
-          eyeContact: interview.facial_analysis?.eyeContact || 0,
-          engagement: interview.facial_analysis?.engagement || 0,
-          posture: interview.facial_analysis?.posture || 0,
-          gestures: interview.facial_analysis?.gestures || 0,
-        }
-      })) as InterviewSession[];
+      return data.map(interview => {
+        // Cast Json types to object types with proper TypeScript handling
+        const voiceAnalysis = interview.voice_analysis as Record<string, number>;
+        const facialAnalysis = interview.facial_analysis as Record<string, number>;
+        
+        return {
+          ...interview,
+          voice_analysis: {
+            clarity: voiceAnalysis?.clarity || 0,
+            pace: voiceAnalysis?.pace || 0,
+            pitch: voiceAnalysis?.pitch || 0,
+            tone: voiceAnalysis?.tone || 0,
+            confidence: voiceAnalysis?.confidence || 0,
+          },
+          facial_analysis: {
+            smile: facialAnalysis?.smile || 0,
+            eyeContact: facialAnalysis?.eyeContact || 0,
+            engagement: facialAnalysis?.engagement || 0,
+            posture: facialAnalysis?.posture || 0,
+            gestures: facialAnalysis?.gestures || 0,
+          }
+        };
+      }) as InterviewSession[];
     },
     enabled: !!user?.id,
   });
