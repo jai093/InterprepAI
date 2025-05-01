@@ -1,16 +1,13 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InterviewConfig } from "@/components/InterviewSetup";
 import { MicOff, Mic, Download, Video, VideoOff } from "lucide-react";
-import AIInterviewer from "./AIInterviewer";
 
 interface InterviewSessionProps {
   config: InterviewConfig;
   onEnd: (feedbackData: any) => void;
-  useAIAvatar?: boolean;
 }
 
 interface Question {
@@ -25,7 +22,7 @@ interface SpeechRecognitionData {
   isListening: boolean;
 }
 
-const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useAIAvatar = false }) => {
+const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -37,10 +34,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
     fillerWords: 0,
     engagement: 0
   });
-  
-  // AI avatar state
-  const [aiIsAsking, setAiIsAsking] = useState(false);
-  const [showUserVideo, setShowUserVideo] = useState(!useAIAvatar); // Show user video if not using AI avatar
   
   // Speech recognition state
   const [speechData, setSpeechData] = useState<SpeechRecognitionData>({
@@ -74,7 +67,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
   // Canvas for facial analysis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceAnalysisInterval = useRef<number | null>(null);
-
+  
   // Mock interview questions based on type and job role
   const getQuestionsByType = () => {
     const baseQuestions: Record<string, Question[]> = {
@@ -139,13 +132,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
         if (canvasRef.current && stream) {
           startSimulatedFacialAnalysis();
         }
-        
-        // If we're using an AI avatar, have it ask the first question
-        if (useAIAvatar) {
-          setTimeout(() => {
-            setAiIsAsking(true);
-          }, 1000);
-        }
       } catch (error) {
         console.error("Error accessing media devices:", error);
         toast({
@@ -173,16 +159,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
         clearInterval(faceAnalysisInterval.current);
       }
     };
-  }, [toast, useAIAvatar]);
-
-  // Handle AI asking questions
-  const handleQuestionComplete = () => {
-    setAiIsAsking(false);
-    // Auto-start recording after AI asks the question
-    if (!isRecording) {
-      startRecording();
-    }
-  };
+  }, [toast]);
   
   // Simulate facial analysis (in a real implementation this would use computer vision APIs)
   const startSimulatedFacialAnalysis = () => {
@@ -474,11 +451,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
     }
   };
   
-  // Toggle between AI and user view
-  const toggleView = () => {
-    setShowUserVideo(prev => !prev);
-  };
-  
   // Mock analytics update
   useEffect(() => {
     if (isRecording) {
@@ -511,17 +483,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSecondsElapsed(0);
       setSpeechData({ transcript: "", isListening: false });
-      // Stop recording if active
-      if (isRecording) {
-        stopRecording();
-      }
-      
-      // If using AI avatar, have it ask the next question
-      if (useAIAvatar) {
-        setTimeout(() => {
-          setAiIsAsking(true);
-        }, 1000);
-      }
     } else {
       endInterview();
     }
@@ -624,50 +585,23 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
         <div className="bg-black rounded-lg aspect-video relative overflow-hidden mb-4">
-          {useAIAvatar && !showUserVideo ? (
-            <AIInterviewer 
-              isAsking={aiIsAsking} 
-              currentQuestion={questions[currentQuestionIndex].text}
-              onQuestionComplete={handleQuestionComplete}
+          {mediaStream ? (
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover"
             />
           ) : (
-            mediaStream ? (
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-white">Camera not connected</div>
-              </div>
-            )
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-white">Camera not connected</div>
+            </div>
           )}
           
           {/* Interview controls overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
             <div className="flex justify-center space-x-4">
-              {useAIAvatar && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-white/20 hover:bg-white/30 text-white flex items-center"
-                  onClick={toggleView}
-                >
-                  {showUserVideo ? (
-                    <>
-                      <VideoOff className="mr-2 h-4 w-4" /> Show AI
-                    </>
-                  ) : (
-                    <>
-                      <Video className="mr-2 h-4 w-4" /> Show Me
-                    </>
-                  )}
-                </Button>
-              )}
-              
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -842,7 +776,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`}
                       style={{ width: `${userMetrics.eyeContact}%` }}
                     ></div>
                   </div>
@@ -852,31 +786,46 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm">Engagement</span>
                     <span className="text-xs font-medium">
-                      {userMetrics.engagement > 80 ? "High" : userMetrics.engagement > 60 ? "Moderate" : "Low"}
+                      {facialAnalysis.engagement > 80 ? "Excellent" : facialAnalysis.engagement > 60 ? "Good" : "Average"}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${userMetrics.engagement > 80 ? "bg-green-500" : userMetrics.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`} 
-                      style={{ width: `${userMetrics.engagement}%` }}
+                      className={`h-2 rounded-full ${facialAnalysis.engagement > 80 ? "bg-green-500" : facialAnalysis.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.engagement}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Confidence Expression</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.confidence > 80 ? "Excellent" : facialAnalysis.confidence > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.confidence > 80 ? "bg-green-500" : facialAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.confidence}%` }}
                     ></div>
                   </div>
                 </div>
               </div>
               
-              {/* Voice analysis */}
+              {/* Voice metrics */}
               <div>
                 <h3 className="text-sm font-semibold mb-3">Voice Analysis</h3>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm">Clarity</span>
                     <span className="text-xs font-medium">
-                      {voiceAnalysis.clarity > 80 ? "Excellent" : voiceAnalysis.clarity > 60 ? "Good" : "Needs Improvement"}
+                      {voiceAnalysis.clarity > 80 ? "Excellent" : voiceAnalysis.clarity > 60 ? "Good" : "Average"}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${voiceAnalysis.clarity > 80 ? "bg-green-500" : voiceAnalysis.clarity > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      className={`h-2 rounded-full ${voiceAnalysis.clarity > 80 ? "bg-green-500" : voiceAnalysis.clarity > 60 ? "bg-amber-500" : "bg-red-500"}`}
                       style={{ width: `${voiceAnalysis.clarity}%` }}
                     ></div>
                   </div>
@@ -884,53 +833,43 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
                 
                 <div className="mt-3">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm">Confidence</span>
+                    <span className="text-sm">Tone</span>
                     <span className="text-xs font-medium">
-                      {voiceAnalysis.confidence > 80 ? "High" : voiceAnalysis.confidence > 60 ? "Moderate" : "Low"}
+                      {voiceAnalysis.tone > 80 ? "Excellent" : voiceAnalysis.tone > 60 ? "Good" : "Average"}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${voiceAnalysis.confidence > 80 ? "bg-green-500" : voiceAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`} 
-                      style={{ width: `${voiceAnalysis.confidence}%` }}
+                      className={`h-2 rounded-full ${voiceAnalysis.tone > 80 ? "bg-green-500" : voiceAnalysis.tone > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${voiceAnalysis.tone}%` }}
                     ></div>
                   </div>
                 </div>
               </div>
               
-              {/* Emotional state */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">Emotional State</h3>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm">Smile Frequency</span>
-                    <span className="text-xs font-medium">
-                      {facialAnalysis.smile > 70 ? "Natural" : facialAnalysis.smile > 50 ? "Somewhat tense" : "Tense"}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${facialAnalysis.smile > 70 ? "bg-green-500" : facialAnalysis.smile > 50 ? "bg-amber-500" : "bg-red-500"}`} 
-                      style={{ width: `${facialAnalysis.smile}%` }}
-                    ></div>
-                  </div>
+              {/* Brief feedback tips */}
+              {isRecording && (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <h3 className="text-sm font-semibold text-blue-700 mb-1">Live Coaching Tips</h3>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {userMetrics.eyeContact < 70 && (
+                      <li className="text-xs text-blue-700">Try to look more directly at the camera</li>
+                    )}
+                    {userMetrics.fillerWords > 3 && (
+                      <li className="text-xs text-blue-700">Try to reduce filler words like "um" and "uh"</li>
+                    )}
+                    {userMetrics.speakingPace < 65 && (
+                      <li className="text-xs text-blue-700">Try to speak at a slightly faster pace</li>
+                    )}
+                    {facialAnalysis.engagement < 70 && (
+                      <li className="text-xs text-blue-700">Show more engagement through facial expressions</li>
+                    )}
+                    {voiceAnalysis.tone < 70 && (
+                      <li className="text-xs text-blue-700">Try to vary your tone more for emphasis</li>
+                    )}
+                  </ul>
                 </div>
-                
-                <div className="mt-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm">Confidence</span>
-                    <span className="text-xs font-medium">
-                      {facialAnalysis.confidence > 75 ? "Confident" : facialAnalysis.confidence > 55 ? "Moderately confident" : "Uncertain"}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${facialAnalysis.confidence > 75 ? "bg-green-500" : facialAnalysis.confidence > 55 ? "bg-amber-500" : "bg-red-500"}`} 
-                      style={{ width: `${facialAnalysis.confidence}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
