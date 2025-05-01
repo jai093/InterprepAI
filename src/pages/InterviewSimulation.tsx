@@ -10,11 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Update InterviewConfig type if needed
-// This should match what's in InterviewSetup.tsx
-// We're just adapting to it here since we can't modify that file
-// Update our usage to use jobRole instead of position since that's what InterviewConfig uses
-
 const InterviewSimulation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -45,7 +40,7 @@ const InterviewSimulation = () => {
         console.log('Saving interview data:', {
           user_id: user.id,
           type: interviewConfig?.type || 'General',
-          jobRole: interviewConfig?.jobRole || 'General',
+          role: interviewConfig?.jobRole || 'General',
           feedback: feedbackData
         });
         

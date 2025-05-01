@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InterviewConfig } from "@/components/InterviewSetup";
 import { MicOff, Mic, Download, Video, VideoOff } from "lucide-react";
+import AIInterviewer from "./AIInterviewer";
+import useSpeechSynthesis from "@/hooks/useSpeechSynthesis";
 
 interface InterviewSessionProps {
   config: InterviewConfig;
@@ -33,6 +36,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     eyeContact: 0,
     fillerWords: 0,
     engagement: 0
+  });
+  
+  // AI Interviewer state
+  const [showAI, setShowAI] = useState(true); // Show AI by default
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+  const { speak, isSpeaking, cancel } = useSpeechSynthesis({
+    onEnd: () => setAiSpeaking(false)
   });
   
   // Speech recognition state
@@ -160,6 +170,26 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       }
     };
   }, [toast]);
+
+  // Have the AI interviewer ask the first question when the component mounts
+  useEffect(() => {
+    const askCurrentQuestion = () => {
+      if (questions.length > 0) {
+        setAiSpeaking(true);
+        speak(questions[currentQuestionIndex].text, {
+          rate: 0.9, // Slightly slower for better clarity
+          pitch: 0.95,
+        });
+      }
+    };
+    
+    // Short delay to allow voice initialization
+    const timer = setTimeout(() => {
+      askCurrentQuestion();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [currentQuestionIndex]); // Re-run when currentQuestionIndex changes
   
   // Simulate facial analysis (in a real implementation this would use computer vision APIs)
   const startSimulatedFacialAnalysis = () => {
@@ -477,18 +507,50 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       startRecording();
     }
   };
+
+  const toggleCameraView = () => {
+    setShowAI(!showAI);
+  };
   
   const nextQuestion = () => {
+    // Cancel any ongoing speech
+    if (isSpeaking) {
+      cancel();
+      setAiSpeaking(false);
+    }
+    
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording();
+    }
+    
     if (currentQuestionIndex < questions.length - 1) {
+      // Move to next question
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSecondsElapsed(0);
       setSpeechData({ transcript: "", isListening: false });
+      
+      // Allow a brief pause before having the AI ask the next question
+      setTimeout(() => {
+        setAiSpeaking(true);
+        speak(questions[currentQuestionIndex + 1].text, {
+          rate: 0.9,
+          pitch: 0.95,
+        });
+      }, 1000);
+      
     } else {
       endInterview();
     }
   };
   
   const endInterview = () => {
+    // Cancel any ongoing speech
+    if (isSpeaking) {
+      cancel();
+      setAiSpeaking(false);
+    }
+    
     // Stop recording if active
     if (isRecording) {
       stopRecording();
@@ -585,18 +647,26 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
         <div className="bg-black rounded-lg aspect-video relative overflow-hidden mb-4">
-          {mediaStream ? (
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-cover"
+          {showAI ? (
+            <AIInterviewer 
+              speaking={aiSpeaking} 
+              question={questions[currentQuestionIndex].text}
+              onFinishedSpeaking={() => setAiSpeaking(false)}
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-white">Camera not connected</div>
-            </div>
+            mediaStream ? (
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-white">Camera not connected</div>
+              </div>
+            )
           )}
           
           {/* Interview controls overlay */}
@@ -615,6 +685,23 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 ) : (
                   <>
                     <Mic className="mr-2 h-4 w-4" /> Start Recording
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="bg-white/20 hover:bg-white/30 text-white flex items-center"
+                onClick={toggleCameraView}
+              >
+                {showAI ? (
+                  <>
+                    <Video className="mr-2 h-4 w-4" /> Show Your Camera
+                  </>
+                ) : (
+                  <>
+                    <VideoOff className="mr-2 h-4 w-4" /> Show AI Interviewer
                   </>
                 )}
               </Button>
@@ -680,6 +767,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 </p>
               </div>
               <div className="flex items-center">
+                {aiSpeaking && (
+                  <div className="flex items-center mr-4">
+                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-2 animate-pulse"></div>
+                    <span className="text-sm text-gray-500">AI Speaking</span>
+                  </div>
+                )}
                 {isRecording && (
                   <div className="flex items-center mr-4">
                     <div className="w-3 h-3 rounded-full bg-red-500 mr-2 animate-pulse"></div>
