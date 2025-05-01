@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -841,4 +842,101 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd, useA
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg
+                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${userMetrics.eyeContact}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Engagement</span>
+                    <span className="text-xs font-medium">
+                      {userMetrics.engagement > 80 ? "High" : userMetrics.engagement > 60 ? "Moderate" : "Low"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.engagement > 80 ? "bg-green-500" : userMetrics.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${userMetrics.engagement}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Voice analysis */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Voice Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Clarity</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.clarity > 80 ? "Excellent" : voiceAnalysis.clarity > 60 ? "Good" : "Needs Improvement"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.clarity > 80 ? "bg-green-500" : voiceAnalysis.clarity > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${voiceAnalysis.clarity}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Confidence</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.confidence > 80 ? "High" : voiceAnalysis.confidence > 60 ? "Moderate" : "Low"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.confidence > 80 ? "bg-green-500" : voiceAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${voiceAnalysis.confidence}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Emotional state */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Emotional State</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Smile Frequency</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.smile > 70 ? "Natural" : facialAnalysis.smile > 50 ? "Somewhat tense" : "Tense"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.smile > 70 ? "bg-green-500" : facialAnalysis.smile > 50 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${facialAnalysis.smile}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Confidence</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.confidence > 75 ? "Confident" : facialAnalysis.confidence > 55 ? "Moderately confident" : "Uncertain"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.confidence > 75 ? "bg-green-500" : facialAnalysis.confidence > 55 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${facialAnalysis.confidence}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default InterviewSession;
