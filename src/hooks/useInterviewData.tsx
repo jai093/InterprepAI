@@ -52,8 +52,30 @@ export const useInterviewData = () => {
       // Transform the data to match our expected types
       return data.map(interview => {
         // Cast Json types to object types with proper TypeScript handling
-        const voiceAnalysis = interview.voice_analysis as Record<string, number>;
-        const facialAnalysis = interview.facial_analysis as Record<string, number>;
+        let voiceAnalysis: Record<string, number> = {};
+        let facialAnalysis: Record<string, number> = {};
+        
+        // Safely parse the voice_analysis data
+        try {
+          if (typeof interview.voice_analysis === 'object' && interview.voice_analysis !== null) {
+            voiceAnalysis = interview.voice_analysis as Record<string, number>;
+          } else if (typeof interview.voice_analysis === 'string') {
+            voiceAnalysis = JSON.parse(interview.voice_analysis);
+          }
+        } catch (e) {
+          console.error('Error parsing voice_analysis:', e);
+        }
+        
+        // Safely parse the facial_analysis data
+        try {
+          if (typeof interview.facial_analysis === 'object' && interview.facial_analysis !== null) {
+            facialAnalysis = interview.facial_analysis as Record<string, number>;
+          } else if (typeof interview.facial_analysis === 'string') {
+            facialAnalysis = JSON.parse(interview.facial_analysis);
+          }
+        } catch (e) {
+          console.error('Error parsing facial_analysis:', e);
+        }
         
         return {
           ...interview,

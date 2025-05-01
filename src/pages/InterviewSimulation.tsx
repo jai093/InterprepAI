@@ -111,7 +111,7 @@ const InterviewSimulation = () => {
           {stage === "setup" && <InterviewSetup onStart={handleStartInterview} />}
           
           {stage === "interview" && interviewConfig && (
-            <InterviewSession config={interviewConfig} onEnd={handleEndInterview} />
+            <InterviewSession config={interviewConfig} onEnd={handleEndInterview} useAIAvatar={true} />
           )}
           
           {stage === "feedback" && feedbackData && (
