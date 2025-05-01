@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -185,7 +186,8 @@ const useSpeechSynthesis = ({ onEnd }: UseSpeechSynthesisProps = {}) => {
         toast({
           title: "Speech Synthesis Failed",
           description: "Could not start speech synthesis. Trying an alternative method...",
-          variant: "warning"
+          // Change from "warning" to "destructive" to match allowed types
+          variant: "destructive"
         });
         
         // Fallback to notify the UI that "speech" is done
@@ -280,3 +282,4 @@ const useSpeechSynthesis = ({ onEnd }: UseSpeechSynthesisProps = {}) => {
 };
 
 export default useSpeechSynthesis;
+
