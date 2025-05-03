@@ -85,6 +85,12 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
     
   }, [interviewData]);
   
+  // Ensure all arrays have default values to prevent "map of undefined" errors
+  const strengths = interviewData.strengths || [];
+  const improvements = interviewData.improvements || [];
+  const recommendations = interviewData.recommendations || [];
+  const transcripts = interviewData.transcripts || [];
+  
   const downloadReport = () => {
     try {
       // Create report content
@@ -96,33 +102,33 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
         Overall Score: ${interviewData.overallScore}%
         
         RESPONSE QUALITY
-        - Clarity: ${interviewData.responsesAnalysis.clarity}%
-        - Relevance: ${interviewData.responsesAnalysis.relevance}%
-        - Structure: ${interviewData.responsesAnalysis.structure}%
-        - Examples: ${interviewData.responsesAnalysis.examples}%
+        - Clarity: ${interviewData.responsesAnalysis?.clarity || 0}%
+        - Relevance: ${interviewData.responsesAnalysis?.relevance || 0}%
+        - Structure: ${interviewData.responsesAnalysis?.structure || 0}%
+        - Examples: ${interviewData.responsesAnalysis?.examples || 0}%
         
         NON-VERBAL COMMUNICATION
-        - Eye Contact: ${interviewData.nonVerbalAnalysis.eyeContact}%
-        - Facial Expressions: ${interviewData.nonVerbalAnalysis.facialExpressions}%
-        - Body Language: ${interviewData.nonVerbalAnalysis.bodyLanguage}%
+        - Eye Contact: ${interviewData.nonVerbalAnalysis?.eyeContact || 0}%
+        - Facial Expressions: ${interviewData.nonVerbalAnalysis?.facialExpressions || 0}%
+        - Body Language: ${interviewData.nonVerbalAnalysis?.bodyLanguage || 0}%
         
         VOICE ANALYSIS
-        - Pace: ${interviewData.voiceAnalysis.pace}%
-        - Tone: ${interviewData.voiceAnalysis.tone}%
-        - Clarity: ${interviewData.voiceAnalysis.clarity}%
-        - Confidence: ${interviewData.voiceAnalysis.confidence}%
+        - Pace: ${interviewData.voiceAnalysis?.pace || 0}%
+        - Tone: ${interviewData.voiceAnalysis?.tone || 0}%
+        - Clarity: ${interviewData.voiceAnalysis?.clarity || 0}%
+        - Confidence: ${interviewData.voiceAnalysis?.confidence || 0}%
         
         STRENGTHS
-        ${interviewData.strengths.map(s => `- ${s}`).join('\n')}
+        ${strengths.map(s => `- ${s}`).join('\n')}
         
         AREAS FOR IMPROVEMENT
-        ${interviewData.improvements.map(i => `- ${i}`).join('\n')}
+        ${improvements.map(i => `- ${i}`).join('\n')}
         
         RECOMMENDATIONS
-        ${interviewData.recommendations.map(r => `- ${r}`).join('\n')}
+        ${recommendations.map(r => `- ${r}`).join('\n')}
         
         TRANSCRIPTS
-        ${interviewData.transcripts?.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n\n') || ''}
+        ${transcripts.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n\n') || ''}
       `;
       
       // Create a blob from the report content
@@ -225,8 +231,8 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
         <CardContent>
           <div className="flex flex-col md:flex-row justify-between mb-6">
             <div>
-              <p className="text-sm text-gray-500">Date: {interviewData.date}</p>
-              <p className="text-sm text-gray-500">Duration: {interviewData.duration}</p>
+              <p className="text-sm text-gray-500">Date: {interviewData.date || 'N/A'}</p>
+              <p className="text-sm text-gray-500">Duration: {interviewData.duration || 'N/A'}</p>
             </div>
             <div className="mt-4 md:mt-0 flex items-center">
               <div className="w-20 h-20 rounded-full border-4 border-interprepai-500 flex items-center justify-center mr-4">
@@ -255,15 +261,29 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <AnalysisCard 
                   title="Response Quality" 
-                  data={interviewData.responsesAnalysis} 
+                  data={interviewData.responsesAnalysis || {
+                    clarity: 0,
+                    relevance: 0,
+                    structure: 0,
+                    examples: 0
+                  }} 
                 />
                 <AnalysisCard 
                   title="Non-verbal Communication" 
-                  data={interviewData.nonVerbalAnalysis} 
+                  data={interviewData.nonVerbalAnalysis || {
+                    eyeContact: 0,
+                    facialExpressions: 0,
+                    bodyLanguage: 0
+                  }} 
                 />
                 <AnalysisCard 
                   title="Voice Analysis" 
-                  data={interviewData.voiceAnalysis} 
+                  data={interviewData.voiceAnalysis || {
+                    pace: 0,
+                    tone: 0,
+                    clarity: 0,
+                    confidence: 0
+                  }} 
                 />
               </div>
 
@@ -286,9 +306,12 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.strengths.map((strength, i) => (
+                      {strengths.map((strength, i) => (
                         <li key={i} className="text-sm">{strength}</li>
                       ))}
+                      {strengths.length === 0 && (
+                        <li className="text-sm text-gray-500">No data available</li>
+                      )}
                     </ul>
                   </CardContent>
                 </Card>
@@ -299,9 +322,12 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.improvements.map((improvement, i) => (
+                      {improvements.map((improvement, i) => (
                         <li key={i} className="text-sm">{improvement}</li>
                       ))}
+                      {improvements.length === 0 && (
+                        <li className="text-sm text-gray-500">No data available</li>
+                      )}
                     </ul>
                   </CardContent>
                 </Card>
@@ -312,9 +338,12 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.recommendations.map((recommendation, i) => (
+                      {recommendations.map((recommendation, i) => (
                         <li key={i} className="text-sm">{recommendation}</li>
                       ))}
+                      {recommendations.length === 0 && (
+                        <li className="text-sm text-gray-500">No data available</li>
+                      )}
                     </ul>
                   </CardContent>
                 </Card>
@@ -397,8 +426,8 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <h3 className="text-lg font-semibold mb-3">Interview Transcript</h3>
                 
-                {interviewData.transcripts && interviewData.transcripts.length > 0 ? (
-                  interviewData.transcripts.map((transcript, index) => (
+                {transcripts.length > 0 ? (
+                  transcripts.map((transcript, index) => (
                     <div key={index} className="mb-4 pb-4 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
                       <p className="font-medium mb-2">Question: {transcript.question}</p>
                       <p className="text-gray-700">{transcript.answer || "No answer recorded"}</p>
