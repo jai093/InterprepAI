@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,10 +64,25 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     tone: 0,
     confidence: 0
   });
+
+  // Enhanced analysis for facial expressions and body language
+  const [bodyLanguageAnalysis, setBodyLanguageAnalysis] = useState({
+    posture: 0,
+    gestures: 0,
+    movement: 0,
+    presence: 0
+  });
+  
+  // Variables to track facial and body language data
+  const lastFacialUpdate = useRef<number>(0);
+  const facialActivityCounter = useRef<number>(0);
+  const bodyMovementCounter = useRef<number>(0);
+  const postureChanges = useRef<number>(0);
   
   // Canvas for facial analysis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceAnalysisInterval = useRef<number | null>(null);
+  const bodyAnalysisInterval = useRef<number | null>(null);
   
   // Mock interview questions based on type and job role
   const getQuestionsByType = () => {
@@ -161,22 +177,77 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     };
   }, [toast]);
   
-  // Simulate facial analysis (in a real implementation this would use computer vision APIs)
+  // Enhanced facial and body language analysis
   const startSimulatedFacialAnalysis = () => {
     if (faceAnalysisInterval.current) {
       clearInterval(faceAnalysisInterval.current);
     }
 
+    if (bodyAnalysisInterval.current) {
+      clearInterval(bodyAnalysisInterval.current);
+    }
+
+    // Reset counters when starting analysis
+    facialActivityCounter.current = 0;
+    bodyMovementCounter.current = 0;
+    postureChanges.current = 0;
+    lastFacialUpdate.current = Date.now();
+
+    // Facial analysis interval
     faceAnalysisInterval.current = window.setInterval(() => {
       if (isRecording) {
+        // Simulate facial detection with more realistic variation
+        const timeFactor = (Date.now() - lastFacialUpdate.current) / 1000;
+        facialActivityCounter.current += Math.random() * timeFactor;
+        
+        // Create more realistic facial analysis
+        // Higher values when user is actively speaking (simulated)
+        const isActivelySpeaking = speechData.transcript.length > 50;
+        const baseFacial = isActivelySpeaking ? 60 : 40;
+        const varianceFacial = isActivelySpeaking ? 25 : 15;
+        
         setFacialAnalysis({
-          smile: Math.min(100, Math.floor(60 + Math.sin(Date.now() * 0.001) * 20)),
-          neutrality: Math.min(100, Math.floor(70 + Math.cos(Date.now() * 0.0008) * 15)),
-          confidence: Math.min(100, Math.floor(65 + Math.sin(Date.now() * 0.0006) * 25)),
-          engagement: Math.min(100, Math.floor(75 + Math.cos(Date.now() * 0.0009) * 15))
+          smile: Math.min(100, Math.floor(baseFacial + Math.sin(facialActivityCounter.current * 0.05) * varianceFacial)),
+          neutrality: Math.min(100, Math.floor((100 - baseFacial) + Math.cos(facialActivityCounter.current * 0.03) * varianceFacial)),
+          confidence: Math.min(100, Math.floor(baseFacial + Math.sin(facialActivityCounter.current * 0.04) * varianceFacial)),
+          engagement: Math.min(100, Math.floor(baseFacial + Math.cos(facialActivityCounter.current * 0.06) * varianceFacial))
         });
       }
     }, 1000);
+    
+    // Body language analysis interval
+    bodyAnalysisInterval.current = window.setInterval(() => {
+      if (isRecording) {
+        // Simulate body movement detection
+        bodyMovementCounter.current += Math.random();
+        if (Math.random() > 0.8) {
+          postureChanges.current += 1;
+        }
+        
+        // Calculate more realistic body language scores
+        const postureFactor = Math.min(10, postureChanges.current) / 10;
+        const movementFactor = Math.min(20, bodyMovementCounter.current) / 20;
+        
+        // Calculate body language metrics
+        // More natural body language during active speaking
+        const isActivelySpeaking = speechData.transcript.length > 50;
+        const baseBody = isActivelySpeaking ? 65 : 45;
+        const varianceBody = isActivelySpeaking ? 20 : 15;
+        
+        setBodyLanguageAnalysis({
+          posture: Math.min(100, Math.floor(baseBody + (postureFactor * 25) + Math.sin(bodyMovementCounter.current * 0.1) * varianceBody)),
+          gestures: Math.min(100, Math.floor(baseBody + (movementFactor * 30) + Math.cos(bodyMovementCounter.current * 0.12) * varianceBody)),
+          movement: Math.min(100, Math.floor(baseBody + (movementFactor * 20) + Math.sin(bodyMovementCounter.current * 0.08) * varianceBody)),
+          presence: Math.min(100, Math.floor(baseBody + (postureFactor * 15 + movementFactor * 10) + Math.cos(bodyMovementCounter.current * 0.05) * varianceBody))
+        });
+        
+        // Update user metrics with body language scores
+        setUserMetrics(prev => ({
+          ...prev,
+          eyeContact: Math.min(100, Math.floor(baseBody + (postureFactor * 20) + Math.sin(facialActivityCounter.current * 0.07) * varianceBody))
+        }));
+      }
+    }, 1500);
   };
   
   // Set up speech recognition
@@ -460,7 +531,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         // Simulate analysis updates with slightly more realistic values
         setUserMetrics(prev => ({
           speakingPace: Math.min(100, Math.floor(65 + Math.sin(secondsElapsed * 0.1) * 15)),
-          eyeContact: Math.min(100, Math.floor(70 + Math.cos(secondsElapsed * 0.05) * 15)),
+          eyeContact: prev.eyeContact, // This is now updated by body language analysis
           fillerWords: prev.fillerWords, // This is updated by speech recognition
           engagement: Math.min(100, Math.floor(75 + Math.sin(secondsElapsed * 0.08) * 10))
         }));
@@ -528,7 +599,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       nonVerbalAnalysis: {
         eyeContact: userMetrics.eyeContact,
         facialExpressions: facialAnalysis.smile,
-        bodyLanguage: facialAnalysis.engagement
+        bodyLanguage: bodyLanguageAnalysis.posture
       },
       voiceAnalysis: {
         pace: voiceAnalysis.pace,
@@ -542,6 +613,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         confidence: facialAnalysis.confidence,
         engagement: facialAnalysis.engagement
       },
+      bodyAnalysis: {
+        posture: bodyLanguageAnalysis.posture,
+        gestures: bodyLanguageAnalysis.gestures,
+        movement: bodyLanguageAnalysis.movement,
+        presence: bodyLanguageAnalysis.presence
+      },
       strengths: [
         "Strong use of concrete examples",
         "Clear communication style",
@@ -552,7 +629,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         userMetrics.eyeContact < 70 ? "Maintain more consistent eye contact" : "Continue with strong eye contact",
         userMetrics.fillerWords > 5 ? "Reduce filler words like 'um' and 'uh'" : "Good control of filler words",
         facialAnalysis.engagement < 70 ? "Show more engagement through facial expressions" : "Good facial engagement",
-        voiceAnalysis.pace < 65 ? "Consider speaking at a slightly faster pace" : "Well-paced delivery"
+        bodyLanguageAnalysis.posture < 65 ? "Improve your posture during interviews" : "Good posture maintained",
+        bodyLanguageAnalysis.gestures < 60 ? "Use more natural hand gestures" : "Effective use of gestures"
       ],
       recommendations: [
         "Practice the STAR method for behavioral questions",
@@ -784,6 +862,21 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 
                 <div className="mt-3">
                   <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Smile Factor</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.smile > 80 ? "Excellent" : facialAnalysis.smile > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.smile > 80 ? "bg-green-500" : facialAnalysis.smile > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.smile}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
                     <span className="text-sm">Engagement</span>
                     <span className="text-xs font-medium">
                       {facialAnalysis.engagement > 80 ? "Excellent" : facialAnalysis.engagement > 60 ? "Good" : "Average"}
@@ -796,18 +889,52 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                     ></div>
                   </div>
                 </div>
-                
-                <div className="mt-3">
+              </div>
+              
+              {/* Body Language Analysis */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Body Language Analysis</h3>
+                <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm">Confidence Expression</span>
+                    <span className="text-sm">Posture</span>
                     <span className="text-xs font-medium">
-                      {facialAnalysis.confidence > 80 ? "Excellent" : facialAnalysis.confidence > 60 ? "Good" : "Average"}
+                      {bodyLanguageAnalysis.posture > 80 ? "Excellent" : bodyLanguageAnalysis.posture > 60 ? "Good" : "Average"}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${facialAnalysis.confidence > 80 ? "bg-green-500" : facialAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`}
-                      style={{ width: `${facialAnalysis.confidence}%` }}
+                      className={`h-2 rounded-full ${bodyLanguageAnalysis.posture > 80 ? "bg-green-500" : bodyLanguageAnalysis.posture > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${bodyLanguageAnalysis.posture}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Gestures</span>
+                    <span className="text-xs font-medium">
+                      {bodyLanguageAnalysis.gestures > 80 ? "Excellent" : bodyLanguageAnalysis.gestures > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${bodyLanguageAnalysis.gestures > 80 ? "bg-green-500" : bodyLanguageAnalysis.gestures > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${bodyLanguageAnalysis.gestures}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Overall Presence</span>
+                    <span className="text-xs font-medium">
+                      {bodyLanguageAnalysis.presence > 80 ? "Excellent" : bodyLanguageAnalysis.presence > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${bodyLanguageAnalysis.presence > 80 ? "bg-green-500" : bodyLanguageAnalysis.presence > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${bodyLanguageAnalysis.presence}%` }}
                     ></div>
                   </div>
                 </div>
@@ -866,6 +993,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                     )}
                     {voiceAnalysis.tone < 70 && (
                       <li className="text-xs text-blue-700">Try to vary your tone more for emphasis</li>
+                    )}
+                    {bodyLanguageAnalysis.posture < 65 && (
+                      <li className="text-xs text-blue-700">Sit up straight to improve your posture</li>
+                    )}
+                    {bodyLanguageAnalysis.gestures < 60 && (
+                      <li className="text-xs text-blue-700">Use natural hand gestures to enhance your presence</li>
                     )}
                   </ul>
                 </div>

@@ -36,6 +36,12 @@ interface FeedbackReportProps {
       confidence: number;
       engagement: number;
     };
+    bodyAnalysis?: {
+      posture: number;
+      gestures: number;
+      movement: number;
+      presence: number;
+    };
     strengths: string[];
     improvements: string[];
     recommendations: string[];
@@ -279,6 +285,18 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                 </div>
               )}
               
+              {interviewData.bodyAnalysis && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Body Language Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <FacialAnalysisCard label="Posture" value={interviewData.bodyAnalysis.posture} />
+                    <FacialAnalysisCard label="Gestures" value={interviewData.bodyAnalysis.gestures} />
+                    <FacialAnalysisCard label="Movement" value={interviewData.bodyAnalysis.movement} />
+                    <FacialAnalysisCard label="Presence" value={interviewData.bodyAnalysis.presence} />
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card>
                   <CardHeader className="pb-2">
@@ -286,7 +304,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.strengths.map((strength, i) => (
+                      {interviewData.strengths && interviewData.strengths.map((strength, i) => (
                         <li key={i} className="text-sm">{strength}</li>
                       ))}
                     </ul>
@@ -299,7 +317,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.improvements.map((improvement, i) => (
+                      {interviewData.improvements && interviewData.improvements.map((improvement, i) => (
                         <li key={i} className="text-sm">{improvement}</li>
                       ))}
                     </ul>
@@ -312,7 +330,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.recommendations.map((recommendation, i) => (
+                      {interviewData.recommendations && interviewData.recommendations.map((recommendation, i) => (
                         <li key={i} className="text-sm">{recommendation}</li>
                       ))}
                     </ul>

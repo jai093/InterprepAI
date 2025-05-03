@@ -52,6 +52,11 @@ const InterviewSimulation = () => {
         // Check feedback data structure and use appropriate fields
         const score = feedbackData.overallScore || 0;
         
+        // Make sure we have valid objects for analysis data
+        const voiceAnalysis = feedbackData.voiceAnalysis || {};
+        const facialAnalysis = feedbackData.facialAnalysis || {};
+        const bodyAnalysis = feedbackData.bodyAnalysis || {};
+        
         // Save interview data to Supabase
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
@@ -59,8 +64,20 @@ const InterviewSimulation = () => {
           role: interviewConfig?.jobRole || 'General', // Use jobRole instead of position
           duration: feedbackData.duration || '0 minutes',
           score: score,
-          voice_analysis: feedbackData.voiceAnalysis || feedbackData.voice_analysis || {},
-          facial_analysis: feedbackData.facialAnalysis || feedbackData.facial_analysis || {},
+          voice_analysis: {
+            clarity: voiceAnalysis.clarity || 0,
+            pace: voiceAnalysis.pace || 0,
+            pitch: voiceAnalysis.pitch || 0,
+            tone: voiceAnalysis.tone || 0,
+            confidence: voiceAnalysis.confidence || 0,
+          },
+          facial_analysis: {
+            smile: facialAnalysis.smile || 0,
+            eyeContact: feedbackData.nonVerbalAnalysis?.eyeContact || 0,
+            engagement: facialAnalysis.engagement || 0,
+            posture: bodyAnalysis.posture || 0,
+            gestures: bodyAnalysis.gestures || 0,
+          },
           transcript: feedbackData.transcript || feedbackData.transcripts?.[0]?.answer || '',
           feedback: feedbackData.feedback || JSON.stringify(feedbackData.recommendations || []),
           video_url: feedbackData.videoURL || feedbackData.videoUrl || null
