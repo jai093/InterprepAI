@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -833,4 +834,261 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       : 10;
     
     // Generate truly realistic feedback data
-    const overallScore = Math.floor(baseScore + (participationFactor
+    const overallScore = Math.floor(baseScore + (participationFactor * 20) + (qualityFactor * 30));
+    
+    // Generate personalized feedback based on actual participation
+    let feedback = [];
+    let recommendations = [];
+    
+    // Adjust feedback based on participation
+    if (hasAnyParticipation) {
+      // Feedback for users who participated
+      feedback = [
+        "You showed engagement with the interview process",
+        transcripts.length > 0 ? "Your answers demonstrated understanding of the questions" : "Try to provide more detailed answers",
+        userMetrics.fillerWords > 5 ? "Be mindful of filler words in your responses" : "You maintained good verbal clarity",
+        avgQuality > 50 ? "Your answers were relevant and on-topic" : "Try to focus more directly on answering the questions"
+      ];
+      
+      recommendations = [
+        "Practice the STAR method for behavioral questions",
+        "Prepare more concrete examples for your experiences",
+        "Record yourself to improve body language awareness",
+        userMetrics.fillerWords > 5 ? "Practice reducing filler words like 'um' and 'uh'" : "Continue maintaining clear speech patterns"
+      ];
+    } else {
+      // Feedback for users who didn't participate
+      feedback = [
+        "Try to provide verbal responses to interview questions",
+        "Engagement is a critical part of the interview process",
+        "Even short answers are better than no response",
+        "Practice speaking more confidently in interview settings"
+      ];
+      
+      recommendations = [
+        "Start with brief responses if you feel nervous",
+        "Prepare short answers to common interview questions",
+        "Practice interviewing with friends or family",
+        "Use video recording to become more comfortable with your presentation"
+      ];
+    }
+    
+    // Calculate duration in minutes and seconds
+    const minutes = Math.floor(secondsElapsed / 60);
+    const seconds = secondsElapsed % 60;
+    const duration = `${minutes} minute${minutes !== 1 ? 's' : ''} ${seconds} second${seconds !== 1 ? 's' : ''}`;
+    
+    // Create comprehensive feedback data
+    const feedbackData = {
+      duration,
+      overallScore,
+      scoreRating: overallScore >= 80 ? "Excellent" : overallScore >= 60 ? "Good" : overallScore >= 40 ? "Average" : "Needs Improvement",
+      answeredQuestions: answeredQuestions.length,
+      totalQuestions: questions.length,
+      participationRate,
+      avgAnswerQuality: avgQuality,
+      userMetrics,
+      facialAnalysis,
+      voiceAnalysis,
+      transcripts,
+      feedback,
+      recommendations,
+      videoURL: recordedVideoURL,
+      audioURL: audioURL,
+      date: new Date().toISOString()
+    };
+    
+    // Return feedback data to parent
+    onEnd(feedbackData);
+  };
+  
+  // Format time for display
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+  
+  // Render UI
+  return (
+    <div className="flex flex-col space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Video preview and controls */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="p-4">
+              <div className="aspect-video bg-gray-950 rounded-lg overflow-hidden relative mb-4">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  muted 
+                  playsInline
+                  className="w-full h-full object-cover"
+                ></video>
+                <canvas 
+                  ref={canvasRef} 
+                  className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-0"
+                ></canvas>
+                <div className="absolute bottom-4 left-4 bg-black/70 rounded-md px-3 py-1 text-white text-sm">
+                  {formatTime(secondsElapsed)}
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={toggleRecording} 
+                    variant={isRecording ? "destructive" : "default"}
+                  >
+                    {isRecording ? (
+                      <><MicOff className="mr-2 h-4 w-4" /> Stop Recording</>
+                    ) : (
+                      <><Mic className="mr-2 h-4 w-4" /> Start Recording</>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={nextQuestion}
+                    variant="outline"
+                    disabled={currentQuestionIndex >= questions.length - 1}
+                  >
+                    Next Question
+                  </Button>
+                </div>
+                
+                <div className="flex space-x-2">
+                  {recordedVideoURL && (
+                    <Button onClick={downloadVideo} variant="outline" size="sm">
+                      <Download className="mr-2 h-4 w-4" /> Video
+                    </Button>
+                  )}
+                  
+                  {audioURL && (
+                    <Button onClick={downloadAudio} variant="outline" size="sm">
+                      <Download className="mr-2 h-4 w-4" /> Audio
+                    </Button>
+                  )}
+                  
+                  <Button
+                    onClick={() => onEnd({
+                      overallScore: 0,
+                      feedback: ["Interview was ended early"],
+                      duration: formatTime(secondsElapsed)
+                    })}
+                    variant="outline"
+                    size="sm"
+                  >
+                    End Interview
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Question and analytics */}
+        <div>
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <h3 className="font-medium text-lg mb-2">Current Question</h3>
+              <p className="text-gray-800 mb-4">{questions[currentQuestionIndex].text}</p>
+              
+              <h4 className="font-medium text-sm mb-1 text-gray-500">Tips:</h4>
+              <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                {questions[currentQuestionIndex].tips.map((tip, i) => (
+                  <li key={i}>{tip}</li>
+                ))}
+              </ul>
+              
+              <div className="mt-4 text-sm text-gray-500">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium text-lg mb-4">Real-time Feedback</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Speech Analysis</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Speaking Pace</p>
+                      <p className={`font-medium ${userMetrics.speakingPace > 70 ? 'text-green-600' : userMetrics.speakingPace > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {userMetrics.speakingPace > 70 ? 'Good' : userMetrics.speakingPace > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Filler Words</p>
+                      <p className={`font-medium ${userMetrics.fillerWords < 3 ? 'text-green-600' : userMetrics.fillerWords < 8 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {userMetrics.fillerWords} detected
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Facial Expression Analysis</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Eye Contact</p>
+                      <p className={`font-medium ${facialAnalysis.confidence > 70 ? 'text-green-600' : facialAnalysis.confidence > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {facialAnalysis.confidence > 70 ? 'Good' : facialAnalysis.confidence > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Engagement</p>
+                      <p className={`font-medium ${facialAnalysis.engagement > 70 ? 'text-green-600' : facialAnalysis.engagement > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {facialAnalysis.engagement > 70 ? 'Good' : facialAnalysis.engagement > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Confidence Expression</p>
+                      <p className={`font-medium ${facialAnalysis.confidence > 70 ? 'text-green-600' : facialAnalysis.confidence > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {facialAnalysis.confidence > 70 ? 'Good' : facialAnalysis.confidence > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Voice Analysis</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Clarity</p>
+                      <p className={`font-medium ${voiceAnalysis.clarity > 70 ? 'text-green-600' : voiceAnalysis.clarity > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {voiceAnalysis.clarity > 70 ? 'Good' : voiceAnalysis.clarity > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Tone</p>
+                      <p className={`font-medium ${voiceAnalysis.tone > 70 ? 'text-green-600' : voiceAnalysis.tone > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {voiceAnalysis.tone > 70 ? 'Good' : voiceAnalysis.tone > 40 ? 'Average' : 'Needs Improvement'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      
+      {/* Transcript section */}
+      {speechData.transcript && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="font-medium text-lg mb-2">Current Response</h3>
+            <p className="text-gray-800 whitespace-pre-wrap">
+              {speechData.transcript || 'No transcript available yet. Start speaking after you click "Record"'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default InterviewSession;
