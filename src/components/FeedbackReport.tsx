@@ -63,6 +63,44 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   
+  // Ensure we have default values for all data
+  const safeInterviewData = {
+    ...interviewData,
+    responsesAnalysis: interviewData.responsesAnalysis || {
+      clarity: 0,
+      relevance: 0,
+      structure: 0,
+      examples: 0
+    },
+    nonVerbalAnalysis: interviewData.nonVerbalAnalysis || {
+      eyeContact: 0,
+      facialExpressions: 0,
+      bodyLanguage: 0
+    },
+    voiceAnalysis: interviewData.voiceAnalysis || {
+      pace: 0,
+      tone: 0,
+      clarity: 0,
+      confidence: 0
+    },
+    facialAnalysis: interviewData.facialAnalysis || {
+      smile: 0,
+      neutrality: 0,
+      confidence: 0,
+      engagement: 0
+    },
+    bodyAnalysis: interviewData.bodyAnalysis || {
+      posture: 0,
+      gestures: 0,
+      movement: 0,
+      presence: 0
+    },
+    strengths: interviewData.strengths || [],
+    improvements: interviewData.improvements || [],
+    recommendations: interviewData.recommendations || [],
+    transcripts: interviewData.transcripts || []
+  };
+  
   useEffect(() => {
     // Create URL from blobs if available
     if (interviewData.videoURL) {
@@ -97,38 +135,50 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
       const reportContent = `
         INTERVIEW FEEDBACK REPORT
         
-        Date: ${interviewData.date}
-        Duration: ${interviewData.duration}
-        Overall Score: ${interviewData.overallScore}%
+        Date: ${safeInterviewData.date}
+        Duration: ${safeInterviewData.duration}
+        Overall Score: ${safeInterviewData.overallScore}%
         
         RESPONSE QUALITY
-        - Clarity: ${interviewData.responsesAnalysis.clarity}%
-        - Relevance: ${interviewData.responsesAnalysis.relevance}%
-        - Structure: ${interviewData.responsesAnalysis.structure}%
-        - Examples: ${interviewData.responsesAnalysis.examples}%
+        - Clarity: ${safeInterviewData.responsesAnalysis.clarity}%
+        - Relevance: ${safeInterviewData.responsesAnalysis.relevance}%
+        - Structure: ${safeInterviewData.responsesAnalysis.structure}%
+        - Examples: ${safeInterviewData.responsesAnalysis.examples}%
         
         NON-VERBAL COMMUNICATION
-        - Eye Contact: ${interviewData.nonVerbalAnalysis.eyeContact}%
-        - Facial Expressions: ${interviewData.nonVerbalAnalysis.facialExpressions}%
-        - Body Language: ${interviewData.nonVerbalAnalysis.bodyLanguage}%
+        - Eye Contact: ${safeInterviewData.nonVerbalAnalysis.eyeContact}%
+        - Facial Expressions: ${safeInterviewData.nonVerbalAnalysis.facialExpressions}%
+        - Body Language: ${safeInterviewData.nonVerbalAnalysis.bodyLanguage}%
         
         VOICE ANALYSIS
-        - Pace: ${interviewData.voiceAnalysis.pace}%
-        - Tone: ${interviewData.voiceAnalysis.tone}%
-        - Clarity: ${interviewData.voiceAnalysis.clarity}%
-        - Confidence: ${interviewData.voiceAnalysis.confidence}%
+        - Pace: ${safeInterviewData.voiceAnalysis.pace}%
+        - Tone: ${safeInterviewData.voiceAnalysis.tone}%
+        - Clarity: ${safeInterviewData.voiceAnalysis.clarity}%
+        - Confidence: ${safeInterviewData.voiceAnalysis.confidence}%
+        
+        FACIAL EXPRESSION ANALYSIS
+        - Smile: ${safeInterviewData.facialAnalysis.smile}%
+        - Neutrality: ${safeInterviewData.facialAnalysis.neutrality}%
+        - Confidence: ${safeInterviewData.facialAnalysis.confidence}%
+        - Engagement: ${safeInterviewData.facialAnalysis.engagement}%
+        
+        BODY LANGUAGE ANALYSIS
+        - Posture: ${safeInterviewData.bodyAnalysis.posture}%
+        - Gestures: ${safeInterviewData.bodyAnalysis.gestures}%
+        - Movement: ${safeInterviewData.bodyAnalysis.movement}%
+        - Presence: ${safeInterviewData.bodyAnalysis.presence}%
         
         STRENGTHS
-        ${interviewData.strengths.map(s => `- ${s}`).join('\n')}
+        ${safeInterviewData.strengths.map(s => `- ${s}`).join('\n')}
         
         AREAS FOR IMPROVEMENT
-        ${interviewData.improvements.map(i => `- ${i}`).join('\n')}
+        ${safeInterviewData.improvements.map(i => `- ${i}`).join('\n')}
         
         RECOMMENDATIONS
-        ${interviewData.recommendations.map(r => `- ${r}`).join('\n')}
+        ${safeInterviewData.recommendations.map(r => `- ${r}`).join('\n')}
         
         TRANSCRIPTS
-        ${interviewData.transcripts?.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n\n') || ''}
+        ${safeInterviewData.transcripts?.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n\n') || ''}
       `;
       
       // Create a blob from the report content
@@ -231,20 +281,20 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
         <CardContent>
           <div className="flex flex-col md:flex-row justify-between mb-6">
             <div>
-              <p className="text-sm text-gray-500">Date: {interviewData.date}</p>
-              <p className="text-sm text-gray-500">Duration: {interviewData.duration}</p>
+              <p className="text-sm text-gray-500">Date: {safeInterviewData.date}</p>
+              <p className="text-sm text-gray-500">Duration: {safeInterviewData.duration}</p>
             </div>
             <div className="mt-4 md:mt-0 flex items-center">
               <div className="w-20 h-20 rounded-full border-4 border-interprepai-500 flex items-center justify-center mr-4">
-                <span className="text-2xl font-bold text-interprepai-700">{interviewData.overallScore}%</span>
+                <span className="text-2xl font-bold text-interprepai-700">{safeInterviewData.overallScore}%</span>
               </div>
               <div>
                 <p className="font-medium">Overall Score</p>
                 <p className="text-sm text-gray-500">
-                  {interviewData.overallScore > 80 ? "Excellent" : 
-                   interviewData.overallScore > 70 ? "Very Good" : 
-                   interviewData.overallScore > 60 ? "Good" : 
-                   interviewData.overallScore > 50 ? "Average" : "Needs Improvement"}
+                  {safeInterviewData.overallScore > 80 ? "Excellent" : 
+                   safeInterviewData.overallScore > 70 ? "Very Good" : 
+                   safeInterviewData.overallScore > 60 ? "Good" : 
+                   safeInterviewData.overallScore > 50 ? "Average" : "Needs Improvement"}
                 </p>
               </div>
             </div>
@@ -261,38 +311,38 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <AnalysisCard 
                   title="Response Quality" 
-                  data={interviewData.responsesAnalysis} 
+                  data={safeInterviewData.responsesAnalysis} 
                 />
                 <AnalysisCard 
                   title="Non-verbal Communication" 
-                  data={interviewData.nonVerbalAnalysis} 
+                  data={safeInterviewData.nonVerbalAnalysis} 
                 />
                 <AnalysisCard 
                   title="Voice Analysis" 
-                  data={interviewData.voiceAnalysis} 
+                  data={safeInterviewData.voiceAnalysis} 
                 />
               </div>
 
-              {interviewData.facialAnalysis && (
+              {safeInterviewData.facialAnalysis && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-3">Facial Expression Analysis</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <FacialAnalysisCard label="Smile" value={interviewData.facialAnalysis.smile} />
-                    <FacialAnalysisCard label="Neutrality" value={interviewData.facialAnalysis.neutrality} />
-                    <FacialAnalysisCard label="Confidence" value={interviewData.facialAnalysis.confidence} />
-                    <FacialAnalysisCard label="Engagement" value={interviewData.facialAnalysis.engagement} />
+                    <FacialAnalysisCard label="Smile" value={safeInterviewData.facialAnalysis.smile} />
+                    <FacialAnalysisCard label="Neutrality" value={safeInterviewData.facialAnalysis.neutrality} />
+                    <FacialAnalysisCard label="Confidence" value={safeInterviewData.facialAnalysis.confidence} />
+                    <FacialAnalysisCard label="Engagement" value={safeInterviewData.facialAnalysis.engagement} />
                   </div>
                 </div>
               )}
               
-              {interviewData.bodyAnalysis && (
+              {safeInterviewData.bodyAnalysis && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-3">Body Language Analysis</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <FacialAnalysisCard label="Posture" value={interviewData.bodyAnalysis.posture} />
-                    <FacialAnalysisCard label="Gestures" value={interviewData.bodyAnalysis.gestures} />
-                    <FacialAnalysisCard label="Movement" value={interviewData.bodyAnalysis.movement} />
-                    <FacialAnalysisCard label="Presence" value={interviewData.bodyAnalysis.presence} />
+                    <FacialAnalysisCard label="Posture" value={safeInterviewData.bodyAnalysis.posture} />
+                    <FacialAnalysisCard label="Gestures" value={safeInterviewData.bodyAnalysis.gestures} />
+                    <FacialAnalysisCard label="Movement" value={safeInterviewData.bodyAnalysis.movement} />
+                    <FacialAnalysisCard label="Presence" value={safeInterviewData.bodyAnalysis.presence} />
                   </div>
                 </div>
               )}
@@ -304,7 +354,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.strengths && interviewData.strengths.map((strength, i) => (
+                      {safeInterviewData.strengths?.map((strength, i) => (
                         <li key={i} className="text-sm">{strength}</li>
                       ))}
                     </ul>
@@ -317,7 +367,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.improvements && interviewData.improvements.map((improvement, i) => (
+                      {safeInterviewData.improvements?.map((improvement, i) => (
                         <li key={i} className="text-sm">{improvement}</li>
                       ))}
                     </ul>
@@ -330,7 +380,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                   </CardHeader>
                   <CardContent>
                     <ul className="list-disc pl-5 space-y-1">
-                      {interviewData.recommendations && interviewData.recommendations.map((recommendation, i) => (
+                      {safeInterviewData.recommendations?.map((recommendation, i) => (
                         <li key={i} className="text-sm">{recommendation}</li>
                       ))}
                     </ul>
@@ -415,8 +465,8 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <h3 className="text-lg font-semibold mb-3">Interview Transcript</h3>
                 
-                {interviewData.transcripts && interviewData.transcripts.length > 0 ? (
-                  interviewData.transcripts.map((transcript, index) => (
+                {safeInterviewData.transcripts && safeInterviewData.transcripts.length > 0 ? (
+                  safeInterviewData.transcripts.map((transcript, index) => (
                     <div key={index} className="mb-4 pb-4 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
                       <p className="font-medium mb-2">Question: {transcript.question}</p>
                       <p className="text-gray-700">{transcript.answer || "No answer recorded"}</p>

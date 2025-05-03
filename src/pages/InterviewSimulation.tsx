@@ -10,11 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Update InterviewConfig type if needed
-// This should match what's in InterviewSetup.tsx
-// We're just adapting to it here since we can't modify that file
-// Update our usage to use jobRole instead of position since that's what InterviewConfig uses
-
 const InterviewSimulation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -56,12 +51,13 @@ const InterviewSimulation = () => {
         const voiceAnalysis = feedbackData.voiceAnalysis || {};
         const facialAnalysis = feedbackData.facialAnalysis || {};
         const bodyAnalysis = feedbackData.bodyAnalysis || {};
+        const nonVerbalAnalysis = feedbackData.nonVerbalAnalysis || {};
         
         // Save interview data to Supabase
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
           type: interviewConfig?.type || 'General',
-          role: interviewConfig?.jobRole || 'General', // Use jobRole instead of position
+          role: interviewConfig?.jobRole || 'General',
           duration: feedbackData.duration || '0 minutes',
           score: score,
           voice_analysis: {
@@ -73,10 +69,10 @@ const InterviewSimulation = () => {
           },
           facial_analysis: {
             smile: facialAnalysis.smile || 0,
-            eyeContact: feedbackData.nonVerbalAnalysis?.eyeContact || 0,
+            neutrality: facialAnalysis.neutrality || 0,
+            confidence: facialAnalysis.confidence || 0,
             engagement: facialAnalysis.engagement || 0,
-            posture: bodyAnalysis.posture || 0,
-            gestures: bodyAnalysis.gestures || 0,
+            eyeContact: nonVerbalAnalysis.eyeContact || 0,
           },
           transcript: feedbackData.transcript || feedbackData.transcripts?.[0]?.answer || '',
           feedback: feedbackData.feedback || JSON.stringify(feedbackData.recommendations || []),

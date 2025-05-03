@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,12 +50,15 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [videoRecorded, setVideoRecorded] = useState<boolean>(false);
   const [audioRecorded, setAudioRecorded] = useState<boolean>(false);
+  
+  // Enhanced analysis for facial expressions and body language
   const [facialAnalysis, setFacialAnalysis] = useState({
     smile: 0,
     neutrality: 0,
     confidence: 0,
     engagement: 0
   });
+  
   const [voiceAnalysis, setVoiceAnalysis] = useState({
     clarity: 0,
     pace: 0,
@@ -174,6 +176,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       if (faceAnalysisInterval.current) {
         clearInterval(faceAnalysisInterval.current);
       }
+      if (bodyAnalysisInterval.current) {
+        clearInterval(bodyAnalysisInterval.current);
+      }
     };
   }, [toast]);
   
@@ -193,14 +198,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     postureChanges.current = 0;
     lastFacialUpdate.current = Date.now();
 
-    // Facial analysis interval
+    // Facial analysis interval - run more frequently for responsive UI
     faceAnalysisInterval.current = window.setInterval(() => {
       if (isRecording) {
         // Simulate facial detection with more realistic variation
         const timeFactor = (Date.now() - lastFacialUpdate.current) / 1000;
-        facialActivityCounter.current += Math.random() * timeFactor;
+        facialActivityCounter.current += Math.random() * timeFactor * 0.5;
         
-        // Create more realistic facial analysis
+        // Create more realistic facial analysis that varies over time
         // Higher values when user is actively speaking (simulated)
         const isActivelySpeaking = speechData.transcript.length > 50;
         const baseFacial = isActivelySpeaking ? 60 : 40;
@@ -213,13 +218,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           engagement: Math.min(100, Math.floor(baseFacial + Math.cos(facialActivityCounter.current * 0.06) * varianceFacial))
         });
       }
-    }, 1000);
+    }, 800);
     
     // Body language analysis interval
     bodyAnalysisInterval.current = window.setInterval(() => {
       if (isRecording) {
-        // Simulate body movement detection
-        bodyMovementCounter.current += Math.random();
+        // Simulate body movement detection with increasing values over time
+        bodyMovementCounter.current += Math.random() * 0.6;
         if (Math.random() > 0.8) {
           postureChanges.current += 1;
         }
@@ -241,13 +246,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           presence: Math.min(100, Math.floor(baseBody + (postureFactor * 15 + movementFactor * 10) + Math.cos(bodyMovementCounter.current * 0.05) * varianceBody))
         });
         
-        // Update user metrics with body language scores
+        // Update user metrics with body language scores for real-time feedback
         setUserMetrics(prev => ({
           ...prev,
           eyeContact: Math.min(100, Math.floor(baseBody + (postureFactor * 20) + Math.sin(facialActivityCounter.current * 0.07) * varianceBody))
         }));
       }
-    }, 1500);
+    }, 1200);
   };
   
   // Set up speech recognition
