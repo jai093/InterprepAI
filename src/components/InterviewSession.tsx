@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,13 +22,6 @@ interface SpeechRecognitionData {
   isListening: boolean;
 }
 
-interface TranscriptData {
-  question: string;
-  answer: string;
-  quality: number; // 0-100 score of answer quality
-  keywords: string[]; // Keywords detected in the answer
-}
-
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,13 +40,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     transcript: "",
     isListening: false
   });
-  
-  // Track user participation more accurately
-  const [hasParticipated, setHasParticipated] = useState(false);
-  const [responseQuality, setResponseQuality] = useState(0);
-  const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
-  const [transcripts, setTranscripts] = useState<TranscriptData[]>([]);
-  const [activeParticipationTime, setActiveParticipationTime] = useState(0);
   
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
@@ -82,10 +67,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   // Canvas for facial analysis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceAnalysisInterval = useRef<number | null>(null);
-  
-  // Speech activity detection
-  const lastActivityTimestamp = useRef<number>(0);
-  const speechActivityInterval = useRef<number | null>(null);
   
   // Mock interview questions based on type and job role
   const getQuestionsByType = () => {
@@ -198,7 +179,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     }, 1000);
   };
   
-  // Enhanced speech recognition with better participation tracking
+  // Set up speech recognition
   const startSpeechRecognition = () => {
     if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
       toast({
@@ -233,9 +214,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         if (event.results[i].isFinal) {
           transcript += event.results[i][0].transcript + ' ';
           
-          // Update last activity timestamp
-          lastActivityTimestamp.current = Date.now();
-          
           // Detect filler words
           const fillerWords = ['um', 'uh', 'like', 'you know', 'actually', 'basically'];
           const words = transcript.toLowerCase().split(' ');
@@ -245,51 +223,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             ...prev,
             fillerWords: prev.fillerWords + fillerCount
           }));
-          
-          // Detect keywords related to the question
-          const questionText = questions[currentQuestionIndex].text.toLowerCase();
-          const keywordMatches = analyzeKeywordMatches(transcript.toLowerCase(), questionText);
-          
-          // If user speaks more than 20 characters, mark as participated
-          if (transcript.length > 20) {
-            // Mark as participated if not already
-            if (!hasParticipated) {
-              setHasParticipated(true);
-            }
-            
-            // Add current question to answered questions if not already there
-            if (!answeredQuestions.includes(currentQuestionIndex)) {
-              setAnsweredQuestions(prev => [...prev, currentQuestionIndex]);
-              
-              // Increase active participation time
-              setActiveParticipationTime(prev => prev + 5);
-            } else {
-              // Still increase active time for continuing to speak
-              setActiveParticipationTime(prev => prev + 2);
-            }
-            
-            // Calculate response quality based on:
-            // 1. Length of response (word count)
-            // 2. Lack of filler words
-            // 3. Presence of relevant keywords
-            // 4. Complete sentences
-            const wordsSpoken = transcript.split(' ').length;
-            const hasSentenceStructure = transcript.includes('.') || transcript.includes('?') || transcript.includes('!');
-            
-            // Base quality on various factors
-            let qualityScore = Math.min(100, Math.max(10,
-              Math.floor((wordsSpoken - fillerCount) * 3) + 
-              (keywordMatches * 10) +
-              (hasSentenceStructure ? 15 : 0)
-            ));
-            
-            // Cap quality based on thresholds
-            if (wordsSpoken < 5) qualityScore = Math.min(qualityScore, 30);
-            else if (wordsSpoken < 15) qualityScore = Math.min(qualityScore, 60);
-            
-            // Update the response quality
-            setResponseQuality(prev => Math.max(prev, qualityScore));
-          }
         }
       }
       
@@ -298,7 +231,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         transcript: prev.transcript + transcript
       }));
 
-      // Simulate voice analysis based on actual transcript content
+      // Simulate voice analysis based on transcript content
       simulateVoiceAnalysis(transcript);
     };
     
@@ -311,93 +244,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     recognition.start();
     setSpeechData(prev => ({ ...prev, isListening: true }));
     
-    // Start the speech activity monitoring
-    monitorSpeechActivity();
-    
     return recognition;
   };
   
-  // Analyze keyword matches between transcript and question
-  const analyzeKeywordMatches = (transcript: string, questionText: string): number => {
-    // Extract key terms from the question
-    const jobRoleTerms = config.jobRole.toLowerCase().split(' ');
-    
-    // Common keywords for interviews based on question type
-    const commonTerms = {
-      behavioral: ['experience', 'situation', 'challenge', 'action', 'result', 'team', 'problem', 'solution', 'handled', 'example'],
-      technical: ['approach', 'solution', 'method', 'implement', 'design', 'technology', 'tool', 'process', 'system', 'evaluate'],
-      roleSpecific: ['skills', 'background', 'qualification', 'knowledge', 'responsibility', 'goal', 'expectation']
-    };
-    
-    // Get relevant terms for this question type
-    const relevantTerms = commonTerms[config.type as keyof typeof commonTerms] || commonTerms.behavioral;
-    
-    // Count matches
-    let matchCount = 0;
-    
-    // Check job role terms
-    jobRoleTerms.forEach(term => {
-      if (term.length > 3 && transcript.includes(term)) {
-        matchCount++;
-      }
-    });
-    
-    // Check for relevant terms
-    relevantTerms.forEach(term => {
-      if (transcript.includes(term)) {
-        matchCount++;
-      }
-    });
-    
-    return Math.min(10, matchCount); // Cap at 10 matches
-  };
-  
-  // Monitor for periods of speech activity/inactivity
-  const monitorSpeechActivity = () => {
-    if (speechActivityInterval.current) {
-      clearInterval(speechActivityInterval.current);
-    }
-    
-    lastActivityTimestamp.current = Date.now();
-    
-    speechActivityInterval.current = window.setInterval(() => {
-      if (isRecording) {
-        const now = Date.now();
-        const silentTime = now - lastActivityTimestamp.current;
-        
-        // If silent for more than 3 seconds, update voice metrics to reflect this
-        if (silentTime > 3000) {
-          setVoiceAnalysis(prev => ({
-            ...prev,
-            clarity: Math.max(0, prev.clarity - 1),
-            confidence: Math.max(0, prev.confidence - 1)
-          }));
-        }
-      }
-    }, 2000);
-  };
-  
   const simulateVoiceAnalysis = (transcript: string) => {
+    // In a real implementation, this would use audio analysis APIs
+    // Here we're just simulating voice metrics
     if (transcript && transcript.length > 0) {
-      // Reset last activity timestamp
-      lastActivityTimestamp.current = Date.now();
-      
-      // Base the analysis on actual speech content
-      const wordCount = transcript.split(' ').length;
-      const sentenceStructure = transcript.includes('.') || transcript.includes('?') || transcript.includes('!');
-      const hasKeywords = transcript.toLowerCase().includes(config.jobRole.toLowerCase());
-      
-      // Calculate more realistic scores based on speech quality
-      const clarityScore = Math.min(100, Math.max(20, 30 + (wordCount / 8)));
-      const paceScore = Math.min(100, Math.max(20, 40 + (sentenceStructure ? 20 : 0)));
-      const confidenceScore = Math.min(100, Math.max(20, 30 + (hasKeywords ? 30 : 0) + (wordCount / 12)));
-      
       setVoiceAnalysis({
-        clarity: Math.floor(clarityScore),
-        pace: Math.floor(paceScore),
-        pitch: Math.min(100, Math.floor(50 + Math.sin(transcript.length * 0.06) * 15)),
-        tone: Math.min(100, Math.floor(40 + Math.cos(transcript.length * 0.04) * 10)),
-        confidence: Math.floor(confidenceScore)
+        clarity: Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15)),
+        pace: Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20)),
+        pitch: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.06) * 15)),
+        tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10)),
+        confidence: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.07) * 15))
       });
     }
   };
@@ -406,12 +265,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     if (recognition) {
       recognition.stop();
       setSpeechData(prev => ({ ...prev, isListening: false }));
-    }
-    
-    // Clear speech activity interval
-    if (speechActivityInterval.current) {
-      clearInterval(speechActivityInterval.current);
-      speechActivityInterval.current = null;
     }
   };
   
@@ -488,9 +341,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       // Start speech recognition
       const recognition = startSpeechRecognition();
       
-      // Reset participation metrics for new recording
-      setActiveParticipationTime(0);
-      
       // Update state
       setIsRecording(true);
       
@@ -498,6 +348,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         title: "Recording Started",
         description: "Your response is now being recorded.",
       });
+      
     } catch (error) {
       console.error("Error setting up MediaRecorder:", error);
       toast({
@@ -522,105 +373,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     
     setIsRecording(false);
     
-    // Save transcript for current question
-    updateTranscriptForCurrentQuestion();
-    
     toast({
       title: "Recording Complete",
       description: "Your response recording has been saved.",
     });
-  };
-  
-  // Update transcript for the current question
-  const updateTranscriptForCurrentQuestion = () => {
-    if (!speechData.transcript) return;
-    
-    // Analyze transcript quality
-    const questionText = questions[currentQuestionIndex].text.toLowerCase();
-    const keywordMatches = analyzeKeywordMatches(speechData.transcript.toLowerCase(), questionText);
-    const wordsSpoken = speechData.transcript.split(' ').length;
-    const hasSentenceStructure = speechData.transcript.includes('.') || 
-                                speechData.transcript.includes('?') || 
-                                speechData.transcript.includes('!');
-    
-    // Calculate quality score
-    const qualityScore = Math.min(100, Math.max(10,
-      Math.floor(wordsSpoken * 2) + 
-      (keywordMatches * 10) +
-      (hasSentenceStructure ? 15 : 0) - 
-      (userMetrics.fillerWords * 5)
-    ));
-    
-    // Extract keywords from transcript
-    const keywords = extractKeywordsFromTranscript(speechData.transcript, questionText);
-    
-    const newTranscript: TranscriptData = {
-      question: questions[currentQuestionIndex].text,
-      answer: speechData.transcript,
-      quality: qualityScore,
-      keywords
-    };
-    
-    setTranscripts(prev => {
-      // Check if this question already has a transcript
-      const existingIndex = prev.findIndex(t => 
-        t.question === questions[currentQuestionIndex].text
-      );
-      
-      if (existingIndex >= 0) {
-        // Update existing transcript
-        const updated = [...prev];
-        updated[existingIndex] = newTranscript;
-        return updated;
-      } else {
-        // Add new transcript
-        return [...prev, newTranscript];
-      }
-    });
-  };
-  
-  // Extract keywords from transcript
-  const extractKeywordsFromTranscript = (transcript: string, questionText: string): string[] => {
-    const keywords: string[] = [];
-    const text = transcript.toLowerCase();
-    
-    // Job role terms
-    const jobRoleTerms = config.jobRole.toLowerCase().split(' ');
-    jobRoleTerms.forEach(term => {
-      if (term.length > 3 && text.includes(term)) {
-        keywords.push(term);
-      }
-    });
-    
-    // Common interview keywords
-    const commonKeywords = [
-      'experience', 'challenge', 'solution', 'project', 'team',
-      'success', 'failure', 'learned', 'skill', 'achieve',
-      'improve', 'responsibility', 'manage', 'lead', 'collaborate'
-    ];
-    
-    commonKeywords.forEach(word => {
-      if (text.includes(word)) {
-        keywords.push(word);
-      }
-    });
-    
-    // Technical terms if it's a technical interview
-    if (config.type === 'technical') {
-      const technicalKeywords = [
-        'algorithm', 'architecture', 'framework', 'database',
-        'system', 'implementation', 'design', 'process', 'technology'
-      ];
-      
-      technicalKeywords.forEach(word => {
-        if (text.includes(word)) {
-          keywords.push(word);
-        }
-      });
-    }
-    
-    // Remove duplicates and return
-    return [...new Set(keywords)];
   };
   
   // Download recorded video
@@ -695,82 +451,24 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     }
   };
   
-  // Enhanced analytics update with better participation tracking
+  // Mock analytics update
   useEffect(() => {
     if (isRecording) {
       const interval = setInterval(() => {
         setSecondsElapsed(prev => prev + 1);
         
-        // Update metrics based on participation
-        updateMetricsBasedOnParticipation();
+        // Simulate analysis updates with slightly more realistic values
+        setUserMetrics(prev => ({
+          speakingPace: Math.min(100, Math.floor(65 + Math.sin(secondsElapsed * 0.1) * 15)),
+          eyeContact: Math.min(100, Math.floor(70 + Math.cos(secondsElapsed * 0.05) * 15)),
+          fillerWords: prev.fillerWords, // This is updated by speech recognition
+          engagement: Math.min(100, Math.floor(75 + Math.sin(secondsElapsed * 0.08) * 10))
+        }));
       }, 1000);
       
       return () => clearInterval(interval);
     }
-  }, [isRecording, secondsElapsed, hasParticipated, activeParticipationTime]);
-  
-  // Update metrics based on actual participation
-  const updateMetricsBasedOnParticipation = () => {
-    // Calculate participation ratio (active speaking time / total elapsed time)
-    const participationRatio = secondsElapsed > 0 
-      ? Math.min(1, activeParticipationTime / secondsElapsed) 
-      : 0;
-    
-    // If user has been speaking actively (high participation ratio)
-    if (participationRatio > 0.3) {
-      // Higher metrics for engaged users
-      setUserMetrics(prev => ({
-        speakingPace: Math.min(95, 50 + Math.floor(participationRatio * 50)),
-        eyeContact: Math.min(90, 60 + Math.floor(participationRatio * 30)),
-        fillerWords: prev.fillerWords,
-        engagement: Math.min(95, 50 + Math.floor(participationRatio * 45))
-      }));
-      
-      // Update facial analysis for engaged users
-      setFacialAnalysis({
-        smile: Math.min(90, 40 + Math.floor(participationRatio * 50)),
-        neutrality: Math.min(80, 50 + Math.floor(Math.cos(secondsElapsed * 0.05) * 30)),
-        confidence: Math.min(95, 50 + Math.floor(participationRatio * 45)),
-        engagement: Math.min(95, 60 + Math.floor(participationRatio * 35))
-      });
-    } 
-    // Moderate participation
-    else if (participationRatio > 0.1) {
-      // Moderate metrics for somewhat engaged users
-      setUserMetrics(prev => ({
-        speakingPace: Math.min(70, 30 + Math.floor(participationRatio * 100)),
-        eyeContact: Math.min(65, 40 + Math.floor(participationRatio * 60)),
-        fillerWords: prev.fillerWords,
-        engagement: Math.min(70, 30 + Math.floor(participationRatio * 100))
-      }));
-      
-      // Update facial analysis for somewhat engaged users
-      setFacialAnalysis({
-        smile: Math.min(70, 30 + Math.floor(participationRatio * 100)),
-        neutrality: Math.min(80, 50 + Math.floor(Math.cos(secondsElapsed * 0.05) * 30)),
-        confidence: Math.min(65, 30 + Math.floor(participationRatio * 90)),
-        engagement: Math.min(70, 30 + Math.floor(participationRatio * 100))
-      });
-    }
-    // Low or no participation
-    else {
-      // Lower metrics for disengaged users
-      setUserMetrics(prev => ({
-        speakingPace: Math.min(30, 10 + Math.floor(participationRatio * 100)),
-        eyeContact: Math.min(40, 20 + Math.floor(participationRatio * 100)),
-        fillerWords: prev.fillerWords,
-        engagement: Math.min(30, 10 + Math.floor(participationRatio * 100))
-      }));
-      
-      // Update facial analysis for disengaged users
-      setFacialAnalysis({
-        smile: Math.min(30, 10 + Math.floor(participationRatio * 100)),
-        neutrality: Math.min(60, 30 + Math.floor(Math.cos(secondsElapsed * 0.05) * 30)),
-        confidence: Math.min(40, 20 + Math.floor(participationRatio * 100)),
-        engagement: Math.min(30, 10 + Math.floor(participationRatio * 100))
-      });
-    }
-  };
+  }, [isRecording, secondsElapsed]);
 
   const toggleRecording = () => {
     if (isRecording) {
@@ -781,9 +479,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   };
   
   const nextQuestion = () => {
-    // Save transcript for current question before moving on
-    updateTranscriptForCurrentQuestion();
-    
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSecondsElapsed(0);
@@ -815,278 +510,370 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     }
     
-    // Calculate overall participation metrics
-    const participationRate = (answeredQuestions.length / questions.length) * 100;
-    
-    // Calculate average transcript quality
-    const avgQuality = transcripts.length > 0
-      ? transcripts.reduce((sum, t) => sum + t.quality, 0) / transcripts.length
-      : 0;
-    
-    // Calculate more accurate scores based on actual participation and quality
-    const hasAnyParticipation = hasParticipated || answeredQuestions.length > 0;
-    const participationFactor = hasAnyParticipation ? Math.max(0.2, participationRate / 100) : 0.1;
-    const qualityFactor = hasAnyParticipation ? Math.max(0.2, avgQuality / 100) : 0.1;
-    
-    // Base score heavily influenced by actual participation
-    const baseScore = hasAnyParticipation 
-      ? 20 + (participationRate / 5) 
-      : 10;
-    
-    // Generate truly realistic feedback data
-    const overallScore = Math.floor(baseScore + (participationFactor * 20) + (qualityFactor * 30));
-    
-    // Generate personalized feedback based on actual participation
-    let feedback = [];
-    let recommendations = [];
-    
-    // Adjust feedback based on participation
-    if (hasAnyParticipation) {
-      // Feedback for users who participated
-      feedback = [
-        "You showed engagement with the interview process",
-        transcripts.length > 0 ? "Your answers demonstrated understanding of the questions" : "Try to provide more detailed answers",
-        userMetrics.fillerWords > 5 ? "Be mindful of filler words in your responses" : "You maintained good verbal clarity",
-        avgQuality > 50 ? "Your answers were relevant and on-topic" : "Try to focus more directly on answering the questions"
-      ];
-      
-      recommendations = [
+    // Generate mock feedback data with enhanced analysis
+    const mockFeedback = {
+      date: new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      duration: `${Math.floor(secondsElapsed / 60)} minutes ${secondsElapsed % 60} seconds`,
+      overallScore: Math.floor(65 + Math.random() * 20),
+      responsesAnalysis: {
+        clarity: Math.floor(70 + Math.random() * 20),
+        relevance: Math.floor(65 + Math.random() * 25),
+        structure: Math.floor(60 + Math.random() * 20),
+        examples: Math.floor(70 + Math.random() * 20)
+      },
+      nonVerbalAnalysis: {
+        eyeContact: userMetrics.eyeContact,
+        facialExpressions: facialAnalysis.smile,
+        bodyLanguage: facialAnalysis.engagement
+      },
+      voiceAnalysis: {
+        pace: voiceAnalysis.pace,
+        tone: voiceAnalysis.tone,
+        clarity: voiceAnalysis.clarity,
+        confidence: voiceAnalysis.confidence
+      },
+      facialAnalysis: {
+        smile: facialAnalysis.smile,
+        neutrality: facialAnalysis.neutrality,
+        confidence: facialAnalysis.confidence,
+        engagement: facialAnalysis.engagement
+      },
+      strengths: [
+        "Strong use of concrete examples",
+        "Clear communication style",
+        "Appropriate response length",
+        "Maintained positive demeanor"
+      ],
+      improvements: [
+        userMetrics.eyeContact < 70 ? "Maintain more consistent eye contact" : "Continue with strong eye contact",
+        userMetrics.fillerWords > 5 ? "Reduce filler words like 'um' and 'uh'" : "Good control of filler words",
+        facialAnalysis.engagement < 70 ? "Show more engagement through facial expressions" : "Good facial engagement",
+        voiceAnalysis.pace < 65 ? "Consider speaking at a slightly faster pace" : "Well-paced delivery"
+      ],
+      recommendations: [
         "Practice the STAR method for behavioral questions",
-        "Prepare more concrete examples for your experiences",
-        "Record yourself to improve body language awareness",
-        userMetrics.fillerWords > 5 ? "Practice reducing filler words like 'um' and 'uh'" : "Continue maintaining clear speech patterns"
-      ];
-    } else {
-      // Feedback for users who didn't participate
-      feedback = [
-        "Try to provide verbal responses to interview questions",
-        "Engagement is a critical part of the interview process",
-        "Even short answers are better than no response",
-        "Practice speaking more confidently in interview settings"
-      ];
-      
-      recommendations = [
-        "Start with brief responses if you feel nervous",
-        "Prepare short answers to common interview questions",
-        "Practice interviewing with friends or family",
-        "Use video recording to become more comfortable with your presentation"
-      ];
-    }
-    
-    // Calculate duration in minutes and seconds
-    const minutes = Math.floor(secondsElapsed / 60);
-    const seconds = secondsElapsed % 60;
-    const duration = `${minutes} minute${minutes !== 1 ? 's' : ''} ${seconds} second${seconds !== 1 ? 's' : ''}`;
-    
-    // Create comprehensive feedback data
-    const feedbackData = {
-      duration,
-      overallScore,
-      scoreRating: overallScore >= 80 ? "Excellent" : overallScore >= 60 ? "Good" : overallScore >= 40 ? "Average" : "Needs Improvement",
-      answeredQuestions: answeredQuestions.length,
-      totalQuestions: questions.length,
-      participationRate,
-      avgAnswerQuality: avgQuality,
-      userMetrics,
-      facialAnalysis,
-      voiceAnalysis,
-      transcripts,
-      feedback,
-      recommendations,
+        "Record yourself to monitor eye contact patterns",
+        "Try speaking more slowly during technical explanations",
+        "Prepare 2-3 more examples for common questions"
+      ],
+      transcripts: [
+        {
+          question: questions[currentQuestionIndex].text,
+          answer: speechData.transcript || "No transcript available"
+        }
+      ],
+      videoBlob: recordedVideoBlob,
+      audioBlob: recordedAudioBlob,
       videoURL: recordedVideoURL,
-      audioURL: audioURL,
-      date: new Date().toISOString()
+      audioURL: audioURL
     };
     
-    // Return feedback data to parent
-    onEnd(feedbackData);
+    onEnd(mockFeedback);
   };
-  
-  // Format time for display
-  const formatTime = (seconds: number): string => {
+
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  
-  // Render UI
+
   return (
-    <div className="flex flex-col space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Video preview and controls */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="p-4">
-              <div className="aspect-video bg-gray-950 rounded-lg overflow-hidden relative mb-4">
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  muted 
-                  playsInline
-                  className="w-full h-full object-cover"
-                ></video>
-                <canvas 
-                  ref={canvasRef} 
-                  className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-0"
-                ></canvas>
-                <div className="absolute bottom-4 left-4 bg-black/70 rounded-md px-3 py-1 text-white text-sm">
-                  {formatTime(secondsElapsed)}
-                </div>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2">
+        <div className="bg-black rounded-lg aspect-video relative overflow-hidden mb-4">
+          {mediaStream ? (
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-white">Camera not connected</div>
+            </div>
+          )}
+          
+          {/* Interview controls overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <div className="flex justify-center space-x-4">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className={`${isRecording ? 'bg-red-500/80 hover:bg-red-500' : 'bg-white/20 hover:bg-white/30'} text-white flex items-center`}
+                onClick={toggleRecording}
+              >
+                {isRecording ? (
+                  <>
+                    <MicOff className="mr-2 h-4 w-4" /> Stop Recording
+                  </>
+                ) : (
+                  <>
+                    <Mic className="mr-2 h-4 w-4" /> Start Recording
+                  </>
+                )}
+              </Button>
               
-              <div className="flex flex-wrap justify-between items-center gap-4">
-                <div className="flex space-x-2">
-                  <Button 
-                    onClick={toggleRecording} 
-                    variant={isRecording ? "destructive" : "default"}
-                  >
-                    {isRecording ? (
-                      <><MicOff className="mr-2 h-4 w-4" /> Stop Recording</>
-                    ) : (
-                      <><Mic className="mr-2 h-4 w-4" /> Start Recording</>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={nextQuestion}
-                    variant="outline"
-                    disabled={currentQuestionIndex >= questions.length - 1}
-                  >
-                    Next Question
-                  </Button>
-                </div>
-                
-                <div className="flex space-x-2">
-                  {recordedVideoURL && (
-                    <Button onClick={downloadVideo} variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" /> Video
-                    </Button>
-                  )}
-                  
-                  {audioURL && (
-                    <Button onClick={downloadAudio} variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" /> Audio
-                    </Button>
-                  )}
-                  
-                  <Button
-                    onClick={() => onEnd({
-                      overallScore: 0,
-                      feedback: ["Interview was ended early"],
-                      duration: formatTime(secondsElapsed)
-                    })}
-                    variant="outline"
-                    size="sm"
-                  >
-                    End Interview
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              {videoRecorded && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="bg-white/20 hover:bg-white/30 text-white flex items-center"
+                  onClick={downloadVideo}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download Video
+                </Button>
+              )}
+              
+              {audioRecorded && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="bg-white/20 hover:bg-white/30 text-white flex items-center"
+                  onClick={downloadAudio}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download Audio
+                </Button>
+              )}
+              
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="bg-white/20 hover:bg-white/30 text-white"
+                onClick={nextQuestion}
+              >
+                {currentQuestionIndex < questions.length - 1 ? "Next Question" : "End Interview"}
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="bg-red-500/80 hover:bg-red-500 text-white"
+                onClick={endInterview}
+              >
+                End Session
+              </Button>
+            </div>
+          </div>
+          
+          {/* Hidden canvas for facial analysis */}
+          <canvas 
+            ref={canvasRef} 
+            width="640" 
+            height="480" 
+            className="hidden"
+          />
         </div>
         
-        {/* Question and analytics */}
-        <div>
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <h3 className="font-medium text-lg mb-2">Current Question</h3>
-              <p className="text-gray-800 mb-4">{questions[currentQuestionIndex].text}</p>
-              
-              <h4 className="font-medium text-sm mb-1 text-gray-500">Tips:</h4>
-              <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-                {questions[currentQuestionIndex].tips.map((tip, i) => (
-                  <li key={i}>{tip}</li>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="font-bold text-xl">Current Question</h2>
+                <p className="text-sm text-gray-500">
+                  Question {currentQuestionIndex + 1} of {questions.length}
+                </p>
+              </div>
+              <div className="flex items-center">
+                {isRecording && (
+                  <div className="flex items-center mr-4">
+                    <div className="w-3 h-3 rounded-full bg-red-500 mr-2 animate-pulse"></div>
+                    <span className="text-sm text-gray-500">Recording</span>
+                  </div>
+                )}
+                <div className="text-xl font-mono">{formatTime(secondsElapsed)}</div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 mb-4">
+              <p className="text-lg font-medium">
+                {questions[currentQuestionIndex].text}
+              </p>
+            </div>
+            
+            <div className="text-gray-600">
+              <p className="mb-2 font-medium">Tips:</p>
+              <ul className="list-disc pl-6 space-y-1 text-sm">
+                {questions[currentQuestionIndex].tips.map((tip, index) => (
+                  <li key={index}>{tip}</li>
                 ))}
               </ul>
-              
-              <div className="mt-4 text-sm text-gray-500">
-                Question {currentQuestionIndex + 1} of {questions.length}
+            </div>
+            
+            {speechData.transcript && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-sm font-medium mb-2">Your response (transcribed):</p>
+                <p className="text-sm text-gray-700">{speechData.transcript}</p>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium text-lg mb-4">Real-time Feedback</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Speech Analysis</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Speaking Pace</p>
-                      <p className={`font-medium ${userMetrics.speakingPace > 70 ? 'text-green-600' : userMetrics.speakingPace > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {userMetrics.speakingPace > 70 ? 'Good' : userMetrics.speakingPace > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Filler Words</p>
-                      <p className={`font-medium ${userMetrics.fillerWords < 3 ? 'text-green-600' : userMetrics.fillerWords < 8 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {userMetrics.fillerWords} detected
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium mb-2">Facial Expression Analysis</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Eye Contact</p>
-                      <p className={`font-medium ${facialAnalysis.confidence > 70 ? 'text-green-600' : facialAnalysis.confidence > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {facialAnalysis.confidence > 70 ? 'Good' : facialAnalysis.confidence > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Engagement</p>
-                      <p className={`font-medium ${facialAnalysis.engagement > 70 ? 'text-green-600' : facialAnalysis.engagement > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {facialAnalysis.engagement > 70 ? 'Good' : facialAnalysis.engagement > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Confidence Expression</p>
-                      <p className={`font-medium ${facialAnalysis.confidence > 70 ? 'text-green-600' : facialAnalysis.confidence > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {facialAnalysis.confidence > 70 ? 'Good' : facialAnalysis.confidence > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium mb-2">Voice Analysis</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Clarity</p>
-                      <p className={`font-medium ${voiceAnalysis.clarity > 70 ? 'text-green-600' : voiceAnalysis.clarity > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {voiceAnalysis.clarity > 70 ? 'Good' : voiceAnalysis.clarity > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Tone</p>
-                      <p className={`font-medium ${voiceAnalysis.tone > 70 ? 'text-green-600' : voiceAnalysis.tone > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {voiceAnalysis.tone > 70 ? 'Good' : voiceAnalysis.tone > 40 ? 'Average' : 'Needs Improvement'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            )}
+            
+            {recordedVideoURL && (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Interview Recording:</p>
+                <video 
+                  controls 
+                  src={recordedVideoURL} 
+                  className="w-full h-auto rounded-lg border border-gray-200"
+                />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-      
-      {/* Transcript section */}
-      {speechData.transcript && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-medium text-lg mb-2">Current Response</h3>
-            <p className="text-gray-800 whitespace-pre-wrap">
-              {speechData.transcript || 'No transcript available yet. Start speaking after you click "Record"'}
-            </p>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
+      
+      <div>
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="font-bold text-xl mb-4">Real-time Feedback</h2>
+            
+            <div className="space-y-6">
+              {/* Speech metrics */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Speech Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Speaking Pace</span>
+                    <span className="text-xs font-medium">
+                      {userMetrics.speakingPace > 80 ? "Good" : userMetrics.speakingPace > 60 ? "Average" : "Needs Improvement"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.speakingPace > 80 ? "bg-green-500" : userMetrics.speakingPace > 60 ? "bg-amber-500" : "bg-red-500"}`} 
+                      style={{ width: `${userMetrics.speakingPace}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Filler Words</span>
+                    <span className="text-xs font-medium">{userMetrics.fillerWords} detected</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.fillerWords < 3 ? "bg-green-500" : userMetrics.fillerWords < 6 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${Math.min(100, userMetrics.fillerWords * 10)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Facial metrics */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Facial Expression Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Eye Contact</span>
+                    <span className="text-xs font-medium">
+                      {userMetrics.eyeContact > 80 ? "Excellent" : userMetrics.eyeContact > 60 ? "Good" : "Needs Improvement"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${userMetrics.eyeContact > 80 ? "bg-green-500" : userMetrics.eyeContact > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${userMetrics.eyeContact}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Engagement</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.engagement > 80 ? "Excellent" : facialAnalysis.engagement > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.engagement > 80 ? "bg-green-500" : facialAnalysis.engagement > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.engagement}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Confidence Expression</span>
+                    <span className="text-xs font-medium">
+                      {facialAnalysis.confidence > 80 ? "Excellent" : facialAnalysis.confidence > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${facialAnalysis.confidence > 80 ? "bg-green-500" : facialAnalysis.confidence > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${facialAnalysis.confidence}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Voice metrics */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Voice Analysis</h3>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Clarity</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.clarity > 80 ? "Excellent" : voiceAnalysis.clarity > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.clarity > 80 ? "bg-green-500" : voiceAnalysis.clarity > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${voiceAnalysis.clarity}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm">Tone</span>
+                    <span className="text-xs font-medium">
+                      {voiceAnalysis.tone > 80 ? "Excellent" : voiceAnalysis.tone > 60 ? "Good" : "Average"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${voiceAnalysis.tone > 80 ? "bg-green-500" : voiceAnalysis.tone > 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      style={{ width: `${voiceAnalysis.tone}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Brief feedback tips */}
+              {isRecording && (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <h3 className="text-sm font-semibold text-blue-700 mb-1">Live Coaching Tips</h3>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {userMetrics.eyeContact < 70 && (
+                      <li className="text-xs text-blue-700">Try to look more directly at the camera</li>
+                    )}
+                    {userMetrics.fillerWords > 3 && (
+                      <li className="text-xs text-blue-700">Try to reduce filler words like "um" and "uh"</li>
+                    )}
+                    {userMetrics.speakingPace < 65 && (
+                      <li className="text-xs text-blue-700">Try to speak at a slightly faster pace</li>
+                    )}
+                    {facialAnalysis.engagement < 70 && (
+                      <li className="text-xs text-blue-700">Show more engagement through facial expressions</li>
+                    )}
+                    {voiceAnalysis.tone < 70 && (
+                      <li className="text-xs text-blue-700">Try to vary your tone more for emphasis</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
