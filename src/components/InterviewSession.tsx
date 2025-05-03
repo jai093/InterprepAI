@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     transcript: "",
     isListening: false
   });
+  
+  // Track user participation
+  const [hasParticipated, setHasParticipated] = useState(false);
+  const [responseQuality, setResponseQuality] = useState(0);
+  const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
   
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
@@ -223,6 +229,23 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             ...prev,
             fillerWords: prev.fillerWords + fillerCount
           }));
+          
+          // If user speaks more than 20 characters, mark as participated
+          if (transcript.length > 20 && !hasParticipated) {
+            setHasParticipated(true);
+            
+            // Add current question to answered questions if not already there
+            if (!answeredQuestions.includes(currentQuestionIndex)) {
+              setAnsweredQuestions(prev => [...prev, currentQuestionIndex]);
+            }
+            
+            // Estimate response quality based on length and lack of filler words
+            const wordsSpoken = transcript.split(' ').length;
+            const qualityScore = Math.min(100, Math.max(10, 
+              Math.floor((wordsSpoken - fillerCount) * 5)
+            ));
+            setResponseQuality(prev => Math.max(prev, qualityScore));
+          }
         }
       }
       
@@ -249,14 +272,24 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   
   const simulateVoiceAnalysis = (transcript: string) => {
     // In a real implementation, this would use audio analysis APIs
-    // Here we're just simulating voice metrics
+    // Here we're simulating voice metrics based on actual participation
     if (transcript && transcript.length > 0) {
+      // Base the analysis on actual speech content
+      const wordCount = transcript.split(' ').length;
+      const sentenceStructure = transcript.includes('.') || transcript.includes('?') || transcript.includes('!');
+      const hasKeywords = transcript.toLowerCase().includes(config.jobRole.toLowerCase());
+      
+      // Calculate more realistic scores based on speech quality
+      const clarityScore = Math.min(100, Math.max(30, 40 + (wordCount / 10)));
+      const paceScore = Math.min(100, Math.max(30, 50 + (sentenceStructure ? 20 : 0)));
+      const confidenceScore = Math.min(100, Math.max(30, 40 + (hasKeywords ? 30 : 0) + (wordCount / 15)));
+      
       setVoiceAnalysis({
-        clarity: Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15)),
-        pace: Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20)),
-        pitch: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.06) * 15)),
-        tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10)),
-        confidence: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.07) * 15))
+        clarity: Math.floor(clarityScore),
+        pace: Math.floor(paceScore),
+        pitch: Math.min(100, Math.floor(60 + Math.sin(transcript.length * 0.06) * 15)),
+        tone: Math.min(100, Math.floor(50 + Math.cos(transcript.length * 0.04) * 10)),
+        confidence: Math.floor(confidenceScore)
       });
     }
   };
@@ -457,18 +490,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const interval = setInterval(() => {
         setSecondsElapsed(prev => prev + 1);
         
-        // Simulate analysis updates with slightly more realistic values
-        setUserMetrics(prev => ({
-          speakingPace: Math.min(100, Math.floor(65 + Math.sin(secondsElapsed * 0.1) * 15)),
-          eyeContact: Math.min(100, Math.floor(70 + Math.cos(secondsElapsed * 0.05) * 15)),
-          fillerWords: prev.fillerWords, // This is updated by speech recognition
-          engagement: Math.min(100, Math.floor(75 + Math.sin(secondsElapsed * 0.08) * 10))
-        }));
+        // Simulate realistic analysis updates based on participation
+        // If user hasn't participated, scores should be low
+        if (!hasParticipated) {
+          setUserMetrics(prev => ({
+            speakingPace: Math.min(40, Math.floor(30 + Math.sin(secondsElapsed * 0.1) * 10)),
+            eyeContact: Math.min(50, Math.floor(40 + Math.cos(secondsElapsed * 0.05) * 10)),
+            fillerWords: prev.fillerWords,
+            engagement: Math.min(40, Math.floor(30 + Math.sin(secondsElapsed * 0.08) * 10))
+          }));
+        } else {
+          // If user has participated, provide more realistic metrics
+          setUserMetrics(prev => ({
+            speakingPace: Math.min(100, Math.floor(60 + Math.sin(secondsElapsed * 0.1) * 15)),
+            eyeContact: Math.min(100, Math.floor(65 + Math.cos(secondsElapsed * 0.05) * 15)),
+            fillerWords: prev.fillerWords,
+            engagement: Math.min(100, Math.floor(70 + Math.sin(secondsElapsed * 0.08) * 10))
+          }));
+        }
       }, 1000);
       
       return () => clearInterval(interval);
     }
-  }, [isRecording, secondsElapsed]);
+  }, [isRecording, secondsElapsed, hasParticipated]);
 
   const toggleRecording = () => {
     if (isRecording) {
@@ -479,6 +523,15 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   };
   
   const nextQuestion = () => {
+    // Save transcript for current question
+    if (speechData.transcript.trim().length > 0) {
+      // Mark as participated if there's substantial content
+      if (speechData.transcript.trim().length > 20 && !answeredQuestions.includes(currentQuestionIndex)) {
+        setHasParticipated(true);
+        setAnsweredQuestions(prev => [...prev, currentQuestionIndex]);
+      }
+    }
+    
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSecondsElapsed(0);
@@ -510,7 +563,15 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     }
     
-    // Generate mock feedback data with enhanced analysis
+    // Calculate participation rate
+    const participationRate = (answeredQuestions.length / questions.length) * 100;
+    
+    // Base scores on actual participation and response quality
+    const participationFactor = hasParticipated ? Math.max(0.3, participationRate / 100) : 0.1;
+    const speechFactor = hasParticipated ? Math.max(0.4, responseQuality / 100) : 0.2;
+    const baseScore = hasParticipated ? 40 : 20;
+    
+    // Generate realistic feedback data with scores based on actual performance
     const mockFeedback = {
       date: new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -518,12 +579,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         day: 'numeric' 
       }),
       duration: `${Math.floor(secondsElapsed / 60)} minutes ${secondsElapsed % 60} seconds`,
-      overallScore: Math.floor(65 + Math.random() * 20),
+      overallScore: Math.floor(baseScore + (participationFactor * 40) + (speechFactor * 20)),
       responsesAnalysis: {
-        clarity: Math.floor(70 + Math.random() * 20),
-        relevance: Math.floor(65 + Math.random() * 25),
-        structure: Math.floor(60 + Math.random() * 20),
-        examples: Math.floor(70 + Math.random() * 20)
+        clarity: hasParticipated ? Math.floor(50 + (responseQuality / 2)) : 30,
+        relevance: hasParticipated ? Math.floor(40 + (responseQuality / 2)) : 25,
+        structure: hasParticipated ? Math.floor(45 + (responseQuality / 3)) : 20,
+        examples: hasParticipated ? Math.floor(40 + (responseQuality / 4)) : 15
       },
       nonVerbalAnalysis: {
         eyeContact: userMetrics.eyeContact,
@@ -537,33 +598,48 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         confidence: voiceAnalysis.confidence
       },
       facialAnalysis: {
-        smile: facialAnalysis.smile,
+        smile: hasParticipated ? facialAnalysis.smile : Math.floor(facialAnalysis.smile * 0.5),
         neutrality: facialAnalysis.neutrality,
-        confidence: facialAnalysis.confidence,
-        engagement: facialAnalysis.engagement
+        confidence: hasParticipated ? facialAnalysis.confidence : Math.floor(facialAnalysis.confidence * 0.6),
+        engagement: hasParticipated ? facialAnalysis.engagement : Math.floor(facialAnalysis.engagement * 0.4)
       },
-      strengths: [
-        "Strong use of concrete examples",
-        "Clear communication style",
-        "Appropriate response length",
-        "Maintained positive demeanor"
+      strengths: hasParticipated ? [
+        "Used concise language",
+        "Appropriate tone for the setting",
+        "Maintained consistent presence",
+        responseQuality > 60 ? "Used good examples" : "Attempted to address the question"
+      ] : [
+        "Attended the interview",
+        "Showed interest in the process",
+        "Observed the questions"
       ],
-      improvements: [
+      improvements: hasParticipated ? [
         userMetrics.eyeContact < 70 ? "Maintain more consistent eye contact" : "Continue with strong eye contact",
         userMetrics.fillerWords > 5 ? "Reduce filler words like 'um' and 'uh'" : "Good control of filler words",
         facialAnalysis.engagement < 70 ? "Show more engagement through facial expressions" : "Good facial engagement",
         voiceAnalysis.pace < 65 ? "Consider speaking at a slightly faster pace" : "Well-paced delivery"
+      ] : [
+        "Work on providing responses to interview questions",
+        "Practice speaking more during interviews",
+        "Try to engage more with the interviewer",
+        "Work on interview confidence and participation"
       ],
-      recommendations: [
+      recommendations: hasParticipated ? [
         "Practice the STAR method for behavioral questions",
         "Record yourself to monitor eye contact patterns",
         "Try speaking more slowly during technical explanations",
         "Prepare 2-3 more examples for common questions"
+      ] : [
+        "Practice responding to interview questions aloud",
+        "Work with a friend to conduct mock interviews",
+        "Consider preparation techniques to build confidence",
+        "Set up regular practice sessions to improve interview skills",
+        "Review common interview questions for your field"
       ],
       transcripts: [
         {
           question: questions[currentQuestionIndex].text,
-          answer: speechData.transcript || "No transcript available"
+          answer: speechData.transcript || "No response provided"
         }
       ],
       videoBlob: recordedVideoBlob,
