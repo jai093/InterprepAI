@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -51,7 +50,6 @@ const InterviewSimulation = () => {
         const voiceAnalysis = feedbackData.voiceAnalysis || {};
         const facialAnalysis = feedbackData.facialAnalysis || {};
         const bodyAnalysis = feedbackData.bodyAnalysis || {};
-        const nonVerbalAnalysis = feedbackData.nonVerbalAnalysis || {};
         const responsesAnalysis = feedbackData.responsesAnalysis || {};
         
         // Save interview data to Supabase with all analytics fields
@@ -73,9 +71,8 @@ const InterviewSimulation = () => {
             neutrality: facialAnalysis.neutrality || 0,
             confidence: facialAnalysis.confidence || 0,
             engagement: facialAnalysis.engagement || 0,
-            eyeContact: nonVerbalAnalysis.eyeContact || 0,
-            facialExpressions: nonVerbalAnalysis.facialExpressions || facialAnalysis.smile || 0,
-            bodyLanguage: nonVerbalAnalysis.bodyLanguage || bodyAnalysis.posture || 0,
+            eyeContact: facialAnalysis.eyeContact || 0,
+            facialExpressions: facialAnalysis.facialExpressions || facialAnalysis.smile || 0,
           },
           // Include body analysis as a separate field in the database
           body_analysis: {

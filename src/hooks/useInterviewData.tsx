@@ -67,8 +67,11 @@ export const useInterviewData = () => {
         // Cast Json types to object types with proper TypeScript handling
         const voiceAnalysis = interview.voice_analysis as Record<string, number>;
         const facialAnalysis = interview.facial_analysis as Record<string, number>;
-        const bodyAnalysis = interview.body_analysis as Record<string, number> || {};
-        const responseAnalysis = interview.response_analysis as Record<string, number> || {};
+        
+        // Check if body_analysis and response_analysis exist in the database record
+        // If they don't exist in the database, use empty objects
+        const bodyAnalysis = (interview.body_analysis as Record<string, number>) || {};
+        const responseAnalysis = (interview.response_analysis as Record<string, number>) || {};
         
         return {
           ...interview,

@@ -315,8 +315,8 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                 <AnalysisCard 
                   title="Non-verbal Communication" 
                   data={{
-                    eyeContact: safeInterviewData.nonVerbalAnalysis.eyeContact,
-                    facialExpressions: safeInterviewData.facialAnalysis?.smile || safeInterviewData.nonVerbalAnalysis.facialExpressions,
+                    eyeContact: safeInterviewData.facialAnalysis?.eyeContact || safeInterviewData.nonVerbalAnalysis.eyeContact,
+                    facialExpressions: safeInterviewData.facialAnalysis?.facialExpressions || safeInterviewData.facialAnalysis?.smile || safeInterviewData.nonVerbalAnalysis.facialExpressions,
                     bodyLanguage: safeInterviewData.bodyAnalysis?.posture || safeInterviewData.nonVerbalAnalysis.bodyLanguage
                   }} 
                 />

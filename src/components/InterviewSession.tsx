@@ -205,17 +205,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         const timeFactor = (Date.now() - lastFacialUpdate.current) / 1000;
         facialActivityCounter.current += Math.random() * timeFactor * 0.5;
         
-        // Create more realistic facial analysis that varies over time
-        // Higher values when user is actively speaking (simulated)
-        const isActivelySpeaking = speechData.transcript.length > 50;
-        const baseFacial = isActivelySpeaking ? 60 : 40;
-        const varianceFacial = isActivelySpeaking ? 25 : 15;
+        // More realistic analysis that gradually increases during recording
+        // Start with moderate values (40-60%) and increase gradually
+        const baseScore = Math.min(85, 40 + facialActivityCounter.current * 0.5);
+        const variance = 15;
+        
+        // If user has provided a transcript/speech, show higher engagement scores
+        const speechFactor = speechData.transcript.length > 0 ? 1.2 : 0.8;
         
         setFacialAnalysis({
-          smile: Math.min(100, Math.floor(baseFacial + Math.sin(facialActivityCounter.current * 0.05) * varianceFacial)),
-          neutrality: Math.min(100, Math.floor((100 - baseFacial) + Math.cos(facialActivityCounter.current * 0.03) * varianceFacial)),
-          confidence: Math.min(100, Math.floor(baseFacial + Math.sin(facialActivityCounter.current * 0.04) * varianceFacial)),
-          engagement: Math.min(100, Math.floor(baseFacial + Math.cos(facialActivityCounter.current * 0.06) * varianceFacial))
+          smile: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.05) * variance)),
+          neutrality: Math.min(100, Math.floor(baseScore * 0.8 + Math.cos(facialActivityCounter.current * 0.03) * variance)),
+          confidence: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.04) * variance)),
+          engagement: Math.min(100, Math.floor(baseScore * speechFactor + Math.cos(facialActivityCounter.current * 0.06) * variance))
         });
       }
     }, 800);
@@ -229,27 +231,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           postureChanges.current += 1;
         }
         
-        // Calculate more realistic body language scores
+        // Calculate more realistic body language scores based on recording duration and speech
         const postureFactor = Math.min(10, postureChanges.current) / 10;
         const movementFactor = Math.min(20, bodyMovementCounter.current) / 20;
         
-        // Calculate body language metrics
-        // More natural body language during active speaking
-        const isActivelySpeaking = speechData.transcript.length > 50;
-        const baseBody = isActivelySpeaking ? 65 : 45;
-        const varianceBody = isActivelySpeaking ? 20 : 15;
+        // Base score increases gradually over time during recording
+        // Start with moderate values (40-60%) and increase gradually
+        const baseScore = Math.min(85, 40 + bodyMovementCounter.current * 0.5);
+        const variance = 15;
+        
+        // If user has provided a transcript/speech, show higher scores
+        const speechFactor = speechData.transcript.length > 0 ? 1.2 : 0.8;
         
         setBodyLanguageAnalysis({
-          posture: Math.min(100, Math.floor(baseBody + (postureFactor * 25) + Math.sin(bodyMovementCounter.current * 0.1) * varianceBody)),
-          gestures: Math.min(100, Math.floor(baseBody + (movementFactor * 30) + Math.cos(bodyMovementCounter.current * 0.12) * varianceBody)),
-          movement: Math.min(100, Math.floor(baseBody + (movementFactor * 20) + Math.sin(bodyMovementCounter.current * 0.08) * varianceBody)),
-          presence: Math.min(100, Math.floor(baseBody + (postureFactor * 15 + movementFactor * 10) + Math.cos(bodyMovementCounter.current * 0.05) * varianceBody))
+          posture: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10) + Math.sin(bodyMovementCounter.current * 0.1) * variance)),
+          gestures: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 15) + Math.cos(bodyMovementCounter.current * 0.12) * variance)),
+          movement: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 12) + Math.sin(bodyMovementCounter.current * 0.08) * variance)),
+          presence: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10 + movementFactor * 8) + Math.cos(bodyMovementCounter.current * 0.05) * variance))
         });
         
         // Update user metrics with body language scores for real-time feedback
         setUserMetrics(prev => ({
           ...prev,
-          eyeContact: Math.min(100, Math.floor(baseBody + (postureFactor * 20) + Math.sin(facialActivityCounter.current * 0.07) * varianceBody))
+          eyeContact: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 15) + Math.sin(facialActivityCounter.current * 0.07) * variance))
         }));
       }
     }, 1200);
@@ -585,22 +589,24 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     if (audioChunks.length > 0) {
       recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     }
-    
-    // Generate mock feedback data with enhanced analysis
-    const mockFeedback = {
+
+    // Use the actual analysis data from our state rather than generating random values
+    // This ensures the feedback report is consistent with what the user saw during the interview
+    const feedbackData = {
       date: new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
       }),
       duration: `${Math.floor(secondsElapsed / 60)} minutes ${secondsElapsed % 60} seconds`,
-      overallScore: Math.floor(65 + Math.random() * 20),
+      overallScore: calculateOverallScore(),
       responsesAnalysis: {
         clarity: Math.floor(70 + Math.random() * 20),
         relevance: Math.floor(65 + Math.random() * 25),
         structure: Math.floor(60 + Math.random() * 20),
         examples: Math.floor(70 + Math.random() * 20)
       },
+      // Use the actual analysis data from our state
       nonVerbalAnalysis: {
         eyeContact: userMetrics.eyeContact,
         facialExpressions: facialAnalysis.smile,
@@ -612,37 +618,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         clarity: voiceAnalysis.clarity,
         confidence: voiceAnalysis.confidence
       },
-      facialAnalysis: {
-        smile: facialAnalysis.smile,
-        neutrality: facialAnalysis.neutrality,
-        confidence: facialAnalysis.confidence,
-        engagement: facialAnalysis.engagement
-      },
-      bodyAnalysis: {
-        posture: bodyLanguageAnalysis.posture,
-        gestures: bodyLanguageAnalysis.gestures,
-        movement: bodyLanguageAnalysis.movement,
-        presence: bodyLanguageAnalysis.presence
-      },
-      strengths: [
-        "Strong use of concrete examples",
-        "Clear communication style",
-        "Appropriate response length",
-        "Maintained positive demeanor"
-      ],
-      improvements: [
-        userMetrics.eyeContact < 70 ? "Maintain more consistent eye contact" : "Continue with strong eye contact",
-        userMetrics.fillerWords > 5 ? "Reduce filler words like 'um' and 'uh'" : "Good control of filler words",
-        facialAnalysis.engagement < 70 ? "Show more engagement through facial expressions" : "Good facial engagement",
-        bodyLanguageAnalysis.posture < 65 ? "Improve your posture during interviews" : "Good posture maintained",
-        bodyLanguageAnalysis.gestures < 60 ? "Use more natural hand gestures" : "Effective use of gestures"
-      ],
-      recommendations: [
-        "Practice the STAR method for behavioral questions",
-        "Record yourself to monitor eye contact patterns",
-        "Try speaking more slowly during technical explanations",
-        "Prepare 2-3 more examples for common questions"
-      ],
+      facialAnalysis: facialAnalysis,
+      bodyAnalysis: bodyLanguageAnalysis,
+      strengths: generateStrengths(),
+      improvements: generateImprovements(),
+      recommendations: generateRecommendations(),
       transcripts: [
         {
           question: questions[currentQuestionIndex].text,
@@ -655,7 +635,101 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       audioURL: audioURL
     };
     
-    onEnd(mockFeedback);
+    onEnd(feedbackData);
+  };
+
+  const calculateOverallScore = () => {
+    // Calculate an overall score based on the different analysis metrics
+    const voiceScore = (voiceAnalysis.clarity + voiceAnalysis.pace + voiceAnalysis.tone + voiceAnalysis.confidence) / 4;
+    const facialScore = (facialAnalysis.smile + facialAnalysis.engagement + facialAnalysis.confidence) / 3;
+    const bodyScore = (bodyLanguageAnalysis.posture + bodyLanguageAnalysis.gestures + bodyLanguageAnalysis.presence) / 3;
+    
+    // Weight the different components
+    return Math.floor((voiceScore * 0.4) + (facialScore * 0.3) + (bodyScore * 0.3));
+  };
+
+  const generateStrengths = () => {
+    const strengths = [];
+    
+    if (voiceAnalysis.clarity > 70) strengths.push("Clear and articulate communication");
+    if (voiceAnalysis.confidence > 75) strengths.push("Confident speaking style");
+    if (facialAnalysis.smile > 70) strengths.push("Positive facial expressions");
+    if (facialAnalysis.engagement > 75) strengths.push("Good facial engagement");
+    if (bodyLanguageAnalysis.posture > 70) strengths.push("Good posture during interview");
+    if (bodyLanguageAnalysis.gestures > 70) strengths.push("Effective use of hand gestures");
+    if (bodyLanguageAnalysis.presence > 75) strengths.push("Strong overall presence");
+    
+    // Add some default strengths if we don't have enough
+    if (strengths.length < 4) {
+      if (!strengths.includes("Strong use of concrete examples")) 
+        strengths.push("Strong use of concrete examples");
+      if (!strengths.includes("Appropriate response length")) 
+        strengths.push("Appropriate response length");
+      if (!strengths.includes("Clear communication style") && !strengths.includes("Clear and articulate communication")) 
+        strengths.push("Clear communication style");
+    }
+    
+    return strengths.slice(0, 4); // Return at most 4 strengths
+  };
+
+  const generateImprovements = () => {
+    const improvements = [];
+    
+    if (userMetrics.eyeContact < 70) 
+      improvements.push("Maintain more consistent eye contact");
+    else 
+      improvements.push("Continue with strong eye contact");
+    
+    if (userMetrics.fillerWords > 5) 
+      improvements.push("Reduce filler words like 'um' and 'uh'");
+    else 
+      improvements.push("Good control of filler words");
+    
+    if (facialAnalysis.engagement < 70) 
+      improvements.push("Show more engagement through facial expressions");
+    else 
+      improvements.push("Good facial engagement maintained");
+    
+    if (bodyLanguageAnalysis.posture < 65) 
+      improvements.push("Improve your posture during interviews");
+    else 
+      improvements.push("Good posture maintained");
+    
+    if (bodyLanguageAnalysis.gestures < 60) 
+      improvements.push("Use more natural hand gestures");
+    else 
+      improvements.push("Effective use of gestures");
+    
+    return improvements;
+  };
+
+  const generateRecommendations = () => {
+    // Generate recommendations based on analysis
+    const recommendations = [
+      "Practice the STAR method for behavioral questions",
+      "Record yourself to monitor eye contact patterns"
+    ];
+    
+    if (voiceAnalysis.pace < 70) {
+      recommendations.push("Try speaking more slowly during technical explanations");
+    } else if (voiceAnalysis.clarity < 70) {
+      recommendations.push("Focus on speaking clearly and articulating complex terms");
+    }
+    
+    if (speechData.transcript && speechData.transcript.length > 0) {
+      recommendations.push("Prepare 2-3 more examples for common questions");
+    } else {
+      recommendations.push("Practice answering questions out loud, not just in your head");
+    }
+    
+    // Add body language recommendations
+    if (bodyLanguageAnalysis.gestures < 65) {
+      recommendations.push("Practice using natural hand gestures while speaking");
+    } else if (bodyLanguageAnalysis.posture < 65) {
+      recommendations.push("Work on maintaining good posture throughout the interview");
+    }
+    
+    return recommendations;
   };
 
   const formatTime = (seconds: number) => {
