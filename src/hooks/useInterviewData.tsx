@@ -67,9 +67,10 @@ export const useInterviewData = () => {
         const voiceAnalysis = interview.voice_analysis as Record<string, number>;
         const facialAnalysis = interview.facial_analysis as Record<string, number>;
         
-        // Handle body_analysis and response_analysis which may not exist in older records
-        const bodyAnalysis = interview.body_analysis as Record<string, number> || {};
-        const responseAnalysis = interview.response_analysis as Record<string, number> || {};
+        // Since we've now added these columns to the database, we can safely access them
+        // But we still need to handle the case where they might be null (for older records)
+        const bodyAnalysis = interview.body_analysis ? interview.body_analysis as Record<string, number> : {};
+        const responseAnalysis = interview.response_analysis ? interview.response_analysis as Record<string, number> : {};
         
         return {
           ...interview,

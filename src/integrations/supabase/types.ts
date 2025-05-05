@@ -11,12 +11,14 @@ export type Database = {
     Tables: {
       interview_sessions: {
         Row: {
+          body_analysis: Json | null
           created_at: string
           date: string
           duration: string
           facial_analysis: Json
           feedback: string | null
           id: string
+          response_analysis: Json | null
           role: string
           score: number
           transcript: string | null
@@ -26,12 +28,14 @@ export type Database = {
           voice_analysis: Json
         }
         Insert: {
+          body_analysis?: Json | null
           created_at?: string
           date?: string
           duration: string
           facial_analysis?: Json
           feedback?: string | null
           id?: string
+          response_analysis?: Json | null
           role: string
           score: number
           transcript?: string | null
@@ -41,12 +45,14 @@ export type Database = {
           voice_analysis?: Json
         }
         Update: {
+          body_analysis?: Json | null
           created_at?: string
           date?: string
           duration?: string
           facial_analysis?: Json
           feedback?: string | null
           id?: string
+          response_analysis?: Json | null
           role?: string
           score?: number
           transcript?: string | null
