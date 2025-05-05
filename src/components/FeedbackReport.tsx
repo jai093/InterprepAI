@@ -18,7 +18,7 @@ interface FeedbackReportProps {
       structure: number;
       examples: number;
     };
-    nonVerbalAnalysis: {
+    nonVerbalAnalysis?: {
       eyeContact: number;
       facialExpressions: number;
       bodyLanguage: number;
@@ -64,7 +64,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   
-  // Ensure we have default values for all data
+  // Ensure we have default values for all data with more robust fallbacks
   const safeInterviewData = {
     ...interviewData,
     responsesAnalysis: interviewData.responsesAnalysis || {
