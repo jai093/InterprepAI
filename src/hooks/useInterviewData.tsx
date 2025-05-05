@@ -22,8 +22,21 @@ export interface InterviewSession {
     smile: number;
     eyeContact: number;
     engagement: number;
+    neutrality: number;
+    confidence: number;
+    facialExpressions: number;
+  };
+  body_analysis?: {
     posture: number;
     gestures: number;
+    movement: number;
+    presence: number;
+  };
+  response_analysis?: {
+    clarity: number;
+    relevance: number;
+    structure: number;
+    examples: number;
   };
   transcript?: string;
   feedback?: string;
@@ -54,6 +67,8 @@ export const useInterviewData = () => {
         // Cast Json types to object types with proper TypeScript handling
         const voiceAnalysis = interview.voice_analysis as Record<string, number>;
         const facialAnalysis = interview.facial_analysis as Record<string, number>;
+        const bodyAnalysis = interview.body_analysis as Record<string, number> || {};
+        const responseAnalysis = interview.response_analysis as Record<string, number> || {};
         
         return {
           ...interview,
@@ -68,8 +83,21 @@ export const useInterviewData = () => {
             smile: facialAnalysis?.smile || 0,
             eyeContact: facialAnalysis?.eyeContact || 0,
             engagement: facialAnalysis?.engagement || 0,
-            posture: facialAnalysis?.posture || 0,
-            gestures: facialAnalysis?.gestures || 0,
+            neutrality: facialAnalysis?.neutrality || 0,
+            confidence: facialAnalysis?.confidence || 0,
+            facialExpressions: facialAnalysis?.facialExpressions || 0,
+          },
+          body_analysis: {
+            posture: bodyAnalysis?.posture || 0,
+            gestures: bodyAnalysis?.gestures || 0,
+            movement: bodyAnalysis?.movement || 0,
+            presence: bodyAnalysis?.presence || 0,
+          },
+          response_analysis: {
+            clarity: responseAnalysis?.clarity || 0,
+            relevance: responseAnalysis?.relevance || 0, 
+            structure: responseAnalysis?.structure || 0,
+            examples: responseAnalysis?.examples || 0,
           }
         };
       }) as InterviewSession[];
@@ -92,11 +120,11 @@ export const useInterviewData = () => {
       technicalKnowledge: calculateAverageSkill('voice_analysis', 'tone'),
       problemSolving: calculateAverageSkill('voice_analysis', 'pace'),
       confidence: calculateAverageSkill('voice_analysis', 'confidence'),
-      bodyLanguage: calculateAverageSkill('facial_analysis', 'posture')
+      bodyLanguage: calculateAverageSkill('body_analysis', 'posture')
     };
   };
 
-  const calculateAverageSkill = (analysisType: 'voice_analysis' | 'facial_analysis', metric: string) => {
+  const calculateAverageSkill = (analysisType: 'voice_analysis' | 'facial_analysis' | 'body_analysis', metric: string) => {
     if (!interviews || interviews.length === 0) return 0;
     
     const total = interviews.reduce((sum, interview) => {

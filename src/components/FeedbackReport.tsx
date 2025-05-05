@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -208,7 +207,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
     }
   };
   
-  const downloadRecording = () => {
+  const downloadVideo = () => {
     if (!videoUrl) {
       toast({
         title: "No recording available",
@@ -315,7 +314,11 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                 />
                 <AnalysisCard 
                   title="Non-verbal Communication" 
-                  data={safeInterviewData.nonVerbalAnalysis} 
+                  data={{
+                    eyeContact: safeInterviewData.nonVerbalAnalysis.eyeContact,
+                    facialExpressions: safeInterviewData.facialAnalysis?.smile || safeInterviewData.nonVerbalAnalysis.facialExpressions,
+                    bodyLanguage: safeInterviewData.bodyAnalysis?.posture || safeInterviewData.nonVerbalAnalysis.bodyLanguage
+                  }} 
                 />
                 <AnalysisCard 
                   title="Voice Analysis" 
@@ -416,7 +419,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
                     <div className="flex justify-end mt-3">
                       <Button 
                         variant="outline" 
-                        onClick={downloadRecording}
+                        onClick={downloadVideo}
                         className="flex items-center"
                       >
                         <Download className="mr-2 h-4 w-4" /> Download Video
@@ -519,7 +522,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
               
               <DialogFooter className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 {videoUrl && (
-                  <Button variant="outline" onClick={downloadRecording} className="flex items-center">
+                  <Button variant="outline" onClick={downloadVideo} className="flex items-center">
                     <Download className="mr-2 h-4 w-4" /> Download Video
                   </Button>
                 )}

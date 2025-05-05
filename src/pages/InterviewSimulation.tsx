@@ -47,13 +47,14 @@ const InterviewSimulation = () => {
         // Check feedback data structure and use appropriate fields
         const score = feedbackData.overallScore || 0;
         
-        // Make sure we have valid objects for analysis data
+        // Make sure we have valid objects for all analysis data
         const voiceAnalysis = feedbackData.voiceAnalysis || {};
         const facialAnalysis = feedbackData.facialAnalysis || {};
         const bodyAnalysis = feedbackData.bodyAnalysis || {};
         const nonVerbalAnalysis = feedbackData.nonVerbalAnalysis || {};
+        const responsesAnalysis = feedbackData.responsesAnalysis || {};
         
-        // Save interview data to Supabase
+        // Save interview data to Supabase with all analytics fields
         const { data, error } = await supabase.from('interview_sessions').insert({
           user_id: user.id,
           type: interviewConfig?.type || 'General',
@@ -73,6 +74,22 @@ const InterviewSimulation = () => {
             confidence: facialAnalysis.confidence || 0,
             engagement: facialAnalysis.engagement || 0,
             eyeContact: nonVerbalAnalysis.eyeContact || 0,
+            facialExpressions: nonVerbalAnalysis.facialExpressions || facialAnalysis.smile || 0,
+            bodyLanguage: nonVerbalAnalysis.bodyLanguage || bodyAnalysis.posture || 0,
+          },
+          // Include body analysis as a separate field in the database
+          body_analysis: {
+            posture: bodyAnalysis.posture || 0,
+            gestures: bodyAnalysis.gestures || 0,
+            movement: bodyAnalysis.movement || 0,
+            presence: bodyAnalysis.presence || 0,
+          },
+          // Include response analysis data
+          response_analysis: {
+            clarity: responsesAnalysis.clarity || 0,
+            relevance: responsesAnalysis.relevance || 0,
+            structure: responsesAnalysis.structure || 0,
+            examples: responsesAnalysis.examples || 0,
           },
           transcript: feedbackData.transcript || feedbackData.transcripts?.[0]?.answer || '',
           feedback: feedbackData.feedback || JSON.stringify(feedbackData.recommendations || []),
