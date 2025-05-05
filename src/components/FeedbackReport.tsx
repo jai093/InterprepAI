@@ -34,6 +34,8 @@ interface FeedbackReportProps {
       neutrality: number;
       confidence: number;
       engagement: number;
+      eyeContact?: number;
+      facialExpressions?: number;
     };
     bodyAnalysis?: {
       posture: number;
@@ -86,7 +88,9 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
       smile: 0,
       neutrality: 0,
       confidence: 0,
-      engagement: 0
+      engagement: 0,
+      eyeContact: 0,
+      facialExpressions: 0
     },
     bodyAnalysis: interviewData.bodyAnalysis || {
       posture: 0,
@@ -145,9 +149,9 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
         - Examples: ${safeInterviewData.responsesAnalysis.examples}%
         
         NON-VERBAL COMMUNICATION
-        - Eye Contact: ${safeInterviewData.nonVerbalAnalysis.eyeContact}%
-        - Facial Expressions: ${safeInterviewData.nonVerbalAnalysis.facialExpressions}%
-        - Body Language: ${safeInterviewData.nonVerbalAnalysis.bodyLanguage}%
+        - Eye Contact: ${safeInterviewData.facialAnalysis?.eyeContact || safeInterviewData.nonVerbalAnalysis.eyeContact}%
+        - Facial Expressions: ${safeInterviewData.facialAnalysis?.facialExpressions || safeInterviewData.facialAnalysis?.smile || safeInterviewData.nonVerbalAnalysis.facialExpressions}%
+        - Body Language: ${safeInterviewData.bodyAnalysis?.posture || safeInterviewData.nonVerbalAnalysis.bodyLanguage}%
         
         VOICE ANALYSIS
         - Pace: ${safeInterviewData.voiceAnalysis.pace}%
