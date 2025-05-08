@@ -2,6 +2,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { getScoreColorClass } from "./utils";
 import { Smile, Eye, Brain, Sparkles } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface FacialAnalysisCardProps {
   label: string;
@@ -47,6 +49,21 @@ const FacialAnalysisCard = ({
           <div className="flex items-center gap-2">
             {getIcon()}
             <span className="text-sm font-medium">{label}</span>
+            
+            {description && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
           <span className="text-xs font-semibold">{value}%</span>
         </div>
@@ -58,7 +75,7 @@ const FacialAnalysisCard = ({
         </div>
         <div className="flex justify-between items-center mt-1">
           <span className="text-xs text-gray-500">
-            {description || `${label} analysis`}
+            {description ? label : `${label} analysis`}
           </span>
           <span className="text-xs font-medium text-gray-700">
             {getScoreDescription(value)}

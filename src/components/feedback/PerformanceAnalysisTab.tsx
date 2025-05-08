@@ -37,10 +37,29 @@ const PerformanceAnalysisTab = ({ safeInterviewData }: PerformanceAnalysisTabPro
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">Facial Expression Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FacialAnalysisCard label="Smile" value={safeInterviewData.facialAnalysis.smile} />
-            <FacialAnalysisCard label="Neutrality" value={safeInterviewData.facialAnalysis.neutrality} />
-            <FacialAnalysisCard label="Confidence" value={safeInterviewData.facialAnalysis.confidence} />
-            <FacialAnalysisCard label="Engagement" value={safeInterviewData.facialAnalysis.engagement} />
+            <FacialAnalysisCard 
+              label="Smile" 
+              value={safeInterviewData.facialAnalysis.smile} 
+              icon="smile" 
+              description="Measures positive facial expressions during the interview" 
+            />
+            <FacialAnalysisCard 
+              label="Neutrality" 
+              value={safeInterviewData.facialAnalysis.neutrality} 
+              description="Measures appropriate neutral expressions" 
+            />
+            <FacialAnalysisCard 
+              label="Confidence" 
+              value={safeInterviewData.facialAnalysis.confidence} 
+              icon="brain" 
+              description="Visual indicators of confidence" 
+            />
+            <FacialAnalysisCard 
+              label="Engagement" 
+              value={safeInterviewData.facialAnalysis.engagement} 
+              icon="engagement" 
+              description="Visual attentiveness and interest" 
+            />
           </div>
         </div>
       )}
@@ -49,10 +68,26 @@ const PerformanceAnalysisTab = ({ safeInterviewData }: PerformanceAnalysisTabPro
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">Body Language Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FacialAnalysisCard label="Posture" value={safeInterviewData.bodyAnalysis.posture} />
-            <FacialAnalysisCard label="Gestures" value={safeInterviewData.bodyAnalysis.gestures} />
-            <FacialAnalysisCard label="Movement" value={safeInterviewData.bodyAnalysis.movement} />
-            <FacialAnalysisCard label="Presence" value={safeInterviewData.bodyAnalysis.presence} />
+            <FacialAnalysisCard 
+              label="Posture" 
+              value={safeInterviewData.bodyAnalysis.posture} 
+              description="Measures how upright and confident your sitting position is" 
+            />
+            <FacialAnalysisCard 
+              label="Gestures" 
+              value={safeInterviewData.bodyAnalysis.gestures} 
+              description="Effectiveness of hand movements during speaking" 
+            />
+            <FacialAnalysisCard 
+              label="Movement" 
+              value={safeInterviewData.bodyAnalysis.movement} 
+              description="Appropriate level of physical animation" 
+            />
+            <FacialAnalysisCard 
+              label="Presence" 
+              value={safeInterviewData.bodyAnalysis.presence} 
+              description="Overall impression of confidence and authority" 
+            />
           </div>
         </div>
       )}

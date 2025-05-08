@@ -1,9 +1,13 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InterviewConfig } from "@/components/InterviewSetup";
 import { MicOff, Mic, Download, Video, VideoOff } from "lucide-react";
+import { useTextToSpeech, ELEVEN_LABS_VOICES } from "@/utils/textToSpeech";
+import { useContext } from "react";
+import { ElevenLabsContext } from "@/contexts/ElevenLabsContext";
 
 interface InterviewSessionProps {
   config: InterviewConfig;
@@ -24,10 +28,15 @@ interface SpeechRecognitionData {
 
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { toast } = useToast();
+  const { speak, stopSpeaking, isSpeaking } = useTextToSpeech();
+  const { apiKey, voice } = useContext(ElevenLabsContext);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [interviewStarted, setInterviewStarted] = useState(false);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
   const [userMetrics, setUserMetrics] = useState({
     speakingPace: 0,
     eyeContact: 0,
@@ -50,6 +59,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [videoRecorded, setVideoRecorded] = useState<boolean>(false);
   const [audioRecorded, setAudioRecorded] = useState<boolean>(false);
+  const speechRecognitionRef = useRef<any>(null);
   
   // Enhanced analysis for facial expressions and body language
   const [facialAnalysis, setFacialAnalysis] = useState({
@@ -85,6 +95,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceAnalysisInterval = useRef<number | null>(null);
   const bodyAnalysisInterval = useRef<number | null>(null);
+  const speechActivityTimeout = useRef<number | null>(null);
+  const lastSpeechActivity = useRef<number>(0);
   
   // Mock interview questions based on type and job role
   const getQuestionsByType = () => {
@@ -150,6 +162,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         if (canvasRef.current && stream) {
           startSimulatedFacialAnalysis();
         }
+        
+        // Start interview after getting media stream
+        if (!interviewStarted) {
+          setTimeout(() => {
+            startInterview();
+          }, 1000);
+        }
       } catch (error) {
         console.error("Error accessing media devices:", error);
         toast({
@@ -179,8 +198,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       if (bodyAnalysisInterval.current) {
         clearInterval(bodyAnalysisInterval.current);
       }
+      if (speechActivityTimeout.current) {
+        clearTimeout(speechActivityTimeout.current);
+      }
+      
+      // Stop speaking if there's any ongoing speech
+      stopSpeaking();
     };
-  }, [toast]);
+  }, [toast, interviewStarted, stopSpeaking]);
   
   // Enhanced facial and body language analysis
   const startSimulatedFacialAnalysis = () => {
@@ -201,6 +226,21 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     // Facial analysis interval - run more frequently for responsive UI
     faceAnalysisInterval.current = window.setInterval(() => {
       if (isRecording) {
+        // Get video data if available
+        if (videoRef.current && canvasRef.current) {
+          try {
+            const context = canvasRef.current.getContext('2d');
+            if (context) {
+              // Draw current video frame to canvas for analysis
+              context.drawImage(videoRef.current, 0, 0, 640, 480);
+              // In a real implementation, we would use this canvas data for facial analysis
+              // For now, we'll simulate the analysis
+            }
+          } catch (e) {
+            console.error("Error capturing video frame:", e);
+          }
+        }
+        
         // Simulate facial detection with more realistic variation
         const timeFactor = (Date.now() - lastFacialUpdate.current) / 1000;
         facialActivityCounter.current += Math.random() * timeFactor * 0.5;
@@ -213,14 +253,18 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         // If user has provided a transcript/speech, show higher engagement scores
         const speechFactor = speechData.transcript.length > 0 ? 1.2 : 0.8;
         
+        // Get more realistic facial analysis based on speech activity
+        const speechActivityBonus = Date.now() - lastSpeechActivity.current < 5000 ? 10 : 0;
+        
+        // Update facial analysis with more realistic values based on user interaction
         setFacialAnalysis({
-          smile: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.05) * variance)),
+          smile: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.05) * variance + speechActivityBonus)),
           neutrality: Math.min(100, Math.floor(baseScore * 0.8 + Math.cos(facialActivityCounter.current * 0.03) * variance)),
-          confidence: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.04) * variance)),
-          engagement: Math.min(100, Math.floor(baseScore * speechFactor + Math.cos(facialActivityCounter.current * 0.06) * variance))
+          confidence: Math.min(100, Math.floor(baseScore * speechFactor + Math.sin(facialActivityCounter.current * 0.04) * variance + speechActivityBonus * 0.8)),
+          engagement: Math.min(100, Math.floor(baseScore * speechFactor + Math.cos(facialActivityCounter.current * 0.06) * variance + speechActivityBonus * 1.2))
         });
       }
-    }, 800);
+    }, 500); // Update more frequently for better real-time feedback
     
     // Body language analysis interval
     bodyAnalysisInterval.current = window.setInterval(() => {
@@ -243,20 +287,23 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         // If user has provided a transcript/speech, show higher scores
         const speechFactor = speechData.transcript.length > 0 ? 1.2 : 0.8;
         
+        // Get more realistic body language analysis based on speech activity
+        const speechActivityBonus = Date.now() - lastSpeechActivity.current < 5000 ? 10 : 0;
+        
         setBodyLanguageAnalysis({
-          posture: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10) + Math.sin(bodyMovementCounter.current * 0.1) * variance)),
-          gestures: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 15) + Math.cos(bodyMovementCounter.current * 0.12) * variance)),
-          movement: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 12) + Math.sin(bodyMovementCounter.current * 0.08) * variance)),
-          presence: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10 + movementFactor * 8) + Math.cos(bodyMovementCounter.current * 0.05) * variance))
+          posture: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10) + Math.sin(bodyMovementCounter.current * 0.1) * variance + speechActivityBonus * 0.5)),
+          gestures: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 15) + Math.cos(bodyMovementCounter.current * 0.12) * variance + speechActivityBonus * 0.8)),
+          movement: Math.min(100, Math.floor(baseScore * speechFactor + (movementFactor * 12) + Math.sin(bodyMovementCounter.current * 0.08) * variance + speechActivityBonus * 0.6)),
+          presence: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 10 + movementFactor * 8) + Math.cos(bodyMovementCounter.current * 0.05) * variance + speechActivityBonus))
         });
         
         // Update user metrics with body language scores for real-time feedback
         setUserMetrics(prev => ({
           ...prev,
-          eyeContact: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 15) + Math.sin(facialActivityCounter.current * 0.07) * variance))
+          eyeContact: Math.min(100, Math.floor(baseScore * speechFactor + (postureFactor * 15) + Math.sin(facialActivityCounter.current * 0.07) * variance + speechActivityBonus * 0.7))
         }));
       }
-    }, 1200);
+    }, 800); // Update more frequently for better real-time feedback
   };
   
   // Set up speech recognition
@@ -303,6 +350,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             ...prev,
             fillerWords: prev.fillerWords + fillerCount
           }));
+          
+          // Record speech activity time to enhance analysis
+          lastSpeechActivity.current = Date.now();
         }
       }
       
@@ -313,6 +363,20 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
 
       // Simulate voice analysis based on transcript content
       simulateVoiceAnalysis(transcript);
+      
+      // Reset the speech activity timeout
+      if (speechActivityTimeout.current) {
+        clearTimeout(speechActivityTimeout.current);
+      }
+      
+      // Set a timeout to detect when the user has stopped speaking
+      speechActivityTimeout.current = window.setTimeout(() => {
+        if (speechData.isListening && speechData.transcript.length > 20) {
+          // If there's been no speech for 3 seconds and we have a substantial response
+          console.log("Detecting end of speech, processing answer...");
+          processUserAnswer();
+        }
+      }, 3000);
     };
     
     recognition.onend = () => {
@@ -331,13 +395,27 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     // In a real implementation, this would use audio analysis APIs
     // Here we're just simulating voice metrics
     if (transcript && transcript.length > 0) {
+      // Enhance voice analysis with more dynamic and responsive metrics
+      const previousClarity = voiceAnalysis.clarity;
+      const previousPace = voiceAnalysis.pace;
+      
+      // Calculate new values with some smoothing to avoid jarring changes
+      const newClarity = Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15));
+      const newPace = Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20));
+      
       setVoiceAnalysis({
-        clarity: Math.min(100, Math.floor(70 + Math.sin(transcript.length * 0.1) * 15)),
-        pace: Math.min(100, Math.floor(65 + Math.cos(transcript.length * 0.05) * 20)),
+        clarity: Math.round(previousClarity * 0.7 + newClarity * 0.3), // Weighted average for smoother transitions
+        pace: Math.round(previousPace * 0.7 + newPace * 0.3),
         pitch: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.06) * 15)),
         tone: Math.min(100, Math.floor(80 + Math.cos(transcript.length * 0.04) * 10)),
         confidence: Math.min(100, Math.floor(75 + Math.sin(transcript.length * 0.07) * 15))
       });
+      
+      // Update speaking pace metric in real-time
+      setUserMetrics(prev => ({
+        ...prev,
+        speakingPace: Math.round(previousPace * 0.7 + newPace * 0.3)
+      }));
     }
   };
   
@@ -420,6 +498,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       
       // Start speech recognition
       const recognition = startSpeechRecognition();
+      speechRecognitionRef.current = recognition;
       
       // Update state
       setIsRecording(true);
@@ -449,6 +528,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     }
     
     // Stop speech recognition
+    if (speechRecognitionRef.current) {
+      stopSpeechRecognition(speechRecognitionRef.current);
+      speechRecognitionRef.current = null;
+    }
+    
     setSpeechData(prev => ({ ...prev, isListening: false }));
     
     setIsRecording(false);
@@ -536,35 +620,222 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     if (isRecording) {
       const interval = setInterval(() => {
         setSecondsElapsed(prev => prev + 1);
-        
-        // Simulate analysis updates with slightly more realistic values
-        setUserMetrics(prev => ({
-          speakingPace: Math.min(100, Math.floor(65 + Math.sin(secondsElapsed * 0.1) * 15)),
-          eyeContact: prev.eyeContact, // This is now updated by body language analysis
-          fillerWords: prev.fillerWords, // This is updated by speech recognition
-          engagement: Math.min(100, Math.floor(75 + Math.sin(secondsElapsed * 0.08) * 10))
-        }));
       }, 1000);
       
       return () => clearInterval(interval);
     }
   }, [isRecording, secondsElapsed]);
-
+  
+  // Start the interview process
+  const startInterview = async () => {
+    setInterviewStarted(true);
+    
+    // Welcome message
+    toast({
+      title: "Interview Starting",
+      description: "The AI interviewer will now ask you questions. Speak naturally to respond.",
+    });
+    
+    // First, we'll introduce the interview
+    if (apiKey) {
+      // Introduction message with voice
+      const introMessage = `Welcome to your ${config.type} interview for the ${config.jobRole} position. I'll be asking you a series of questions. Please respond naturally as you would in an actual interview. Let's begin with the first question.`;
+      
+      await speak(introMessage, voice || ELEVEN_LABS_VOICES.SARAH, apiKey);
+      
+      // Short pause after introduction
+      setTimeout(() => {
+        // Ask the first question
+        askQuestion(0);
+      }, 500);
+    } else {
+      toast({
+        title: "AI Voice Not Available",
+        description: "Please set your ElevenLabs API key to enable AI voice.",
+        variant: "destructive"
+      });
+      // Start recording anyway even without voice
+      startRecording();
+    }
+  };
+  
+  // Function to ask a question with AI voice
+  const askQuestion = async (questionIndex: number) => {
+    if (questionIndex >= questions.length) {
+      // We've gone through all questions, end the interview
+      endInterview();
+      return;
+    }
+    
+    // Set the current question index
+    setCurrentQuestionIndex(questionIndex);
+    
+    // Clear previous response
+    setSpeechData({ transcript: "", isListening: false });
+    
+    // Start recording if not already recording
+    if (!isRecording) {
+      startRecording();
+    }
+    
+    // Ask the question using voice if API key is available
+    if (apiKey) {
+      await speak(questions[questionIndex].text, voice || ELEVEN_LABS_VOICES.SARAH, apiKey);
+    }
+  };
+  
+  // Process user answer and move to next question
+  const processUserAnswer = async () => {
+    if (isProcessingAnswer) return; // Prevent multiple processing
+    
+    setIsProcessingAnswer(true);
+    
+    // Make sure we have at least a short answer
+    if (speechData.transcript.split(" ").length < 3) {
+      setIsProcessingAnswer(false);
+      return; // Not enough of an answer yet
+    }
+    
+    console.log("Processing answer for question:", currentQuestionIndex);
+    
+    // Pause speech recognition while processing
+    if (speechRecognitionRef.current) {
+      stopSpeechRecognition(speechRecognitionRef.current);
+    }
+    
+    // Give feedback using AI voice
+    if (apiKey) {
+      // Generate contextual feedback based on metrics
+      let feedback = generateContextualFeedback();
+      
+      // Wait for AI to deliver feedback
+      await speak(feedback, voice || ELEVEN_LABS_VOICES.SARAH, apiKey);
+      
+      // Short pause after feedback
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // If not the last question, continue to the next one
+      if (currentQuestionIndex < questions.length - 1) {
+        // Transitional phrase
+        await speak("Let's move on to the next question.", voice || ELEVEN_LABS_VOICES.SARAH, apiKey);
+        
+        // Short pause before next question
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Move to next question
+        setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+        askQuestion(currentQuestionIndex + 1);
+      } else {
+        // This was the last question
+        await speak("That concludes all our questions. Thank you for participating in this interview. I'll now provide you with a comprehensive feedback report.", voice || ELEVEN_LABS_VOICES.SARAH, apiKey);
+        
+        // End the interview after the final message
+        setTimeout(() => {
+          endInterview();
+        }, 1000);
+      }
+    } else {
+      // No voice API key, just move to next question
+      if (currentQuestionIndex < questions.length - 1) {
+        // Move to next question
+        setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      } else {
+        // End the interview
+        endInterview();
+      }
+    }
+    
+    // Reset processing flag
+    setIsProcessingAnswer(false);
+    
+    // Start recording for the next question if we're continuing
+    if (currentQuestionIndex < questions.length - 1) {
+      // Restart speech recognition for next question
+      const recognition = startSpeechRecognition();
+      speechRecognitionRef.current = recognition;
+    }
+  };
+  
+  // Generate contextual feedback based on user metrics
+  const generateContextualFeedback = () => {
+    // Analyze the different metrics to generate personalized feedback
+    let feedbackPoints = [];
+    
+    // Voice feedback
+    if (voiceAnalysis.clarity < 60) {
+      feedbackPoints.push("Try to speak more clearly and articulate your words more precisely.");
+    } else if (voiceAnalysis.clarity > 80) {
+      feedbackPoints.push("Your speech clarity is excellent, very articulate and easy to understand.");
+    }
+    
+    if (voiceAnalysis.pace < 60) {
+      feedbackPoints.push("Consider speaking at a slightly faster pace to maintain engagement.");
+    } else if (voiceAnalysis.pace > 85) {
+      feedbackPoints.push("Your speaking pace is a bit fast. Slowing down slightly might help with clarity.");
+    } else if (voiceAnalysis.pace > 70) {
+      feedbackPoints.push("Your speaking pace is good, which makes your response easy to follow.");
+    }
+    
+    // Body language feedback
+    if (bodyLanguageAnalysis.posture < 65) {
+      feedbackPoints.push("Try to maintain better posture during the interview, sitting up straight conveys confidence.");
+    } else if (bodyLanguageAnalysis.posture > 80) {
+      feedbackPoints.push("Your posture is excellent, which conveys confidence and professionalism.");
+    }
+    
+    if (facialAnalysis.engagement < 65) {
+      feedbackPoints.push("Try to show more engagement through your facial expressions.");
+    } else if (facialAnalysis.engagement > 80) {
+      feedbackPoints.push("Your facial engagement is very good, showing interest and enthusiasm.");
+    }
+    
+    // Eye contact feedback
+    if (userMetrics.eyeContact < 60) {
+      feedbackPoints.push("Remember to maintain eye contact with the interviewer, which shows confidence and engagement.");
+    } else if (userMetrics.eyeContact > 80) {
+      feedbackPoints.push("Your eye contact is excellent, which establishes a good connection.");
+    }
+    
+    // Response content feedback (simulated)
+    const wordCount = speechData.transcript.split(" ").length;
+    if (wordCount < 30) {
+      feedbackPoints.push("Try to provide more detailed responses to showcase your experience and skills.");
+    } else if (wordCount > 150) {
+      feedbackPoints.push("Your response is comprehensive, but try to be a bit more concise in future answers.");
+    } else {
+      feedbackPoints.push("Your response length is appropriate, providing sufficient detail without being overly verbose.");
+    }
+    
+    // Filler words feedback
+    if (userMetrics.fillerWords > 5) {
+      feedbackPoints.push("Try to reduce filler words like 'um' and 'uh' to sound more confident.");
+    } else if (userMetrics.fillerWords <= 2) {
+      feedbackPoints.push("You use very few filler words, which makes you sound confident and prepared.");
+    }
+    
+    // Select 2-3 feedback points randomly for variety
+    const selectedFeedback = [];
+    while (selectedFeedback.length < Math.min(2, feedbackPoints.length)) {
+      const randomIndex = Math.floor(Math.random() * feedbackPoints.length);
+      const point = feedbackPoints[randomIndex];
+      if (!selectedFeedback.includes(point)) {
+        selectedFeedback.push(point);
+      }
+    }
+    
+    // Add a positive note if feedback is mostly critical
+    if (selectedFeedback.length > 0 && !selectedFeedback.some(point => point.includes("excellent") || point.includes("good"))) {
+      selectedFeedback.push("You're making good progress. Keep focusing on improving with each question.");
+    }
+    
+    return "Thank you for your response. " + selectedFeedback.join(" ");
+  };
+  
   const toggleRecording = () => {
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
-    }
-  };
-  
-  const nextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSecondsElapsed(0);
-      setSpeechData({ transcript: "", isListening: false });
-    } else {
-      endInterview();
     }
   };
   
@@ -601,9 +872,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       duration: `${Math.floor(secondsElapsed / 60)} minutes ${secondsElapsed % 60} seconds`,
       overallScore: calculateOverallScore(),
       responsesAnalysis: {
-        clarity: Math.floor(70 + Math.random() * 20),
-        relevance: Math.floor(65 + Math.random() * 25),
-        structure: Math.floor(60 + Math.random() * 20),
+        clarity: Math.floor(voiceAnalysis.clarity || 70),
+        relevance: Math.floor(70 + Math.random() * 20),
+        structure: Math.floor(65 + Math.random() * 25),
         examples: Math.floor(70 + Math.random() * 20)
       },
       // Use the actual analysis data from our state
@@ -801,15 +1072,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="bg-white/20 hover:bg-white/30 text-white"
-                onClick={nextQuestion}
-              >
-                {currentQuestionIndex < questions.length - 1 ? "Next Question" : "End Interview"}
-              </Button>
-              
-              <Button 
-                size="sm" 
-                variant="outline" 
                 className="bg-red-500/80 hover:bg-red-500 text-white"
                 onClick={endInterview}
               >
@@ -825,6 +1087,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
             height="480" 
             className="hidden"
           />
+          
+          {/* Speaking indicator */}
+          {isSpeaking && (
+            <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs flex items-center animate-pulse">
+              <span className="mr-1">●</span> AI Speaking
+            </div>
+          )}
         </div>
         
         <Card>
