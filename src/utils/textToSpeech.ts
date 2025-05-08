@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,14 +22,21 @@ export const textToSpeech = async (
       return null;
     }
 
-    // Use the Supabase Edge Function for better security
+    // Use direct fetch to the edge function instead of accessing protected properties
+    const functionName = 'text-to-speech';
+    const projectRef = 'mybjsygfhrzzknwalyov'; // From supabase/config.toml
+    
+    // Get current auth session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Call the edge function properly
     const response = await fetch(
-      `${supabase.functions.url}/text-to-speech`,
+      `https://${projectRef}.supabase.co/functions/v1/${functionName}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabase.auth.session()?.access_token || ''}`,
+          "Authorization": `Bearer ${session?.access_token || ''}`,
         },
         body: JSON.stringify({
           text,
