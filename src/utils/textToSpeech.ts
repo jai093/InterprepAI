@@ -1,5 +1,7 @@
 
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Available ElevenLabs voices with their IDs
 export const ELEVEN_LABS_VOICES = {
@@ -21,27 +23,26 @@ export const textToSpeech = async (
       return null;
     }
 
+    // Use the Supabase Edge Function for better security
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      `${supabase.functions.url}/text-to-speech`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "xi-api-key": apiKey,
+          "Authorization": `Bearer ${supabase.auth.session()?.access_token || ''}`,
         },
         body: JSON.stringify({
           text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-          },
+          voiceId,
+          apiKey,
         }),
       }
     );
 
     if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${await response.text()}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error: ${response.status}`);
     }
 
     // Create a blob URL from the response to play the audio
@@ -139,6 +140,3 @@ export const useTextToSpeech = () => {
     isSpeaking
   };
 };
-
-// Fix missing React imports
-import { useState, useEffect, useRef, useCallback } from "react";

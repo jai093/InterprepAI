@@ -8,41 +8,86 @@ import PerformanceAnalysisTab from "./feedback/PerformanceAnalysisTab";
 import RecordingsTab from "./feedback/RecordingsTab";
 import TranscriptTab from "./feedback/TranscriptTab";
 import ReportFooter from "./feedback/ReportFooter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   
   // Create safe interview data with default values
   const safeInterviewData = createSafeInterviewData(interviewData);
   
   useEffect(() => {
     // Create URL from blobs if available
-    if (interviewData.videoURL) {
-      setVideoUrl(interviewData.videoURL);
-    } else if (interviewData.videoBlob) {
-      const url = URL.createObjectURL(interviewData.videoBlob);
-      setVideoUrl(url);
-      
-      // Clean up URL object on unmount
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    }
+    const setupMedia = async () => {
+      try {
+        if (interviewData.videoURL) {
+          setVideoUrl(interviewData.videoURL);
+        } else if (interviewData.videoBlob) {
+          const url = URL.createObjectURL(interviewData.videoBlob);
+          setVideoUrl(url);
+        }
+        
+        if (interviewData.audioURL) {
+          setAudioUrl(interviewData.audioURL);
+        } else if (interviewData.audioBlob) {
+          const url = URL.createObjectURL(interviewData.audioBlob);
+          setAudioUrl(url);
+        }
+
+        // Simulate loading for smoother UI transition
+        setTimeout(() => setLoading(false), 500);
+      } catch (error) {
+        console.error("Error setting up media:", error);
+        setLoading(false);
+      }
+    };
+
+    setupMedia();
     
-    if (interviewData.audioURL) {
-      setAudioUrl(interviewData.audioURL);
-    } else if (interviewData.audioBlob) {
-      const url = URL.createObjectURL(interviewData.audioBlob);
-      setAudioUrl(url);
-      
-      // Clean up URL object on unmount
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    }
-    
+    // Clean up URL objects on unmount
+    return () => {
+      if (videoUrl && !interviewData.videoURL) {
+        URL.revokeObjectURL(videoUrl);
+      }
+      if (audioUrl && !interviewData.audioURL) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
   }, [interviewData]);
+
+  if (loading) {
+    return (
+      <div className="animate-fade-in">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle><Skeleton className="h-8 w-64" /></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row justify-between mb-6">
+              <div>
+                <Skeleton className="h-5 w-40 mb-2" />
+                <Skeleton className="h-5 w-48" />
+              </div>
+              <div className="mt-4 md:mt-0 flex items-center">
+                <Skeleton className="h-20 w-20 rounded-full mr-4" />
+                <div>
+                  <Skeleton className="h-6 w-32 mb-2" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">

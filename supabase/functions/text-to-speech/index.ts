@@ -23,6 +23,9 @@ serve(async (req) => {
       throw new Error('ElevenLabs API key is required');
     }
 
+    // Log the request for debugging
+    console.log(`Processing TTS request for voice ID: ${voiceId || '21m00Tcm4TlvDq8ikWAM'}`);
+    
     // Call ElevenLabs API to generate speech
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || '21m00Tcm4TlvDq8ikWAM'}`,
@@ -44,12 +47,21 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail?.message || `Error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.detail?.message || `API Error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`Error: ${response.status} - ${errorText.substring(0, 100)}`);
+      }
     }
 
     // Forward the audio response
     const audioBuffer = await response.arrayBuffer();
+    console.log("Successfully generated audio");
+    
     return new Response(audioBuffer, {
       headers: {
         ...corsHeaders,
@@ -58,8 +70,12 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in text-to-speech function:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack?.split('\n')[0] // Include first line of stack for debugging
+      }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
