@@ -99,8 +99,7 @@ export function AppSidebar() {
                 </Link>
               </div>
             </SidebarGroupContent>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          </SidebarGroup>
         )}
         
       </SidebarContent>
