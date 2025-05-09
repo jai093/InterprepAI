@@ -6,6 +6,8 @@ import Hero from "@/components/Hero";
 import FeatureCard from "@/components/FeatureCard";
 import CallToAction from "@/components/CallToAction";
 import Footer from "@/components/Footer";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 
 const Index = () => {
   // Icons for feature cards
@@ -34,120 +36,130 @@ const Index = () => {
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      
-      <main className="flex-grow pt-16">
-        <Hero />
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
         
-        {/* Features Section */}
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Powerful Features to Boost Your Interview Skills</h2>
-              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                Our platform combines advanced AI technologies to provide comprehensive feedback on all aspects of your interview performance.
-              </p>
+        <div className="flex-1 flex flex-col">
+          <Header>
+            <div className="lg:hidden">
+              <SidebarTrigger />
             </div>
+          </Header>
+          
+          <main className="flex-grow pt-16">
+            <Hero />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <FeatureCard 
-                icon={<VideoIcon />}
-                title="Video Analysis"
-                description="Our AI analyzes your facial expressions and body language to provide feedback on your non-verbal communication."
-              />
-              <FeatureCard 
-                icon={<MicIcon />}
-                title="Voice Tone Analysis"
-                description="Receive insights on your speaking pace, tone variations, and vocal clarity to improve your verbal delivery."
-              />
-              <FeatureCard 
-                icon={<AIIcon />}
-                title="AI Interviewer"
-                description="Practice with our realistic AI interviewer that asks industry-specific questions tailored to your target role."
-              />
-              <FeatureCard 
-                icon={<AnalyticsIcon />}
-                title="Detailed Reports"
-                description="Get comprehensive feedback reports with actionable tips to improve your interview performance over time."
-              />
-            </div>
-            
-            {/* How It Works */}
-            <div className="mt-24">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold mb-4">How InterprepAI Works</h2>
-                <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                  Our platform makes interview preparation simple, effective, and personalized.
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">1</div>
-                  <h3 className="text-xl font-bold mb-2">Select Your Interview Type</h3>
-                  <p className="text-gray-600">Choose from various interview formats including behavioral, technical, or role-specific.</p>
+            {/* Features Section */}
+            <section className="py-16 bg-white">
+              <div className="container mx-auto px-4">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold mb-4">Powerful Features to Boost Your Interview Skills</h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Our platform combines advanced AI technologies to provide comprehensive feedback on all aspects of your interview performance.
+                  </p>
                 </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">2</div>
-                  <h3 className="text-xl font-bold mb-2">Practice with AI Interviewer</h3>
-                  <p className="text-gray-600">Engage in a realistic interview simulation with our AI-powered virtual interviewer.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  <FeatureCard 
+                    icon={<VideoIcon />}
+                    title="Video Analysis"
+                    description="Our AI analyzes your facial expressions and body language to provide feedback on your non-verbal communication."
+                  />
+                  <FeatureCard 
+                    icon={<MicIcon />}
+                    title="Voice Tone Analysis"
+                    description="Receive insights on your speaking pace, tone variations, and vocal clarity to improve your verbal delivery."
+                  />
+                  <FeatureCard 
+                    icon={<AIIcon />}
+                    title="AI Interviewer"
+                    description="Practice with our realistic AI interviewer that asks industry-specific questions tailored to your target role."
+                  />
+                  <FeatureCard 
+                    icon={<AnalyticsIcon />}
+                    title="Detailed Reports"
+                    description="Get comprehensive feedback reports with actionable tips to improve your interview performance over time."
+                  />
                 </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">3</div>
-                  <h3 className="text-xl font-bold mb-2">Get Detailed Feedback</h3>
-                  <p className="text-gray-600">Receive comprehensive analysis and actionable tips to improve your performance.</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Testimonials Section */}
-            <div className="mt-24">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold mb-4">What Our Users Say</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {[
-                  {
-                    quote: "InterprepAI helped me identify speaking patterns I wasn't aware of. After just a few practice sessions, I felt much more confident in my actual interview.",
-                    author: "Sarah K.",
-                    role: "Software Engineer"
-                  },
-                  {
-                    quote: "The feedback on my body language was eye-opening. I secured a job offer after improving the areas InterprepAI highlighted.",
-                    author: "Michael T.",
-                    role: "Marketing Manager"
-                  },
-                  {
-                    quote: "As someone who gets nervous during interviews, practicing with InterprepAI made a huge difference. The AI interviewer feels surprisingly realistic!",
-                    author: "Jessica L.",
-                    role: "Data Analyst"
-                  }
-                ].map((testimonial, index) => (
-                  <div key={index} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                    <div className="flex items-center mb-4">
-                      <svg className="h-5 w-5 text-interprepai-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4.5 19.5c-1.41 0-2.73-.67-3.54-1.8C.15 16.56-.11 15.12.06 13.7.83 7.07 6.32 1.88 13.25.38c.29-.06.6.08.78.34.18.26.19.6.01.88l-1.69 2.55c-.15.22-.41.36-.68.36-.85.01-2.64.85-3.77 2.25-.65.81-1.29 2.06-1.29 3.75 0 2.07 1.68 3.75 3.75 3.75.34 0 .68-.04 1-.13v2.25c-1.19.18-1.36.27-2.25.27M19.5 19.5c-1.41 0-2.73-.67-3.54-1.8-.81-1.14-1.07-2.58-.9-4 .77-6.63 6.26-11.82 13.19-13.32.29-.06.6.08.78.34.18.26.19.6.01.88l-1.69 2.55c-.15.22-.41.36-.68.36-.85.01-2.64.85-3.77 2.25-.65.81-1.29 2.06-1.29 3.75 0 2.07 1.68 3.75 3.75 3.75.34 0 .68-.04 1-.13v2.25c-1.19.18-1.86.27-2.75.27"></path>
-                      </svg>
+                
+                {/* How It Works */}
+                <div className="mt-24">
+                  <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold mb-4">How InterprepAI Works</h2>
+                    <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                      Our platform makes interview preparation simple, effective, and personalized.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">1</div>
+                      <h3 className="text-xl font-bold mb-2">Select Your Interview Type</h3>
+                      <p className="text-gray-600">Choose from various interview formats including behavioral, technical, or role-specific.</p>
                     </div>
-                    <p className="text-gray-600 mb-4">{testimonial.quote}</p>
-                    <div>
-                      <p className="font-bold">{testimonial.author}</p>
-                      <p className="text-sm text-gray-500">{testimonial.role}</p>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">2</div>
+                      <h3 className="text-xl font-bold mb-2">Practice with AI Interviewer</h3>
+                      <p className="text-gray-600">Engage in a realistic interview simulation with our AI-powered virtual interviewer.</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-interprepai-100 text-interprepai-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">3</div>
+                      <h3 className="text-xl font-bold mb-2">Get Detailed Feedback</h3>
+                      <p className="text-gray-600">Receive comprehensive analysis and actionable tips to improve your performance.</p>
                     </div>
                   </div>
-                ))}
+                </div>
+                
+                {/* Testimonials Section */}
+                <div className="mt-24">
+                  <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold mb-4">What Our Users Say</h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[
+                      {
+                        quote: "InterprepAI helped me identify speaking patterns I wasn't aware of. After just a few practice sessions, I felt much more confident in my actual interview.",
+                        author: "Sarah K.",
+                        role: "Software Engineer"
+                      },
+                      {
+                        quote: "The feedback on my body language was eye-opening. I secured a job offer after improving the areas InterprepAI highlighted.",
+                        author: "Michael T.",
+                        role: "Marketing Manager"
+                      },
+                      {
+                        quote: "As someone who gets nervous during interviews, practicing with InterprepAI made a huge difference. The AI interviewer feels surprisingly realistic!",
+                        author: "Jessica L.",
+                        role: "Data Analyst"
+                      }
+                    ].map((testimonial, index) => (
+                      <div key={index} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                        <div className="flex items-center mb-4">
+                          <svg className="h-5 w-5 text-interprepai-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M4.5 19.5c-1.41 0-2.73-.67-3.54-1.8C.15 16.56-.11 15.12.06 13.7.83 7.07 6.32 1.88 13.25.38c.29-.06.6.08.78.34.18.26.19.6.01.88l-1.69 2.55c-.15.22-.41.36-.68.36-.85.01-2.64.85-3.77 2.25-.65.81-1.29 2.06-1.29 3.75 0 2.07 1.68 3.75 3.75 3.75.34 0 .68-.04 1-.13v2.25c-1.19.18-1.36.27-2.25.27M19.5 19.5c-1.41 0-2.73-.67-3.54-1.8-.81-1.14-1.07-2.58-.9-4 .77-6.63 6.26-11.82 13.19-13.32.29-.06.6.08.78.34.18.26.19.6.01.88l-1.69 2.55c-.15.22-.41.36-.68.36-.85.01-2.64.85-3.77 2.25-.65.81-1.29 2.06-1.29 3.75 0 2.07 1.68 3.75 3.75 3.75.34 0 .68-.04 1-.13v2.25c-1.19.18-1.86.27-2.75.27"></path>
+                          </svg>
+                        </div>
+                        <p className="text-gray-600 mb-4">{testimonial.quote}</p>
+                        <div>
+                          <p className="font-bold">{testimonial.author}</p>
+                          <p className="text-sm text-gray-500">{testimonial.role}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
-        
-        <CallToAction />
-      </main>
-      
-      <Footer />
-    </div>
+            </section>
+            
+            <CallToAction />
+          </main>
+          
+          <Footer />
+        </div>
+      </div>
+    </SidebarProvider>
   );
 };
 

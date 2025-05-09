@@ -1,9 +1,9 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { getScoreColorClass } from "./utils";
-import { Smile, Eye, Brain, Sparkles } from "lucide-react";
+import { Smile, Eye, Brain, Sparkles, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface FacialAnalysisCardProps {
   label: string;
@@ -24,6 +24,27 @@ const FacialAnalysisCard = ({
     if (score > 70) return "Good";
     if (score > 50) return "Average";
     return "Needs Improvement";
+  };
+
+  // Function to get advice based on the score and label
+  const getAdvice = (score: number, label: string): string => {
+    switch (label.toLowerCase()) {
+      case 'smile':
+        return score < 70 ? "Consider smiling more to appear approachable and confident." : 
+               "Good job maintaining appropriate facial expressions.";
+      case 'eye contact':
+        return score < 70 ? "Try to maintain more consistent eye contact with the interviewer." : 
+               "Great job with maintaining good eye contact.";
+      case 'confidence':
+        return score < 70 ? "Work on appearing more confident through your facial expressions." : 
+               "You project good confidence through your facial expressions.";
+      case 'engagement':
+        return score < 70 ? "Show more engagement through animated facial expressions when appropriate." : 
+               "Good level of engagement shown through your expressions.";
+      default:
+        return score < 70 ? "Consider working on this aspect of your non-verbal communication." : 
+               "You're performing well in this area.";
+    }
   };
 
   // Select icon based on prop
@@ -80,6 +101,13 @@ const FacialAnalysisCard = ({
           <span className="text-xs font-medium text-gray-700">
             {getScoreDescription(value)}
           </span>
+        </div>
+        
+        {/* Add advice section */}
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <p className="text-xs text-gray-600 italic">
+            {getAdvice(value, label)}
+          </p>
         </div>
       </CardContent>
     </Card>

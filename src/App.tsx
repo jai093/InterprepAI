@@ -12,6 +12,8 @@ import InterviewSimulation from "./pages/InterviewSimulation";
 import NotFound from "./pages/NotFound";
 import Meetups from "./components/Meetups";
 import { useAuth } from "@/contexts/AuthContext";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 
 // Protected Route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -25,7 +27,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" />;
   }
   
-  return <>{children}</>;
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col">
+          {children}
+        </div>
+      </div>
+    </SidebarProvider>
+  );
 };
 
 const App = () => (
