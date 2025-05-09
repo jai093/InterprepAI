@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,10 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { VoiceConfigDialog } from "./VoiceConfigDialog";
-import { useEleven } from "@/contexts/ElevenLabsContext";
+import VoiceConfigDialog from "./VoiceConfigDialog";
+import { useEleven } from "@/contexts/ElevenLabsContext"; 
 import { useMediaDevices } from "@/hooks/useMediaDevices";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { textToSpeech } from "@/utils/textToSpeech";
 
 interface InterviewConfig {
@@ -57,9 +56,9 @@ const INTERVIEW_QUESTIONS: Record<string, string[]> = {
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isMobile } = useMobile();
+  const { isMobile } = useIsMobile();
   const { hasElevenApiKey, elevenVoiceId, elevenApiKey } = useEleven();
-  const { audioInputDevices, videoInputDevices, requestMediaPermissions } = useMediaDevices();
+  const { requestMediaPermissions } = useMediaDevices();
 
   // References
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -323,6 +322,17 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       overall_presence: 75,
     };
     
+    // Fix the arithmetic operations by ensuring values are numbers
+    // Calculate overall score as the average of all metrics
+    const audioAnalysisAvg = Object.values(audioAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+                            Object.keys(audioAnalysis).length;
+                            
+    const facialAnalysisAvg = Object.values(facialAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+                             Object.keys(facialAnalysis).length;
+                             
+    const bodyLanguageAvg = Object.values(bodyLanguageAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+                           Object.keys(bodyLanguageAnalysis).length;
+    
     // Prepare feedback data
     const feedbackData = {
       recordingUrl,
@@ -336,16 +346,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       questions,
       responses: chat,
       // Overall score - average of all metrics
-      overallScore: Math.floor(
-        (
-          (Object.values(audioAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-          (Object.keys(audioAnalysis).length || 1)) +
-          (Object.values(facialAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-          (Object.keys(facialAnalysis).length || 1)) +
-          (Object.values(bodyLanguageAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-          (Object.keys(bodyLanguageAnalysis).length || 1))
-        ) / 3
-      ),
+      overallScore: Math.floor((audioAnalysisAvg + facialAnalysisAvg + bodyLanguageAvg) / 3)
     };
     
     // Call the onEnd callback with the feedback data

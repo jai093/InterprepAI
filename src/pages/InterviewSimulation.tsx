@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import InterviewSetup from "@/components/InterviewSetup";
 import InterviewSession from "@/components/InterviewSession";
 import FeedbackReport from "@/components/FeedbackReport";
@@ -67,14 +66,22 @@ const InterviewSimulation = () => {
     
     try {
       // Save interview feedback to database
+      // Updated to use the correct table name and field names from the database schema
       const { error } = await supabase
-        .from('interview_reports')
+        .from('interview_sessions')
         .insert({
           user_id: user.id,
-          interview_type: interviewConfig?.type || '',
-          job_role: interviewConfig?.jobRole || '',
-          feedback_data: feedbackData,
-          created_at: new Date().toISOString(),
+          type: interviewConfig?.type || '',
+          role: interviewConfig?.jobRole || '',
+          feedback: JSON.stringify(feedbackData),
+          score: feedbackData.overallScore || 0,
+          voice_analysis: feedbackData.audioAnalysis || {},
+          facial_analysis: feedbackData.facialAnalysis || {},
+          body_analysis: feedbackData.bodyLanguageAnalysis || {},
+          video_url: feedbackData.recordingUrl || '',
+          date: new Date().toISOString(),
+          duration: String(feedbackData.duration || 0),
+          transcript: JSON.stringify(feedbackData.responses || [])
         });
         
       if (error) {
@@ -130,10 +137,13 @@ const InterviewSimulation = () => {
           />
         )}
         
-        {stage === "feedback" && feedbackData && (
+        {stage === "feedback" && feedbackData && interviewConfig && (
           <FeedbackReport 
-            feedbackData={feedbackData} 
-            interviewConfig={interviewConfig}
+            interviewData={{
+              ...feedbackData,
+              date: new Date(feedbackData.date).toLocaleDateString(),
+              duration: `${Math.floor(feedbackData.duration / 60)}:${(feedbackData.duration % 60).toString().padStart(2, '0')}`,
+            }} 
             onSave={handleSaveFeedback}
             onRestart={handleRestart}
             isSaving={isSaving}

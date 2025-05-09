@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useElevenLabs } from "@/contexts/ElevenLabsContext";
+import { useEleven } from "@/hooks/useElevenLabs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,8 @@ import { ELEVEN_LABS_VOICES } from "@/utils/textToSpeech";
 import { Volume2 } from "lucide-react";
 
 interface VoiceConfigDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
 }
 
@@ -35,17 +37,26 @@ const VOICE_DETAILS = {
   [ELEVEN_LABS_VOICES.CHARLIE]: { name: "Charlie", description: "Casual male voice" },
 };
 
-const VoiceConfigDialog = ({ children }: VoiceConfigDialogProps) => {
-  const { apiKey, setApiKey, currentVoice, setCurrentVoice, clearApiKey } = useElevenLabs();
+const VoiceConfigDialog = ({ children, open, onOpenChange }: VoiceConfigDialogProps) => {
+  const { apiKey, setApiKey, currentVoice, setCurrentVoice, clearApiKey } = useEleven();
   
-  const [open, setOpen] = useState(false);
   const [inputApiKey, setInputApiKey] = useState(apiKey || "");
+  const [dialogOpen, setDialogOpen] = useState(open || false);
+  
+  // Use the provided onOpenChange or the local state setter
+  const handleOpenChange = (newOpen: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    } else {
+      setDialogOpen(newOpen);
+    }
+  };
 
   const handleSave = () => {
     if (inputApiKey) {
       setApiKey(inputApiKey);
     }
-    setOpen(false);
+    handleOpenChange(false);
   };
 
   const handleClear = () => {
@@ -54,7 +65,7 @@ const VoiceConfigDialog = ({ children }: VoiceConfigDialogProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open !== undefined ? open : dialogOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children || (
           <Button variant="outline" size="sm" className="flex gap-2 items-center">
