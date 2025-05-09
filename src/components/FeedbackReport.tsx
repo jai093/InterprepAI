@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
-import { FeedbackReportProps } from "./feedback/types";
+import { SafeInterviewData } from "./feedback/types";
 import { createSafeInterviewData } from "./feedback/utils";
 import PerformanceAnalysisTab from "./feedback/PerformanceAnalysisTab";
 import RecordingsTab from "./feedback/RecordingsTab";

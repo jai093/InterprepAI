@@ -41,6 +41,7 @@ export interface InterviewData {
   audioBlob?: Blob | null;
   videoURL?: string | null;
   audioURL?: string | null;
+  recordingUrl?: string | null;
   transcripts?: Array<{
     question: string;
     answer: string;
@@ -91,6 +92,8 @@ export interface SafeInterviewData {
   }>;
 }
 
-export interface FeedbackReportProps {
-  interviewData: InterviewData;
-}
+// This interface is no longer needed as we're defining FeedbackReportProps directly in FeedbackReport.tsx
+// to avoid conflicts
+//export interface FeedbackReportProps {
+//  interviewData: InterviewData;
+//}
