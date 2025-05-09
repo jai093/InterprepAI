@@ -36,7 +36,7 @@ const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
             <CardTitle className="text-xl">{meetup.title}</CardTitle>
             <div className="flex items-center mt-1">
               <Avatar className="h-6 w-6 mr-2">
-                <AvatarImage src={meetup.avatar} />
+                <AvatarImage src={meetup.avatar || ""} />
                 <AvatarFallback>{meetup.host.charAt(0)}</AvatarFallback>
               </Avatar>
               <span className="text-sm text-gray-500">

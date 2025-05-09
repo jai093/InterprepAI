@@ -63,6 +63,57 @@ export type Database = {
         }
         Relationships: []
       }
+      meetups: {
+        Row: {
+          attendees: number
+          avatar: string | null
+          capacity: number
+          created_at: string
+          date: string
+          description: string
+          host: string
+          host_title: string
+          id: string
+          location: string
+          tags: string[]
+          time: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: number
+          avatar?: string | null
+          capacity: number
+          created_at?: string
+          date: string
+          description: string
+          host: string
+          host_title: string
+          id?: string
+          location: string
+          tags?: string[]
+          time: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          attendees?: number
+          avatar?: string | null
+          capacity?: number
+          created_at?: string
+          date?: string
+          description?: string
+          host?: string
+          host_title?: string
+          id?: string
+          location?: string
+          tags?: string[]
+          time?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -6,11 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // Types for our meetups
 export interface Meetup {
-  id: number;
+  id: string;
   title: string;
   host: string;
   hostTitle: string;
-  avatar: string;
+  avatar: string | null;
   date: string;
   time: string;
   location: string;
@@ -19,6 +19,7 @@ export interface Meetup {
   description: string;
   tags: string[];
   user_id?: string;
+  created_at?: string;
 }
 
 export function useMeetups() {
@@ -28,76 +29,47 @@ export function useMeetups() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch meetups from local storage or initialize with empty array
+  // Fetch meetups from Supabase
   useEffect(() => {
-    const fetchMeetups = () => {
+    const fetchMeetups = async () => {
       try {
-        const storedMeetups = localStorage.getItem('meetups');
-        if (storedMeetups) {
-          setMeetups(JSON.parse(storedMeetups));
-        } else {
-          // Initialize with some sample meetups if none exist
-          const initialMeetups = [
-            {
-              id: 1,
-              title: "Tech Interview Strategies Workshop",
-              host: "Sarah Chen",
-              hostTitle: "Senior Engineering Manager at TechCorp",
-              avatar: "",
-              date: "May 15, 2025",
-              time: "6:00 PM - 8:00 PM",
-              location: "Virtual",
-              attendees: 45,
-              capacity: 100,
-              description: "Join us for an interactive workshop on mastering technical interviews. We'll cover common questions, live coding exercises, and strategies for explaining complex concepts.",
-              tags: ["Technical", "Engineering", "Coding"],
-              user_id: "sample-user-1"
-            },
-            {
-              id: 2,
-              title: "Behavioral Interview Masterclass",
-              host: "James Wilson",
-              hostTitle: "HR Director at Global Innovations",
-              avatar: "",
-              date: "May 18, 2025",
-              time: "5:30 PM - 7:30 PM",
-              location: "San Francisco, CA",
-              attendees: 28,
-              capacity: 50,
-              description: "Learn how to effectively respond to behavioral questions using the STAR method. This session includes practice rounds and personalized feedback.",
-              tags: ["Behavioral", "Leadership", "HR"],
-              user_id: "sample-user-2"
-            },
-            {
-              id: 3,
-              title: "Finance Industry Interview Prep",
-              host: "Priya Mehta",
-              hostTitle: "Investment Banking VP at FinTech Solutions",
-              avatar: "",
-              date: "May 21, 2025",
-              time: "4:00 PM - 5:30 PM",
-              location: "New York, NY",
-              attendees: 35,
-              capacity: 40,
-              description: "Specifically tailored for finance professionals, this meetup covers technical finance questions, market knowledge assessments, and industry-specific behavioral questions.",
-              tags: ["Finance", "Investment", "Banking"],
-              user_id: "sample-user-3"
-            }
-          ];
-          
-          setMeetups(initialMeetups);
-          localStorage.setItem('meetups', JSON.stringify(initialMeetups));
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('meetups')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          throw error;
         }
         
+        setMeetups(data || []);
         setIsLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching meetups:", err);
-        setError("Failed to load meetups");
+        setError(err.message || "Failed to load meetups");
         setIsLoading(false);
       }
     };
     
     fetchMeetups();
+    
+    // Set up realtime subscription for meetups
+    const channel = supabase
+      .channel('public:meetups')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'meetups' 
+      }, (payload) => {
+        console.log('Realtime update:', payload);
+        fetchMeetups(); // Refresh the data when changes occur
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Filter meetups based on search query
@@ -117,45 +89,82 @@ export function useMeetups() {
   }, [meetups]);
 
   // RSVP for a meetup
-  const rsvpMeetup = useCallback((meetupId: number) => {
-    setMeetups(prevMeetups => {
-      const updatedMeetups = prevMeetups.map(meetup => 
-        meetup.id === meetupId && meetup.attendees < meetup.capacity
-          ? { ...meetup, attendees: meetup.attendees + 1 }
-          : meetup
-      );
+  const rsvpMeetup = useCallback(async (meetupId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to RSVP for meetups.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // First get the current meetup
+      const { data: meetup, error: fetchError } = await supabase
+        .from('meetups')
+        .select('*')
+        .eq('id', meetupId)
+        .single();
       
-      localStorage.setItem('meetups', JSON.stringify(updatedMeetups));
-      return updatedMeetups;
-    });
-    
-    toast({
-      title: "RSVP Successful",
-      description: "You've successfully registered for this meetup.",
-    });
-  }, [toast]);
+      if (fetchError) throw fetchError;
+      
+      // Check if capacity has been reached
+      if (meetup.attendees >= meetup.capacity) {
+        toast({
+          title: "Meetup Full",
+          description: "This meetup has reached its capacity.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update attendee count
+      const { error: updateError } = await supabase
+        .from('meetups')
+        .update({ attendees: meetup.attendees + 1 })
+        .eq('id', meetupId);
+      
+      if (updateError) throw updateError;
+      
+      toast({
+        title: "RSVP Successful",
+        description: "You've successfully registered for this meetup.",
+      });
+    } catch (err: any) {
+      console.error("Error RSVPing for meetup:", err);
+      toast({
+        title: "RSVP Failed",
+        description: err.message || "Failed to register for meetup.",
+        variant: "destructive"
+      });
+    }
+  }, [toast, user]);
   
   // Create a new meetup
-  const createMeetup = useCallback((newMeetup: Omit<Meetup, 'id' | 'user_id'>) => {
+  const createMeetup = useCallback(async (newMeetup: Omit<Meetup, 'id' | 'user_id' | 'created_at'>) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to create meetups.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     setIsLoading(true);
     
     try {
-      setMeetups(prevMeetups => {
-        const meetupId = prevMeetups.length > 0 
-          ? Math.max(...prevMeetups.map(m => m.id)) + 1 
-          : 1;
-        
-        const meetupWithId = {
-          ...newMeetup,
-          id: meetupId,
-          user_id: user?.id || 'unknown'
-        };
-        
-        const updatedMeetups = [meetupWithId, ...prevMeetups];
-        localStorage.setItem('meetups', JSON.stringify(updatedMeetups));
-        
-        return updatedMeetups;
-      });
+      const meetupWithUserId = {
+        ...newMeetup,
+        user_id: user.id
+      };
+      
+      const { error } = await supabase
+        .from('meetups')
+        .insert([meetupWithUserId]);
+      
+      if (error) throw error;
       
       toast({
         title: "Meetup Created",
@@ -164,11 +173,11 @@ export function useMeetups() {
       
       setIsLoading(false);
       return true;
-    } catch (err) {
-      setError("Failed to create meetup");
+    } catch (err: any) {
+      console.error("Failed to create meetup:", err);
       toast({
         title: "Error",
-        description: "Failed to create meetup. Please try again.",
+        description: err.message || "Failed to create meetup. Please try again.",
         variant: "destructive"
       });
       setIsLoading(false);

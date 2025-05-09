@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { CalendarIcon, Clock, MapPin, Tag, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMeetups } from "@/hooks/useMeetups";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CreateMeetupDialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface CreateMeetupDialogProps {
 
 const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => {
   const { createMeetup } = useMeetups();
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
@@ -39,18 +41,24 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      alert("You must be logged in to create a meetup");
+      return;
+    }
+    
     setIsSubmitting(true);
     
     const success = await createMeetup({
       title,
       description,
-      host: "You", // In a real app, this would come from the authenticated user
-      hostTitle: "InterviewPrep User", // In a real app, this would come from user profile
-      avatar: "",
+      host: user.user_metadata?.full_name || "Anonymous",
+      hostTitle: "InterviewPrep User",
+      avatar: null,
       date,
       time,
       location,
-      attendees: 1, // Starting with the creator
+      attendees: 1,
       capacity: parseInt(capacity),
       tags
     });
