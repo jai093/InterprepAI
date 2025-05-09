@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -9,6 +10,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Define the expected config type to match what InterviewSession expects
+interface FullInterviewConfig {
+  type: string;
+  jobRole: string;
+  duration: number;
+  difficulty: string;
+}
+
 const InterviewSimulation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -16,12 +25,19 @@ const InterviewSimulation = () => {
   
   // States for different interview stages
   const [stage, setStage] = useState<"setup" | "interview" | "feedback">("setup");
-  const [interviewConfig, setInterviewConfig] = useState<InterviewConfig | null>(null);
+  const [interviewConfig, setInterviewConfig] = useState<FullInterviewConfig | null>(null);
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   const handleStartInterview = (config: InterviewConfig) => {
-    setInterviewConfig(config);
+    // Make sure we have all required fields for the interview config
+    const fullConfig: FullInterviewConfig = {
+      ...config,
+      duration: config.duration || 15, // Default to 15 minutes if not provided
+      difficulty: config.difficulty || 'Medium', // Default to Medium if not provided
+    };
+    
+    setInterviewConfig(fullConfig);
     setStage("interview");
     toast({
       title: "Interview Started",

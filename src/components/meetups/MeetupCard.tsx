@@ -8,9 +8,10 @@ import { Meetup, useMeetups } from "@/hooks/useMeetups";
 
 interface MeetupCardProps {
   meetup: Meetup;
+  isOwnedByUser?: boolean;
 }
 
-const MeetupCard = ({ meetup }: MeetupCardProps) => {
+const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
   const { rsvpMeetup } = useMeetups();
   
   const handleShare = () => {
@@ -45,6 +46,9 @@ const MeetupCard = ({ meetup }: MeetupCardProps) => {
           </div>
           <div className="flex flex-col items-end">
             <Badge>{meetup.attendees}/{meetup.capacity} attending</Badge>
+            {isOwnedByUser && (
+              <Badge variant="outline" className="mt-1">Your Meetup</Badge>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -82,7 +86,12 @@ const MeetupCard = ({ meetup }: MeetupCardProps) => {
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
-          <Button onClick={() => rsvpMeetup(meetup.id)}>RSVP</Button>
+          {!isOwnedByUser && (
+            <Button onClick={() => rsvpMeetup(meetup.id)}>RSVP</Button>
+          )}
+          {isOwnedByUser && (
+            <Button variant="outline">Edit</Button>
+          )}
         </div>
       </CardFooter>
     </Card>

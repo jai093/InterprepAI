@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -348,7 +347,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     }
   };
   
-  // End the interview
+  // Fix the problematic code in the endInterview function
   const endInterview = () => {
     // Stop recording
     if (mediaRecorderRef.current && isRecording) {
@@ -383,11 +382,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       // Overall score - average of all metrics
       overallScore: Math.floor(
         (
-          Object.values(audioAnalysis).reduce((a: number, b: number) => a + b, 0) / 
+          Object.values(audioAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
           (Object.keys(audioAnalysis).length || 1) +
-          Object.values(facialAnalysis).reduce((a: number, b: number) => a + b, 0) / 
+          Object.values(facialAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
           (Object.keys(facialAnalysis).length || 1) +
-          Object.values(bodyLanguageAnalysis).reduce((a: number, b: number) => a + b, 0) / 
+          Object.values(bodyLanguageAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
           (Object.keys(bodyLanguageAnalysis).length || 1)
         ) / 3
       ),

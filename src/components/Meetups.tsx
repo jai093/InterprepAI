@@ -142,7 +142,7 @@ const Meetups = () => {
                 {userMeetups.length > 0 ? (
                   <div className="space-y-6">
                     {userMeetups.map((meetup) => (
-                      <MeetupCard key={meetup.id} meetup={meetup} isOwnedByUser />
+                      <MeetupCard key={meetup.id} meetup={meetup} isOwnedByUser={true} />
                     ))}
                   </div>
                 ) : (
