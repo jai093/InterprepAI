@@ -1,350 +1,283 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mic, MicOff, Camera, CameraOff, Clock } from "lucide-react";
+import { Mic, Video, VideoOff, MicOff, Send, X, Volume2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { VoiceConfigDialog } from "./VoiceConfigDialog";
+import { useEleven } from "@/contexts/ElevenLabsContext";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
-import { useTextToSpeech, ELEVEN_LABS_VOICES } from "@/utils/textToSpeech";
-import { useElevenLabs } from "@/contexts/ElevenLabsContext";
+import { useMobile } from "@/hooks/use-mobile";
+import { textToSpeech } from "@/utils/textToSpeech";
+
+interface InterviewConfig {
+  type: string;
+  jobRole: string;
+  duration: number;
+  difficulty: string;
+}
 
 interface InterviewSessionProps {
-  config: {
-    type: string;
-    jobRole: string;
-    duration: number;
-    difficulty: string;
-  };
+  config: InterviewConfig;
   onEnd: (feedbackData: any) => void;
 }
 
+// Sample interview questions based on type
+const INTERVIEW_QUESTIONS: Record<string, string[]> = {
+  behavioral: [
+    "Tell me about a time when you had to deal with a difficult teammate.",
+    "Describe a situation where you had to meet a tight deadline.",
+    "Give an example of a time you showed leadership skills.",
+    "Tell me about a time you failed and what you learned from it.",
+    "How do you prioritize tasks when you have multiple deadlines?",
+  ],
+  technical: [
+    "Explain how you would design a scalable web application.",
+    "What's your approach to debugging a complex issue?",
+    "How do you ensure code quality in your projects?",
+    "Describe your experience with agile development methodologies.",
+    "How do you stay updated with the latest technologies in your field?",
+  ],
+  "case-study": [
+    "Our company is losing market share. How would you analyze this problem?",
+    "How would you launch a new product in a competitive market?",
+    "What metrics would you track to measure the success of a digital campaign?",
+    "How would you optimize our customer acquisition costs?",
+    "Our team is experiencing burnout. How would you address this issue?",
+  ],
+};
+
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { requestMediaPermissions, stopMediaStream, stream, cameraReady, microphoneReady } = useMediaDevices();
-  const { apiKey, currentVoice } = useElevenLabs();
-  const { speak, stopSpeaking, isSpeaking } = useTextToSpeech();
-  
-  // Video refs
+  const { isMobile } = useMobile();
+  const { hasElevenApiKey, elevenVoiceId, elevenApiKey } = useEleven();
+  const { audioInputDevices, videoInputDevices, requestMediaPermissions } = useMediaDevices();
+
+  // References
   const videoRef = useRef<HTMLVideoElement>(null);
-  const recordedVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  
-  // State variables
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [maxTime] = useState(config.duration * 60); // Convert minutes to seconds
-  const [videoURL, setVideoURL] = useState<string | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<number>(0);
-  const [userResponse, setUserResponse] = useState<string>("");
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [uploadedResume, setUploadedResume] = useState<File | null>(null);
-  const [resumeText, setResumeText] = useState<string>("");
-  const [interviewStarted, setInterviewStarted] = useState(false);
-  const [audioAnalysis, setAudioAnalysis] = useState<any>({});
-  const [facialAnalysis, setFacialAnalysis] = useState<any>({});
-  const [bodyLanguageAnalysis, setBodyLanguageAnalysis] = useState<any>({});
-  const [listeningToUser, setListeningToUser] = useState(false);
-  const [questionList, setQuestionList] = useState<string[]>([]);
-  const [currentFeedback, setCurrentFeedback] = useState<string>("");
-  
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const speechRecognitionRef = useRef<any>(null);
   
-  // Mock questions based on job type
-  const generateQuestionsFromResume = (resumeText: string, jobRole: string) => {
-    // In a real app, this would use AI to analyze the resume
-    // For now, we'll use some mock questions based on job role
-    const baseQuestions = [
-      `Tell me about your experience with ${jobRole}.`,
-      "What are your greatest strengths?",
-      "Can you describe a challenging project you worked on?",
-      "How do you handle tight deadlines?",
-      "Where do you see yourself in five years?",
-      "Why are you interested in this position?",
-      "How do you stay updated with industry trends?",
-      "Tell me about a time you failed and what you learned."
-    ];
-    
-    // Add some resume-specific questions
-    const specificQuestions = [];
-    
-    if (resumeText.toLowerCase().includes("leadership")) {
-      specificQuestions.push("I see you have leadership experience. Can you describe your leadership style?");
-    }
-    
-    if (resumeText.toLowerCase().includes("project")) {
-      specificQuestions.push("Tell me more about one of the key projects mentioned in your resume.");
-    }
-    
-    if (resumeText.toLowerCase().includes("communication")) {
-      specificQuestions.push("How do you ensure effective communication in a team setting?");
-    }
-    
-    return [...specificQuestions, ...baseQuestions];
-  };
+  // States
+  const [isRecording, setIsRecording] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [userResponse, setUserResponse] = useState("");
+  const [chat, setChat] = useState<{type: 'interviewer' | 'user', message: string}[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   
-  // Initialize speech recognition
-  const initializeSpeechRecognition = () => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      speechRecognitionRef.current = new SpeechRecognition();
-      speechRecognitionRef.current.continuous = true;
-      speechRecognitionRef.current.interimResults = true;
-      
-      speechRecognitionRef.current.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
+  // Get interview questions based on interview type
+  const questions = INTERVIEW_QUESTIONS[config.type.toLowerCase()] || INTERVIEW_QUESTIONS.behavioral;
+  
+  // Initial setup
+  useEffect(() => {
+    const initializeMedia = async () => {
+      try {
+        await requestMediaPermissions();
         
-        setUserResponse(transcript);
-        
-        // Real-time analysis of response
-        if (transcript.length > 20 && !isAnalyzing) {
-          performRealTimeAnalysis(transcript);
-        }
-      };
-      
-      speechRecognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        toast({
-          title: "Speech Recognition Error",
-          description: `Error: ${event.error}. Try again or check your microphone.`,
-          variant: "destructive",
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: videoEnabled,
+          audio: true 
         });
-      };
-    } else {
-      toast({
-        title: "Speech Recognition Not Supported",
-        description: "Your browser doesn't support speech recognition.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Process resume text
-  const processResume = async (file: File) => {
-    try {
-      const text = await file.text();
-      setResumeText(text);
-      // Generate questions based on resume
-      const questions = generateQuestionsFromResume(text, config.jobRole);
-      setQuestionList(questions);
-      return text;
-    } catch (error) {
-      console.error("Error processing resume:", error);
-      toast({
-        title: "Resume Processing Error",
-        description: "Could not process the resume.",
-        variant: "destructive",
-      });
-      return "";
-    }
-  };
-  
-  // Perform real-time analysis of user's speech and video
-  const performRealTimeAnalysis = (transcript: string) => {
-    setIsAnalyzing(true);
-    
-    // In a real app, this would call an AI service
-    // Here we'll generate mock analysis
-    
-    // Audio analysis
-    const mockAudioAnalysis = {
-      clarity: Math.floor(Math.random() * 30) + 70, // 70-100
-      pace: Math.floor(Math.random() * 40) + 60,    // 60-100
-      tone: Math.floor(Math.random() * 25) + 75,    // 75-100
-      confidence: Math.floor(Math.random() * 35) + 65 // 65-100
-    };
-    
-    // Facial analysis
-    const mockFacialAnalysis = {
-      smile: Math.floor(Math.random() * 40) + 60,     // 60-100
-      eyeContact: Math.floor(Math.random() * 30) + 70, // 70-100
-      neutrality: Math.floor(Math.random() * 25) + 75, // 75-100
-      engagement: Math.floor(Math.random() * 35) + 65  // 65-100
-    };
-    
-    // Body language analysis
-    const mockBodyLanguageAnalysis = {
-      posture: Math.floor(Math.random() * 30) + 70,   // 70-100
-      gestures: Math.floor(Math.random() * 35) + 65,  // 65-100
-      movement: Math.floor(Math.random() * 25) + 75,  // 75-100
-      presence: Math.floor(Math.random() * 40) + 60   // 60-100
-    };
-    
-    // Update state with analysis results
-    setAudioAnalysis(mockAudioAnalysis);
-    setFacialAnalysis(mockFacialAnalysis);
-    setBodyLanguageAnalysis(mockBodyLanguageAnalysis);
-    
-    // Generate feedback based on analysis
-    let feedback = "";
-    
-    if (mockAudioAnalysis.pace < 70) {
-      feedback += "Try speaking a bit slower to improve clarity. ";
-    }
-    
-    if (mockFacialAnalysis.eyeContact < 75) {
-      feedback += "Maintain more eye contact with the camera. ";
-    }
-    
-    if (mockBodyLanguageAnalysis.posture < 75) {
-      feedback += "Improve your posture to appear more confident. ";
-    }
-    
-    if (feedback === "") {
-      feedback = "You're doing well! Keep it up.";
-    }
-    
-    setCurrentFeedback(feedback);
-    setIsAnalyzing(false);
-  };
-  
-  // Start the interview
-  const startInterview = async () => {
-    try {
-      await requestMediaPermissions();
-      
-      if (!stream) {
-        throw new Error("Failed to get media stream");
-      }
-      
-      // Set video source
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      // Initialize speech recognition
-      initializeSpeechRecognition();
-      
-      // Start recording
-      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
-      const mediaRecorder = new MediaRecorder(stream, options);
-      
-      mediaRecorderRef.current = mediaRecorder;
-      const chunks: Blob[] = [];
-      
-      mediaRecorder.ondataavailable = (e: BlobEvent) => {
-        if (e.data && e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setVideoURL(url);
-        setRecordedChunks(chunks);
         
-        if (recordedVideoRef.current) {
-          recordedVideoRef.current.src = url;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
         }
-      };
-      
-      // Start the timer
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => {
-          if (prev >= maxTime) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            mediaRecorder.stop();
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      setInterviewStarted(true);
-      
-      // Start with first question using text-to-speech
-      if (questionList.length > 0) {
-        await askQuestion(0);
-      }
-      
-    } catch (error) {
-      console.error("Error starting interview:", error);
-      toast({
-        title: "Error Starting Interview",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Ask a question using text-to-speech
-  const askQuestion = async (index: number) => {
-    if (index < questionList.length) {
-      setCurrentQuestion(index);
-      
-      // Only use text-to-speech if we have API key
-      if (apiKey) {
+        
+        streamRef.current = stream;
+        
+        // Setup media recorder
+        const options = { mimeType: 'video/webm' };
         try {
-          await speak(questionList[index], currentVoice, apiKey);
-          // After speaking, start listening
-          setTimeout(() => {
-            startListeningToUser();
-          }, 1000);
-        } catch (error) {
-          console.error("Error with text-to-speech:", error);
+          const recorder = new MediaRecorder(stream, options);
+          
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              recordedChunksRef.current.push(event.data);
+            }
+          };
+          
+          mediaRecorderRef.current = recorder;
+        } catch (e) {
+          console.error('MediaRecorder error:', e);
           toast({
-            title: "Text-to-Speech Error",
-            description: "Failed to speak the question.",
+            title: "Error",
+            description: "Could not initialize media recorder. Please try a different browser.",
             variant: "destructive",
           });
-          // If TTS fails, still listen to user
-          startListeningToUser();
         }
+        
+        setIsInitializing(false);
+        
+        // Start by asking the first question
+        setTimeout(() => {
+          const introMessage = `Hello${user ? ' ' + user.email : ''}, welcome to your ${config.type} interview for the ${config.jobRole} position. Let's start with the first question.`;
+          addMessage('interviewer', introMessage);
+          speakMessage(introMessage);
+          
+          setTimeout(() => {
+            addMessage('interviewer', questions[0]);
+            speakMessage(questions[0]);
+          }, 2000);
+        }, 1000);
+        
+        // Start recording
+        startRecording();
+        
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+        toast({
+          title: "Permission Error",
+          description: "Please allow access to your camera and microphone to start the interview.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    initializeMedia();
+    
+    // Clean up function
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+  
+  // Function to add message to chat
+  const addMessage = (type: 'interviewer' | 'user', message: string) => {
+    setChat(prevChat => [...prevChat, {type, message}]);
+  };
+  
+  // Function to speak message using ElevenLabs
+  const speakMessage = async (message: string) => {
+    if (hasElevenApiKey && elevenVoiceId) {
+      try {
+        await textToSpeech(message, elevenVoiceId, elevenApiKey || '');
+      } catch (error) {
+        console.error('Text to speech error:', error);
+      }
+    }
+  };
+  
+  // Start recording
+  const startRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'recording') {
+      // Clear previous recordings
+      recordedChunksRef.current = [];
+      
+      // Start media recorder
+      mediaRecorderRef.current.start(1000);
+      
+      // Start timer
+      startTimer();
+      
+      setIsRecording(true);
+    }
+  };
+  
+  // Start timer
+  const startTimer = () => {
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    const startTime = Date.now() - elapsedTime * 1000;
+    
+    timerRef.current = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsedSeconds);
+      
+      // Check if we've reached the time limit
+      const timeLimit = config.duration * 60; // convert minutes to seconds
+      if (elapsedSeconds >= timeLimit) {
+        endInterview();
+      }
+    }, 1000);
+  };
+  
+  // Toggle video
+  const toggleVideo = async () => {
+    if (!streamRef.current) return;
+    
+    const newState = !videoEnabled;
+    setVideoEnabled(newState);
+    
+    // Stop all video tracks
+    streamRef.current.getVideoTracks().forEach(track => {
+      track.enabled = newState;
+    });
+  };
+  
+  // Toggle audio
+  const toggleAudio = () => {
+    if (!streamRef.current) return;
+    
+    const newState = !audioEnabled;
+    setAudioEnabled(newState);
+    
+    // Stop all audio tracks
+    streamRef.current.getAudioTracks().forEach(track => {
+      track.enabled = newState;
+    });
+  };
+  
+  // Handle user response submission
+  const handleSubmit = () => {
+    if (userResponse.trim() === '') return;
+    
+    addMessage('user', userResponse);
+    
+    // Clear the text area
+    setUserResponse('');
+    
+    // Process the next question after a brief pause
+    setIsThinking(true);
+    
+    setTimeout(() => {
+      const nextIndex = currentQuestionIndex + 1;
+      
+      if (nextIndex < questions.length) {
+        // Ask the next question
+        setCurrentQuestionIndex(nextIndex);
+        const nextQuestion = questions[nextIndex];
+        addMessage('interviewer', nextQuestion);
+        speakMessage(nextQuestion);
       } else {
-        // If no API key, just proceed with listening
-        startListeningToUser();
-      }
-    } else {
-      // End of interview
-      endInterview();
-    }
-  };
-  
-  // Start listening to user's response
-  const startListeningToUser = () => {
-    if (speechRecognitionRef.current) {
-      setListeningToUser(true);
-      setUserResponse("");
-      speechRecognitionRef.current.start();
-      
-      // Set a timeout to stop listening and move to next question
-      setTimeout(() => {
-        stopListeningToUser();
-      }, 60000); // Listen for 1 minute max
-    }
-  };
-  
-  // Stop listening and proceed to next question
-  const stopListeningToUser = async () => {
-    if (speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
-      setListeningToUser(false);
-      
-      // Analyze final response
-      performRealTimeAnalysis(userResponse);
-      
-      // Provide feedback via speech
-      if (apiKey && currentFeedback) {
-        try {
-          await speak(currentFeedback, currentVoice, apiKey);
-        } catch (error) {
-          console.error("Error with feedback speech:", error);
-        }
+        // End the interview if we've asked all questions
+        const finalMessage = "Thank you for your responses. That concludes our interview.";
+        addMessage('interviewer', finalMessage);
+        speakMessage(finalMessage);
+        
+        // End interview after 2 seconds
+        setTimeout(() => endInterview(), 2000);
       }
       
-      // Wait a moment before next question
-      setTimeout(() => {
-        askQuestion(currentQuestion + 1);
-      }, 3000);
-    }
+      setIsThinking(false);
+    }, 1500);
   };
   
   // Fix the problematic code in the endInterview function
@@ -352,6 +285,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     // Stop recording
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
     
     // Stop timer
@@ -359,265 +293,259 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       clearInterval(timerRef.current);
     }
     
-    // Stop speech recognition
-    if (speechRecognitionRef.current) {
-      try {
-        speechRecognitionRef.current.stop();
-      } catch (e) {
-        console.log("Speech recognition already stopped");
-      }
+    // Stop all media tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
     }
     
-    // Stop media stream
-    stopMediaStream();
+    // Create a blob from the recorded chunks
+    const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+    const recordingUrl = URL.createObjectURL(blob);
     
-    setIsRecording(false);
+    // Sample analysis data (in a real app, this would come from AI processing)
+    const audioAnalysis = {
+      pace: 85,
+      clarity: 78,
+      confidence: 82,
+      volume: 75,
+      filler_words: 68, 
+    };
     
-    // Generate final feedback data
+    const facialAnalysis = {
+      eye_contact: 72,
+      expressions: 80,
+      engagement: 85,
+    };
+    
+    const bodyLanguageAnalysis = {
+      posture: 70,
+      hand_gestures: 65,
+      overall_presence: 75,
+    };
+    
+    // Prepare feedback data
     const feedbackData = {
-      duration: `${Math.floor(recordingTime / 60)} minutes ${recordingTime % 60} seconds`,
-      videoURL: videoURL,
-      timestamp: new Date().toISOString(),
-      
+      recordingUrl,
+      interviewType: config.type,
+      jobRole: config.jobRole,
+      date: new Date().toISOString(),
+      duration: elapsedTime,
+      audioAnalysis,
+      facialAnalysis,
+      bodyLanguageAnalysis,
+      questions,
+      responses: chat,
       // Overall score - average of all metrics
       overallScore: Math.floor(
         (
-          Object.values(audioAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
-          (Object.keys(audioAnalysis).length || 1) +
-          Object.values(facialAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
-          (Object.keys(facialAnalysis).length || 1) +
-          Object.values(bodyLanguageAnalysis).reduce((a: number, b: number) => (a as number) + (b as number), 0) / 
-          (Object.keys(bodyLanguageAnalysis).length || 1)
+          (Object.values(audioAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+          (Object.keys(audioAnalysis).length || 1)) +
+          (Object.values(facialAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+          (Object.keys(facialAnalysis).length || 1)) +
+          (Object.values(bodyLanguageAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
+          (Object.keys(bodyLanguageAnalysis).length || 1))
         ) / 3
       ),
-      
-      // Detailed analysis
-      voiceAnalysis: audioAnalysis,
-      facialAnalysis: facialAnalysis,
-      bodyAnalysis: bodyLanguageAnalysis,
-      
-      // Transcript of the interview
-      transcript: userResponse,
-      
-      // Recommendations based on analysis
-      recommendations: [
-        "Practice speaking more clearly and confidently.",
-        "Work on maintaining consistent eye contact.",
-        "Be mindful of your posture during interviews.",
-        "Use hand gestures purposefully to emphasize key points.",
-        "Vary your tone to keep the interviewer engaged."
-      ]
     };
     
-    // Pass feedback data to parent component
+    // Call the onEnd callback with the feedback data
     onEnd(feedbackData);
   };
   
-  // Handle file upload (resume)
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      setUploadedResume(file);
-      await processResume(file);
-    }
+  // Format time (seconds) to MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
   };
   
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      
-      if (speechRecognitionRef.current) {
-        try {
-          speechRecognitionRef.current.stop();
-        } catch (e) {
-          console.log("Speech recognition already stopped");
-        }
-      }
-      
-      stopMediaStream();
-      stopSpeaking();
-      
-      if (videoURL) {
-        URL.revokeObjectURL(videoURL);
-      }
-    };
-  }, [stopMediaStream, stopSpeaking, videoURL]);
-  
   return (
-    <div className="container mx-auto px-4 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">
-          {config.jobRole} {config.type} Interview
-        </h1>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">{config.type}</Badge>
-          <Badge variant="outline">{config.difficulty} Difficulty</Badge>
-          <Badge variant="outline">{config.duration} min</Badge>
+    <div className="flex flex-col lg:flex-row gap-4 h-full">
+      {/* Left side - Video feed */}
+      <div className="lg:w-2/3 flex flex-col gap-4">
+        <Card className="shadow-md overflow-hidden">
+          <CardContent className="p-0 relative">
+            {isInitializing ? (
+              <div className="w-full aspect-video bg-muted flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                  <svg className="animate-spin h-10 w-10 text-interprepai-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="mt-4 text-center font-medium">Setting up your interview environment...</p>
+                  <p className="text-sm text-muted-foreground">Please allow camera and microphone access when prompted</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <video 
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full aspect-video ${videoEnabled ? 'opacity-100' : 'opacity-0 bg-gray-900'}`}
+                ></video>
+                
+                <div className="absolute top-4 left-4">
+                  <Badge variant="secondary" className="shadow">
+                    {isRecording ? (
+                      <>
+                        <span className="h-2 w-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>
+                        REC {formatTime(elapsedTime)}
+                      </>
+                    ) : 'Not Recording'}
+                  </Badge>
+                </div>
+                
+                {!videoEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex flex-col items-center">
+                      <VideoOff size={48} className="text-gray-400" />
+                      <p className="text-gray-400 mt-2">Video is turned off</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                  <Button size="icon" variant="secondary" onClick={toggleAudio}>
+                    {audioEnabled ? <Mic /> : <MicOff />}
+                  </Button>
+                  <Button size="icon" variant="secondary" onClick={toggleVideo}>
+                    {videoEnabled ? <Video /> : <VideoOff />}
+                  </Button>
+                  <Button size="icon" variant="secondary" onClick={() => setVoiceDialogOpen(true)}>
+                    <Volume2 />
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                Interview Progress
+              </p>
+              <Badge>
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Time Remaining: {formatTime((config.duration * 60) - elapsedTime)}
+            </p>
+          </div>
+          <Progress value={(currentQuestionIndex / questions.length) * 100} className="h-2" />
         </div>
       </div>
       
-      {/* Pre-interview setup */}
-      {!interviewStarted && (
-        <div className="grid gap-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold mb-2">Upload Your Resume</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload your resume so the AI interviewer can ask relevant questions.
-                </p>
-                <input
-                  type="file"
-                  accept=".txt,.pdf,.docx"
-                  onChange={handleFileUpload}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-interprepai-50 file:text-interprepai-700
-                    hover:file:bg-interprepai-100"
-                />
-              </div>
+      {/* Right side - Conversation */}
+      <div className="lg:w-1/3 flex flex-col h-full">
+        <Card className="shadow-md flex-1">
+          <CardContent className="p-4 flex flex-col h-full">
+            <Tabs defaultValue="conversation" className="flex-1 flex flex-col">
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="conversation">Conversation</TabsTrigger>
+                <TabsTrigger value="info">Interview Info</TabsTrigger>
+              </TabsList>
               
-              <Button 
-                onClick={startInterview} 
-                disabled={(!uploadedResume && questionList.length === 0) || !cameraReady || !microphoneReady}
-                className="w-full"
-              >
-                Start Interview
-              </Button>
-              
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${microphoneReady ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-sm">{microphoneReady ? 'Microphone ready' : 'Microphone not available'}</span>
+              <TabsContent value="conversation" className="flex-1 flex flex-col space-y-0 data-[state=active]:flex-1">
+                <div className="flex-1 overflow-y-auto py-2 space-y-4">
+                  {chat.map((message, index) => (
+                    <div key={index} className={`flex ${message.type === 'interviewer' ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`max-w-[80%] ${message.type === 'interviewer' ? 'bg-secondary' : 'bg-interprepai-600 text-white'} rounded-lg px-3 py-2`}>
+                        {message.type === 'interviewer' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback>AI</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-medium">AI Interviewer</span>
+                          </div>
+                        )}
+                        <p className="text-sm">{message.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isThinking && (
+                    <div className="flex justify-start">
+                      <div className="bg-secondary rounded-lg px-3 py-2 max-w-[80%]">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback>AI</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium">AI Interviewer</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${cameraReady ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-sm">{cameraReady ? 'Camera ready' : 'Camera not available'}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      
-      {/* Active interview */}
-      {interviewStarted && (
-        <div className="grid gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <div className="relative">
-                <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    className="w-full h-full object-cover"
+
+                <div className="flex gap-2 pt-4">
+                  <Textarea 
+                    placeholder="Type your response..." 
+                    value={userResponse}
+                    onChange={(e) => setUserResponse(e.target.value)}
+                    className="min-h-[100px] resize-none flex-1"
                   />
+                  <Button 
+                    onClick={handleSubmit} 
+                    size="icon" 
+                    className="self-end"
+                  >
+                    <Send />
+                  </Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="info" className="space-y-4 data-[state=active]:flex-1">
+                <div>
+                  <h3 className="font-semibold mb-1">Interview Type</h3>
+                  <Badge variant="outline">{config.type}</Badge>
                 </div>
                 
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
-                  <div className="flex items-center gap-2 bg-black/60 rounded-md px-3 py-1 text-white">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="bg-black/60 rounded-full p-2">
-                      {microphoneReady ? (
-                        <Mic className="h-5 w-5 text-white" />
-                      ) : (
-                        <MicOff className="h-5 w-5 text-red-500" />
-                      )}
-                    </div>
-                    <div className="bg-black/60 rounded-full p-2">
-                      {cameraReady ? (
-                        <Camera className="h-5 w-5 text-white" />
-                      ) : (
-                        <CameraOff className="h-5 w-5 text-red-500" />
-                      )}
-                    </div>
-                  </div>
+                <div>
+                  <h3 className="font-semibold mb-1">Position</h3>
+                  <p className="text-sm">{config.jobRole}</p>
                 </div>
-              </div>
-              
-              <div className="mt-4">
-                <div className="mb-2 flex justify-between items-center">
-                  <p className="text-sm font-medium text-gray-700">Interview Progress</p>
-                  <span className="text-sm text-gray-500">
-                    Question {currentQuestion + 1} of {questionList.length}
-                  </span>
+                
+                <div>
+                  <h3 className="font-semibold mb-1">Difficulty</h3>
+                  <Badge variant="outline">{config.difficulty}</Badge>
                 </div>
-                <Progress value={(currentQuestion / Math.max(1, questionList.length - 1)) * 100} />
-              </div>
-            </div>
-            
-            <div>
-              <Card className="h-full">
-                <CardContent className="pt-6 flex flex-col h-full">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold mb-1">Current Question</h3>
-                    <p className="text-sm">{questionList[currentQuestion] || "Loading question..."}</p>
-                  </div>
-                  
-                  <div className="flex-grow">
-                    <h3 className="text-lg font-semibold mb-1">Real-time Analysis</h3>
-                    
-                    {/* Audio Analysis */}
-                    <div className="mb-2">
-                      <p className="text-sm font-medium">Voice Tone</p>
-                      <Progress value={audioAnalysis.tone || 0} className="h-1.5 mb-1" />
-                    </div>
-                    
-                    {/* Facial Analysis */}
-                    <div className="mb-2">
-                      <p className="text-sm font-medium">Eye Contact</p>
-                      <Progress value={facialAnalysis.eyeContact || 0} className="h-1.5 mb-1" />
-                    </div>
-                    
-                    {/* Body Language */}
-                    <div className="mb-2">
-                      <p className="text-sm font-medium">Posture</p>
-                      <Progress value={bodyLanguageAnalysis.posture || 0} className="h-1.5 mb-1" />
-                    </div>
-                    
-                    <div className="mt-4">
-                      <h3 className="text-sm font-semibold mb-1">Feedback</h3>
-                      <p className="text-xs text-gray-600">{currentFeedback || "Analyzing your performance..."}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-auto pt-4">
-                    <div className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={endInterview}
-                        className="w-full"
-                      >
-                        End Interview
-                      </Button>
-                    </div>
-                    
-                    {listeningToUser && (
-                      <p className="text-center text-xs mt-2 text-green-600">Listening to your answer...</p>
-                    )}
-                    {isSpeaking && (
-                      <p className="text-center text-xs mt-2 text-blue-600">AI interviewer is speaking...</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+                
+                <div>
+                  <h3 className="font-semibold mb-1">Duration</h3>
+                  <p className="text-sm">{config.duration} minutes</p>
+                </div>
+                
+                <Alert>
+                  <AlertDescription>
+                    This interview session is being recorded for feedback purposes. You can end the interview at any time by clicking the "End Interview" button.
+                  </AlertDescription>
+                </Alert>
+                
+                <div>
+                  <Button variant="destructive" className="w-full" onClick={endInterview}>
+                    <X className="mr-2 h-4 w-4" />
+                    End Interview
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <VoiceConfigDialog
+        open={voiceDialogOpen}
+        onOpenChange={setVoiceDialogOpen}
+      />
     </div>
   );
 };

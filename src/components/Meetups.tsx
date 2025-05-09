@@ -13,7 +13,6 @@ import MeetupCard from "./meetups/MeetupCard";
 import CreateMeetupDialog from "./meetups/CreateMeetupDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 
 // Meetups component
 const Meetups = () => {
@@ -47,11 +46,7 @@ const Meetups = () => {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
-      <Header>
-        <div className="lg:hidden">
-          <SidebarTrigger />
-        </div>
-      </Header>
+      <Header />
       
       <div className="container mx-auto px-4 pt-24 pb-12 flex-grow">
         <div className="mb-8">

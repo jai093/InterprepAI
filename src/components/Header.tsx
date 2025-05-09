@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -13,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useProfile } from "@/hooks/useProfile";
-import { User, LogIn, Settings } from "lucide-react";
+import { User, LogIn, Settings, Users } from "lucide-react";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,6 +47,16 @@ const Header = () => {
           <Link to="/" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
             Home
           </Link>
+          {user && (
+            <>
+              <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                Dashboard
+              </Link>
+              <Link to="/meetups" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                Meetups
+              </Link>
+            </>
+          )}
           <Button 
             onClick={handlePracticeClick}
             className="bg-interprepai-700 hover:bg-interprepai-800 transition-colors"
@@ -71,6 +82,10 @@ const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   <User className="mr-2 h-4 w-4" />
                   Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/meetups")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Meetups
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   <Settings className="mr-2 h-4 w-4" />
@@ -115,6 +130,9 @@ const Header = () => {
               <>
                 <Link to="/dashboard" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
                   Dashboard
+                </Link>
+                <Link to="/meetups" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
+                  Meetups
                 </Link>
                 <Link to="/simulation" className="font-medium text-gray-600 hover:text-interprepai-700 transition-colors">
                   Practice
