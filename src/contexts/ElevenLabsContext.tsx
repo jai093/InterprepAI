@@ -10,9 +10,12 @@ interface ElevenLabsContextType {
   setCurrentVoice: (voiceId: string) => void;
   isConfigured: boolean;
   clearApiKey: () => void;
+  hasElevenApiKey: boolean;
+  elevenVoiceId: string;
+  elevenApiKey: string | null;
 }
 
-const ElevenLabsContext = createContext<ElevenLabsContextType | undefined>(undefined);
+export const ElevenLabsContext = createContext<ElevenLabsContextType | undefined>(undefined);
 
 export const useElevenLabs = (): ElevenLabsContextType => {
   const context = useContext(ElevenLabsContext);
@@ -80,7 +83,10 @@ export const ElevenLabsProvider: React.FC<ElevenLabsProviderProps> = ({ children
         currentVoice, 
         setCurrentVoice: handleSetCurrentVoice,
         isConfigured: !!apiKey,
-        clearApiKey
+        clearApiKey,
+        hasElevenApiKey: !!apiKey,
+        elevenVoiceId: currentVoice,
+        elevenApiKey: apiKey
       }}
     >
       {children}

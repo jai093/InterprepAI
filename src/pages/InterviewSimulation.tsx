@@ -66,7 +66,6 @@ const InterviewSimulation = () => {
     
     try {
       // Save interview feedback to database
-      // Updated to use the correct table name and field names from the database schema
       const { error } = await supabase
         .from('interview_sessions')
         .insert({
@@ -143,10 +142,7 @@ const InterviewSimulation = () => {
               ...feedbackData,
               date: new Date(feedbackData.date).toLocaleDateString(),
               duration: `${Math.floor(feedbackData.duration / 60)}:${(feedbackData.duration % 60).toString().padStart(2, '0')}`,
-            }} 
-            onSave={handleSaveFeedback}
-            onRestart={handleRestart}
-            isSaving={isSaving}
+            }}
           />
         )}
       </div>

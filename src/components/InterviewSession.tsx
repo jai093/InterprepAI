@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import VoiceConfigDialog from "./VoiceConfigDialog";
-import { useEleven } from "@/contexts/ElevenLabsContext"; 
+import { useEleven } from "@/hooks/useElevenLabs"; 
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { textToSpeech } from "@/utils/textToSpeech";
@@ -56,7 +57,7 @@ const INTERVIEW_QUESTIONS: Record<string, string[]> = {
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isMobile } = useIsMobile();
+  const isMobile = useIsMobile();
   const { hasElevenApiKey, elevenVoiceId, elevenApiKey } = useEleven();
   const { requestMediaPermissions } = useMediaDevices();
 
@@ -322,16 +323,19 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       overall_presence: 75,
     };
     
-    // Fix the arithmetic operations by ensuring values are numbers
     // Calculate overall score as the average of all metrics
-    const audioAnalysisAvg = Object.values(audioAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-                            Object.keys(audioAnalysis).length;
+    const audioAnalysisValues = Object.values(audioAnalysis);
+    const facialAnalysisValues = Object.values(facialAnalysis);
+    const bodyLanguageValues = Object.values(bodyLanguageAnalysis);
+    
+    const audioAnalysisAvg = audioAnalysisValues.reduce((a, b) => Number(a) + Number(b), 0) / 
+                            audioAnalysisValues.length;
                             
-    const facialAnalysisAvg = Object.values(facialAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-                             Object.keys(facialAnalysis).length;
+    const facialAnalysisAvg = facialAnalysisValues.reduce((a, b) => Number(a) + Number(b), 0) / 
+                             facialAnalysisValues.length;
                              
-    const bodyLanguageAvg = Object.values(bodyLanguageAnalysis).reduce((a, b) => Number(a) + Number(b), 0) / 
-                           Object.keys(bodyLanguageAnalysis).length;
+    const bodyLanguageAvg = bodyLanguageValues.reduce((a, b) => Number(a) + Number(b), 0) / 
+                           bodyLanguageValues.length;
     
     // Prepare feedback data
     const feedbackData = {

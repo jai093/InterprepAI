@@ -10,7 +10,14 @@ import TranscriptTab from "./feedback/TranscriptTab";
 import ReportFooter from "./feedback/ReportFooter";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
+export interface FeedbackReportProps {
+  interviewData: any;
+  onSave?: () => Promise<void>;
+  onRestart?: () => void;
+  isSaving?: boolean;
+}
+
+const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: FeedbackReportProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -27,6 +34,8 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
         } else if (interviewData.videoBlob) {
           const url = URL.createObjectURL(interviewData.videoBlob);
           setVideoUrl(url);
+        } else if (interviewData.recordingUrl) {
+          setVideoUrl(interviewData.recordingUrl);
         }
         
         if (interviewData.audioURL) {
@@ -48,7 +57,7 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
     
     // Clean up URL objects on unmount
     return () => {
-      if (videoUrl && !interviewData.videoURL) {
+      if (videoUrl && !interviewData.videoURL && !interviewData.recordingUrl) {
         URL.revokeObjectURL(videoUrl);
       }
       if (audioUrl && !interviewData.audioURL) {
@@ -142,6 +151,9 @@ const FeedbackReport = ({ interviewData }: FeedbackReportProps) => {
           safeInterviewData={safeInterviewData} 
           videoUrl={videoUrl} 
           audioUrl={audioUrl} 
+          onSave={onSave}
+          onRestart={onRestart}
+          isSaving={isSaving}
         />
       </Card>
     </div>
