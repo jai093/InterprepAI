@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,16 +49,21 @@ export function useMeetups() {
         // Process the data to match our Meetup interface
         if (data) {
           const processedData: Meetup[] = data.map(meetup => {
-            // Parse coordinates if they exist as string
+            // Parse coordinates if they exist as string or as json object
             let coordinates = null;
-            if (typeof meetup.coordinates === 'string') {
-              try {
-                coordinates = JSON.parse(meetup.coordinates);
-              } catch (e) {
-                console.error('Failed to parse coordinates:', meetup.coordinates);
+            if (meetup.coordinates) {
+              // If coordinates is already an object, use it directly
+              if (typeof meetup.coordinates === 'object') {
+                coordinates = meetup.coordinates;
+              } 
+              // Otherwise, try to parse it as JSON string
+              else if (typeof meetup.coordinates === 'string') {
+                try {
+                  coordinates = JSON.parse(meetup.coordinates);
+                } catch (e) {
+                  console.error('Failed to parse coordinates:', meetup.coordinates);
+                }
               }
-            } else if (meetup.coordinates && typeof meetup.coordinates === 'object') {
-              coordinates = meetup.coordinates;
             }
             
             return {
@@ -190,7 +194,7 @@ export function useMeetups() {
       const meetupData = {
         ...newMeetup,
         user_id: user.id,
-        coordinates: newMeetup.coordinates ? JSON.stringify(newMeetup.coordinates) : null
+        coordinates: newMeetup.coordinates ? newMeetup.coordinates : null
       };
       
       const { error } = await supabase

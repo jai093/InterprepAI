@@ -68,6 +68,7 @@ export type Database = {
           attendees: number
           avatar: string | null
           capacity: number
+          coordinates: Json | null
           created_at: string
           date: string
           description: string
@@ -84,6 +85,7 @@ export type Database = {
           attendees?: number
           avatar?: string | null
           capacity: number
+          coordinates?: Json | null
           created_at?: string
           date: string
           description: string
@@ -100,6 +102,7 @@ export type Database = {
           attendees?: number
           avatar?: string | null
           capacity?: number
+          coordinates?: Json | null
           created_at?: string
           date?: string
           description?: string
