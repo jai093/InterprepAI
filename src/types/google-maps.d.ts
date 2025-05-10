@@ -115,6 +115,7 @@ declare namespace google {
         constructor(inputField: HTMLInputElement, opts?: SearchBoxOptions);
         setBounds(bounds: LatLngBounds): void;
         getPlaces(): Place[];
+        addListener(event: string, handler: (...args: any[]) => void): MapsEventListener;
       }
 
       interface SearchBoxOptions {
