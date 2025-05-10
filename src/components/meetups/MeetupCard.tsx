@@ -3,8 +3,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CalendarIcon, Clock, MapPin, Users, Share2 } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, Users, Share2, ExternalLink } from "lucide-react";
 import { Meetup, useMeetups } from "@/hooks/useMeetups";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MeetupCardProps {
   meetup: Meetup;
@@ -26,6 +27,13 @@ const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
         alert("Link copied to clipboard!");
       });
     }
+  };
+
+  const getMapUrl = (location: string) => {
+    if (meetup.coordinates) {
+      return `https://www.google.com/maps/search/?api=1&query=${meetup.coordinates.lat},${meetup.coordinates.lng}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
   };
 
   return (
@@ -66,7 +74,24 @@ const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
           </div>
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-            <span>{meetup.location}</span>
+            <span className="truncate flex-1">{meetup.location}</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a 
+                    href={getMapUrl(meetup.location)} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="ml-1 text-blue-500 hover:text-blue-700"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View on Google Maps</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="flex items-center">
             <Users className="h-4 w-4 mr-2 text-gray-500" />

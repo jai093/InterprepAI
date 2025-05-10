@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { CalendarIcon, Clock, MapPin, Tag, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMeetups } from "@/hooks/useMeetups";
 import { useAuth } from "@/contexts/AuthContext";
+import GoogleMapsPicker from "./GoogleMapsPicker";
 
 interface CreateMeetupDialogProps {
   open: boolean;
@@ -22,10 +24,12 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [capacity, setCapacity] = useState("50");
   const [tag, setTag] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const addTag = () => {
     if (tag && !tags.includes(tag)) {
@@ -36,6 +40,11 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleLocationSelect = (address: string, coords: { lat: number; lng: number }) => {
+    setLocation(address);
+    setLocationCoords(coords);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,14 +61,15 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
       title,
       description,
       host: user.user_metadata?.full_name || "Anonymous",
-      host_title: "InterviewPrep User", // Changed from hostTitle to host_title
+      host_title: "InterviewPrep User",
       avatar: null,
       date,
       time,
       location,
       attendees: 1,
       capacity: parseInt(capacity),
-      tags
+      tags,
+      coordinates: locationCoords ? { lat: locationCoords.lat, lng: locationCoords.lng } : null
     });
     
     if (success) {
@@ -76,6 +86,7 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
     setDate("");
     setTime("");
     setLocation("");
+    setLocationCoords(null);
     setCapacity("50");
     setTags([]);
     setTag("");
@@ -145,33 +156,28 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location" className="flex items-center">
-                <MapPin className="w-4 h-4 mr-2" /> 
-                Location
-              </Label>
-              <Input 
-                id="location" 
-                placeholder="e.g., Virtual or San Francisco, CA" 
-                value={location} 
-                onChange={(e) => setLocation(e.target.value)} 
-                required 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Capacity</Label>
-              <Input 
-                id="capacity" 
-                type="number" 
-                min="1" 
-                max="500" 
-                value={capacity} 
-                onChange={(e) => setCapacity(e.target.value)} 
-                required 
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="location" className="flex items-center">
+              <MapPin className="w-4 h-4 mr-2" /> 
+              Location
+            </Label>
+            <GoogleMapsPicker 
+              onLocationSelect={handleLocationSelect}
+              initialLocation={location}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="capacity">Capacity</Label>
+            <Input 
+              id="capacity" 
+              type="number" 
+              min="1" 
+              max="500" 
+              value={capacity} 
+              onChange={(e) => setCapacity(e.target.value)} 
+              required 
+            />
           </div>
           
           <div className="space-y-2">

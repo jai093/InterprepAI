@@ -9,11 +9,15 @@ export interface Meetup {
   id: string;
   title: string;
   host: string;
-  host_title: string; // Changed from hostTitle to host_title to match DB schema
+  host_title: string;
   avatar: string | null;
   date: string;
   time: string;
   location: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  } | null;
   attendees: number;
   capacity: number;
   description: string;
@@ -43,7 +47,14 @@ export function useMeetups() {
           throw error;
         }
         
-        setMeetups(data || []);
+        // Process the data to match our Meetup interface
+        const processedData = data.map(meetup => ({
+          ...meetup,
+          // Parse coordinates if they exist
+          coordinates: meetup.coordinates ? JSON.parse(meetup.coordinates) : null
+        }));
+        
+        setMeetups(processedData || []);
         setIsLoading(false);
       } catch (err: any) {
         console.error("Error fetching meetups:", err);
@@ -84,6 +95,7 @@ export function useMeetups() {
         meetup.title.toLowerCase().includes(query) ||
         meetup.description.toLowerCase().includes(query) ||
         meetup.host.toLowerCase().includes(query) ||
+        meetup.location.toLowerCase().includes(query) ||
         meetup.tags.some((tag) => tag.toLowerCase().includes(query))
     );
   }, [meetups]);
@@ -155,14 +167,22 @@ export function useMeetups() {
     setIsLoading(true);
     
     try {
+      // Process coordinates for storage
       const meetupWithUserId = {
         ...newMeetup,
-        user_id: user.id
+        user_id: user.id,
+        coordinates: newMeetup.coordinates ? JSON.stringify(newMeetup.coordinates) : null
       };
+      
+      // Remove the coordinates from the object to be submitted
+      const { coordinates, ...meetupToSubmit } = meetupWithUserId;
       
       const { error } = await supabase
         .from('meetups')
-        .insert([meetupWithUserId]);
+        .insert([{
+          ...meetupToSubmit,
+          coordinates: newMeetup.coordinates ? JSON.stringify(newMeetup.coordinates) : null
+        }]);
       
       if (error) throw error;
       

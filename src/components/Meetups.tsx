@@ -33,6 +33,37 @@ const Meetups = () => {
   const userMeetups = meetups.filter(meetup => 
     meetup.user_id === user?.id
   );
+
+  // Get top hosts (based on number of meetups created)
+  const getTopHosts = () => {
+    const hostCounts = meetups.reduce((acc, meetup) => {
+      acc[meetup.host] = (acc[meetup.host] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(hostCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 1)
+      .map(([host]) => {
+        const hostMeetup = meetups.find(m => m.host === host);
+        return {
+          name: host,
+          title: hostMeetup?.host_title || "",
+          avatar: hostMeetup?.avatar || "",
+          meetupCount: hostCounts[host]
+        };
+      })[0];
+  };
+
+  // Get featured meetups
+  const getFeaturedMeetups = () => {
+    return meetups
+      .sort((a, b) => b.attendees - a.attendees)
+      .slice(0, 3);
+  };
+
+  const featuredHost = getTopHosts();
+  const featuredMeetups = getFeaturedMeetups();
   
   // Scroll to selected meetup if any
   useEffect(() => {
@@ -117,7 +148,7 @@ const Meetups = () => {
                           key={meetup.id}
                           className={selectedMeetupId === meetup.id.toString() ? 'ring-2 ring-interprepai-500 rounded-lg' : ''}
                         >
-                          <MeetupCard meetup={meetup} />
+                          <MeetupCard meetup={meetup} isOwnedByUser={meetup.user_id === user?.id} />
                         </div>
                       ))
                     ) : (
@@ -171,24 +202,35 @@ const Meetups = () => {
 
           {/* Sidebar */}
           <div className="w-full md:w-1/4 space-y-6">
-            {/* Host spotlight */}
+            {/* Host spotlight - now dynamic based on database */}
             <Card>
               <CardHeader>
                 <CardTitle>Featured Host</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center text-center">
-                <Avatar className="h-16 w-16 mb-3">
-                  <AvatarImage src="" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <h3 className="font-semibold">John Doe</h3>
-                <p className="text-sm text-gray-500">Technical Recruiting Lead at BigTech</p>
-                <p className="text-sm mt-3 text-gray-600">
-                  15 years experience in technical recruiting with expertise in software engineering interviews.
-                </p>
-                <Button variant="outline" size="sm" className="mt-4">
-                  View Profile
-                </Button>
+                {isLoading || !featuredHost ? (
+                  <>
+                    <Skeleton className="h-16 w-16 rounded-full mb-3" />
+                    <Skeleton className="h-5 w-24 mb-1" />
+                    <Skeleton className="h-4 w-40 mb-3" />
+                    <Skeleton className="h-16 w-full" />
+                  </>
+                ) : (
+                  <>
+                    <Avatar className="h-16 w-16 mb-3">
+                      <AvatarImage src={featuredHost.avatar || ""} />
+                      <AvatarFallback>{featuredHost.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold">{featuredHost.name}</h3>
+                    <p className="text-sm text-gray-500">{featuredHost.title}</p>
+                    <p className="text-sm mt-3 text-gray-600">
+                      Host of {featuredHost.meetupCount} {featuredHost.meetupCount === 1 ? 'meetup' : 'meetups'}
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-4">
+                      View Meetups
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -218,24 +260,28 @@ const Meetups = () => {
               </CardContent>
             </Card>
 
-            {/* Upcoming featured events */}
+            {/* Featured events - now dynamic based on database */}
             <Card>
               <CardHeader>
                 <CardTitle>Featured Events</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="border-b border-gray-100 pb-2">
-                  <p className="font-medium">Resume Workshop</p>
-                  <p className="text-sm text-gray-500 mt-1">May 25, 2025 • Virtual</p>
-                </div>
-                <div className="border-b border-gray-100 pb-2">
-                  <p className="font-medium">LinkedIn Profile Building</p>
-                  <p className="text-sm text-gray-500 mt-1">May 30, 2025 • Virtual</p>
-                </div>
-                <div>
-                  <p className="font-medium">FAANG Interview Prep</p>
-                  <p className="text-sm text-gray-500 mt-1">June 5, 2025 • San Francisco</p>
-                </div>
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-14" />
+                    <Skeleton className="h-14" />
+                    <Skeleton className="h-14" />
+                  </>
+                ) : featuredMeetups.length > 0 ? (
+                  featuredMeetups.map((meetup, index) => (
+                    <div key={meetup.id} className={index < featuredMeetups.length - 1 ? "border-b border-gray-100 pb-2" : ""}>
+                      <p className="font-medium">{meetup.title}</p>
+                      <p className="text-sm text-gray-500 mt-1">{meetup.date} • {meetup.location}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No featured events available.</p>
+                )}
               </CardContent>
             </Card>
           </div>
