@@ -40,7 +40,7 @@ const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
                 <AvatarFallback>{meetup.host.charAt(0)}</AvatarFallback>
               </Avatar>
               <span className="text-sm text-gray-500">
-                Hosted by {meetup.host}, {meetup.hostTitle}
+                Hosted by {meetup.host}, {meetup.host_title}
               </span>
             </div>
           </div>

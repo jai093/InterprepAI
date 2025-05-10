@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,7 @@ const CreateMeetupDialog = ({ open, onOpenChange }: CreateMeetupDialogProps) => 
       title,
       description,
       host: user.user_metadata?.full_name || "Anonymous",
-      hostTitle: "InterviewPrep User",
+      host_title: "InterviewPrep User", // Changed from hostTitle to host_title
       avatar: null,
       date,
       time,

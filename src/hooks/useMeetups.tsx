@@ -9,7 +9,7 @@ export interface Meetup {
   id: string;
   title: string;
   host: string;
-  hostTitle: string;
+  host_title: string; // Changed from hostTitle to host_title to match DB schema
   avatar: string | null;
   date: string;
   time: string;
