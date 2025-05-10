@@ -8,6 +8,8 @@ interface GoogleMapsPickerProps {
   initialLocation?: string;
 }
 
+const GOOGLE_MAPS_API_KEY = "AIzaSyAzz2KFrrERsy_7Mdqi7Qy5cOyhvcmXcws";
+
 const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPickerProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -22,7 +24,7 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
   useEffect(() => {
     if (!window.google) {
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
       script.onload = () => setMapLoaded(true);
@@ -38,7 +40,7 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
 
   // Initialize map when shown
   useEffect(() => {
-    if (mapLoaded && showMap && mapRef.current) {
+    if (mapLoaded && showMap && mapRef.current && window.google) {
       const defaultLocation = { lat: 37.7749, lng: -122.4194 }; // San Francisco
       
       const mapOptions = {
@@ -65,7 +67,9 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
       const searchBox = new google.maps.places.SearchBox(input);
       
       map.addListener("bounds_changed", () => {
-        searchBox.setBounds(map.getBounds() as google.maps.LatLngBounds);
+        if (map.getBounds()) {
+          searchBox.setBounds(map.getBounds() as google.maps.LatLngBounds);
+        }
       });
       
       // Listen for search results
@@ -84,7 +88,7 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
         marker.setPosition(place.geometry.location);
         
         // Update selected location
-        const location = place.formatted_address || place.name;
+        const location = place.formatted_address || place.name || "";
         const coords = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng()

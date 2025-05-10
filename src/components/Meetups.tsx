@@ -13,6 +13,7 @@ import MeetupCard from "./meetups/MeetupCard";
 import CreateMeetupDialog from "./meetups/CreateMeetupDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
+import { MeetupSidebarCard } from "./meetups/MeetupSidebarCard";
 
 // Meetups component
 const Meetups = () => {
@@ -46,13 +47,13 @@ const Meetups = () => {
       .slice(0, 1)
       .map(([host]) => {
         const hostMeetup = meetups.find(m => m.host === host);
-        return {
+        return hostMeetup ? {
           name: host,
-          title: hostMeetup?.host_title || "",
-          avatar: hostMeetup?.avatar || "",
+          title: hostMeetup.host_title || "",
+          avatar: hostMeetup.avatar || "",
           meetupCount: hostCounts[host]
-        };
-      })[0];
+        } : null;
+      }).filter(Boolean)[0];
   };
 
   // Get featured meetups
@@ -202,7 +203,7 @@ const Meetups = () => {
 
           {/* Sidebar */}
           <div className="w-full md:w-1/4 space-y-6">
-            {/* Host spotlight - now dynamic based on database */}
+            {/* Host spotlight - dynamic based on database */}
             <Card>
               <CardHeader>
                 <CardTitle>Featured Host</CardTitle>
@@ -272,13 +273,12 @@ const Meetups = () => {
                     <Skeleton className="h-14" />
                     <Skeleton className="h-14" />
                   </>
-                ) : featuredMeetups.length > 0 ? (
-                  featuredMeetups.map((meetup, index) => (
-                    <div key={meetup.id} className={index < featuredMeetups.length - 1 ? "border-b border-gray-100 pb-2" : ""}>
-                      <p className="font-medium">{meetup.title}</p>
-                      <p className="text-sm text-gray-500 mt-1">{meetup.date} • {meetup.location}</p>
-                    </div>
-                  ))
+                ) : featuredMeetups && featuredMeetups.length > 0 ? (
+                  <div className="space-y-2">
+                    {featuredMeetups.map((meetup) => (
+                      <MeetupSidebarCard key={meetup.id} meetup={meetup} />
+                    ))}
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">No featured events available.</p>
                 )}
