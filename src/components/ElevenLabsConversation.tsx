@@ -48,7 +48,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             console.log('Message received:', message);
             if (message.type === 'agent_response') {
               setIsSpeaking(true);
-              setTimeout(() => setIsSpeaking(false), 3000); // Simulate speaking duration
+              setTimeout(() => setIsSpeaking(false), 3000);
             }
           },
           onError: (error: any) => {
@@ -74,7 +74,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
-      return "No resume available for analysis.";
+      return "No resume available for analysis. Please ask general interview questions suitable for a professional candidate.";
     }
     
     // Create resume context based on profile data
@@ -85,7 +85,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       fullName: profile.full_name || "Candidate"
     };
     
-    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please ask personalized interview questions based on this background.`;
+    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please ask personalized interview questions based on this background and skills. Focus on their technical abilities and experience related to their listed skills.`;
   };
 
   const startTimer = () => {
@@ -121,9 +121,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           overrides: {
             agent: {
               prompt: {
-                prompt: `You are an AI interviewer conducting a professional interview. ${resumeAnalysis} Ask relevant questions based on the candidate's background. Keep responses conversational and engaging.`
+                prompt: `You are an AI interviewer conducting a professional job interview. ${resumeAnalysis} Conduct a comprehensive interview by asking relevant questions based on the candidate's background. Keep responses conversational, engaging, and professional. Ask follow-up questions to dive deeper into their experience and skills.`
               },
-              firstMessage: `Hello! I'm your AI interviewer today. I've reviewed your background and I'm excited to learn more about your experience. Let's begin with a simple question: Could you tell me a bit about yourself and what interests you most about this field?`
+              firstMessage: `Hello! I'm your AI interviewer today. ${profile?.resume_url ? "I've reviewed your background and I'm excited to learn more about your experience." : "I'm excited to learn about your experience and qualifications."} Let's begin with a simple question: Could you tell me a bit about yourself and what interests you most about this field?`
             }
           }
         });
@@ -133,7 +133,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         
         toast({
           title: "Interview Started",
-          description: "Your AI interview has begun. The AI has analyzed your resume and will ask personalized questions.",
+          description: "Your AI interview has begun. The AI will ask personalized questions based on your profile.",
         });
       } else {
         // Fallback if SDK not loaded properly
@@ -209,7 +209,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     <div className="max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>AI Interview with Resume Analysis</CardTitle>
+          <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Resume Status Section */}
@@ -221,9 +221,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 <span>Resume found in profile - AI will ask personalized questions based on your background</span>
               </div>
             ) : (
-              <Alert variant="destructive">
+              <Alert>
                 <AlertDescription>
-                  No resume found in your profile. Please upload your resume in the Profile section for a more personalized interview experience.
+                  No resume found in your profile. The AI will ask general interview questions. Upload your resume in the Profile section for personalized questions.
                 </AlertDescription>
               </Alert>
             )}
@@ -269,7 +269,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             {conversationStarted && (
               <Alert>
                 <AlertDescription>
-                  The AI interviewer has analyzed your resume and is asking personalized questions based on your background. 
+                  The AI interviewer is asking questions based on your profile. 
                   Speak clearly and naturally. The interview will automatically end after 10 minutes.
                 </AlertDescription>
               </Alert>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mic, Video, VideoOff, MicOff, Send, X, Volume2 } from "lucide-react";
+import { Mic, Video, VideoOff, MicOff, Send, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import VoiceConfigDialog from "./VoiceConfigDialog";
 import ElevenLabsConversation from "./ElevenLabsConversation";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -43,9 +42,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [useElevenLabs, setUseElevenLabs] = useState(true);
   
   // Initial setup
   useEffect(() => {
@@ -175,9 +172,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                   <Button size="icon" variant="secondary" onClick={toggleVideo}>
                     {videoEnabled ? <Video /> : <VideoOff />}
                   </Button>
-                  <Button size="icon" variant="secondary" onClick={() => setVoiceDialogOpen(true)}>
-                    <Volume2 />
-                  </Button>
                 </div>
               </>
             )}
@@ -222,7 +216,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 
                 <Alert>
                   <AlertDescription>
-                    This interview uses ElevenLabs AI for natural conversation. Upload your resume for personalized questions based on your experience.
+                    This interview uses ElevenLabs AI for natural conversation. The AI will analyze your resume from your profile and ask personalized questions.
                   </AlertDescription>
                 </Alert>
               </TabsContent>
@@ -230,11 +224,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           </CardContent>
         </Card>
       </div>
-      
-      <VoiceConfigDialog
-        open={voiceDialogOpen}
-        onOpenChange={setVoiceDialogOpen}
-      />
     </div>
   );
 };
