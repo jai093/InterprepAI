@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface GoogleMapsPickerProps {
   onLocationSelect: (location: string, coords: { lat: number; lng: number }) => void;
@@ -19,6 +20,7 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const searchBoxRef = useRef<google.maps.places.SearchBox | null>(null);
 
   // Load Google Maps script
   useEffect(() => {
@@ -31,7 +33,9 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
       document.head.appendChild(script);
       
       return () => {
-        document.head.removeChild(script);
+        if (document.head.contains(script)) {
+          document.head.removeChild(script);
+        }
       };
     } else {
       setMapLoaded(true);
@@ -43,7 +47,7 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
     if (mapLoaded && showMap && mapRef.current && window.google) {
       const defaultLocation = { lat: 37.7749, lng: -122.4194 }; // San Francisco
       
-      const mapOptions = {
+      const mapOptions: google.maps.MapOptions = {
         center: defaultLocation,
         zoom: 13,
         mapTypeControl: false,
@@ -64,40 +68,44 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
       
       // Initialize search box
       const input = document.getElementById("map-search-input") as HTMLInputElement;
-      const searchBox = new google.maps.places.SearchBox(input);
-      
-      map.addListener("bounds_changed", () => {
-        if (map.getBounds()) {
-          searchBox.setBounds(map.getBounds() as google.maps.LatLngBounds);
-        }
-      });
-      
-      // Listen for search results
-      searchBox.addListener("places_changed", () => {
-        const places = searchBox.getPlaces();
-        if (!places || places.length === 0) return;
+      if (input) {
+        const searchBox = new google.maps.places.SearchBox(input);
+        searchBoxRef.current = searchBox;
         
-        const place = places[0];
-        if (!place.geometry || !place.geometry.location) return;
+        map.addListener("bounds_changed", () => {
+          const bounds = map.getBounds();
+          if (bounds) {
+            searchBox.setBounds(bounds);
+          }
+        });
         
-        // Center map on selected place
-        map.setCenter(place.geometry.location);
-        map.setZoom(15);
-        
-        // Update marker
-        marker.setPosition(place.geometry.location);
-        
-        // Update selected location
-        const location = place.formatted_address || place.name || "";
-        const coords = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
-        };
-        
-        setSelectedLocation(location);
-        setSelectedCoords(coords);
-        onLocationSelect(location, coords);
-      });
+        // Listen for search results
+        searchBox.addListener("places_changed", () => {
+          const places = searchBox.getPlaces();
+          if (!places || places.length === 0) return;
+          
+          const place = places[0];
+          if (!place.geometry || !place.geometry.location) return;
+          
+          // Center map on selected place
+          map.setCenter(place.geometry.location);
+          map.setZoom(15);
+          
+          // Update marker
+          marker.setPosition(place.geometry.location);
+          
+          // Update selected location
+          const location = place.formatted_address || place.name || "";
+          const coords = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          };
+          
+          setSelectedLocation(location);
+          setSelectedCoords(coords);
+          onLocationSelect(location, coords);
+        });
+      }
       
       // Update marker position when dragged
       marker.addListener("dragend", () => {
@@ -120,6 +128,35 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
     }
   }, [mapLoaded, showMap, onLocationSelect]);
 
+  const handleLocationInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSelectedLocation(value);
+    
+    // If user types a location, trigger geocoding
+    if (value && mapLoaded && window.google) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: value }, (results, status) => {
+        if (status === "OK" && results && results[0] && results[0].geometry) {
+          const location = results[0].geometry.location;
+          const coords = {
+            lat: location.lat(),
+            lng: location.lng()
+          };
+          
+          setSelectedCoords(coords);
+          onLocationSelect(value, coords);
+          
+          // Update map if visible
+          if (showMap && mapInstanceRef.current && markerRef.current) {
+            mapInstanceRef.current.setCenter(location);
+            mapInstanceRef.current.setZoom(15);
+            markerRef.current.setPosition(location);
+          }
+        }
+      });
+    }
+  };
+
   const toggleMap = () => {
     setShowMap(prev => !prev);
   };
@@ -127,13 +164,13 @@ const GoogleMapsPicker = ({ onLocationSelect, initialLocation }: GoogleMapsPicke
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           id="map-search-input"
           type="text"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Search for a location"
+          placeholder="Search for a location or enter address"
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
+          onChange={handleLocationInput}
+          className="flex-1"
         />
         <Button type="button" variant="outline" onClick={toggleMap}>
           <MapPin className="h-4 w-4 mr-2" />

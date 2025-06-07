@@ -2,68 +2,42 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Providers } from "@/providers";
+import { ElevenLabsProvider } from "@/contexts/ElevenLabsContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import InterviewSimulation from "./pages/InterviewSimulation";
-import NotFound from "./pages/NotFound";
 import Meetups from "./components/Meetups";
-import { useAuth } from "@/contexts/AuthContext";
+import MeetupDetails from "./pages/MeetupDetails";
+import NotFound from "./pages/NotFound";
 
-// Protected Route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" />;
-  }
-  
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      {children}
-    </div>
-  );
-};
+const queryClient = new QueryClient();
 
 const App = () => (
-  <Providers>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/simulation" 
-        element={
-          <ProtectedRoute>
-            <InterviewSimulation />
-          </ProtectedRoute>
-        } 
-      />
-      <Route
-        path="/meetups"
-        element={
-          <ProtectedRoute>
-            <Meetups />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </Providers>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <ElevenLabsProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/interview" element={<InterviewSimulation />} />
+              <Route path="/meetups" element={<Meetups />} />
+              <Route path="/meetups/:id" element={<MeetupDetails />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ElevenLabsProvider>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;
