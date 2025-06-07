@@ -21,7 +21,8 @@ export function useMeetupAttendance() {
     if (!user) return false;
     
     try {
-      const { data, error } = await supabase
+      // Use type assertion to work with the meetup_attendees table
+      const { data, error } = await (supabase as any)
         .from('meetup_attendees')
         .select('id')
         .eq('meetup_id', meetupId)
@@ -37,7 +38,7 @@ export function useMeetupAttendance() {
   // Get attendance count for a meetup
   const getAttendanceCount = useCallback(async (meetupId: string) => {
     try {
-      const { count, error } = await supabase
+      const { count, error } = await (supabase as any)
         .from('meetup_attendees')
         .select('*', { count: 'exact', head: true })
         .eq('meetup_id', meetupId);
@@ -99,8 +100,8 @@ export function useMeetupAttendance() {
         return false;
       }
       
-      // Add user to attendees
-      const { error: insertError } = await supabase
+      // Add user to attendees using type assertion
+      const { error: insertError } = await (supabase as any)
         .from('meetup_attendees')
         .insert([
           {
