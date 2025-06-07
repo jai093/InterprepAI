@@ -22,11 +22,11 @@ export function useMeetupAttendance() {
     
     try {
       const { data, error } = await supabase
-        .from('meetup_attendees')
+        .from('meetup_attendees' as any)
         .select('id')
         .eq('meetup_id', meetupId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       return !!data && !error;
     } catch (error) {
@@ -38,7 +38,7 @@ export function useMeetupAttendance() {
   const getAttendanceCount = useCallback(async (meetupId: string) => {
     try {
       const { count, error } = await supabase
-        .from('meetup_attendees')
+        .from('meetup_attendees' as any)
         .select('*', { count: 'exact', head: true })
         .eq('meetup_id', meetupId);
       
@@ -101,7 +101,7 @@ export function useMeetupAttendance() {
       
       // Add user to attendees
       const { error: insertError } = await supabase
-        .from('meetup_attendees')
+        .from('meetup_attendees' as any)
         .insert([
           {
             meetup_id: meetupId,

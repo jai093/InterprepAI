@@ -122,59 +122,6 @@ export function useMeetups() {
         meetup.tags.some((tag) => tag.toLowerCase().includes(query))
     );
   }, [meetups]);
-
-  // RSVP for a meetup
-  const rsvpMeetup = useCallback(async (meetupId: string) => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to RSVP for meetups.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // First get the current meetup
-      const { data: meetup, error: fetchError } = await supabase
-        .from('meetups')
-        .select('*')
-        .eq('id', meetupId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Check if capacity has been reached
-      if (meetup.attendees >= meetup.capacity) {
-        toast({
-          title: "Meetup Full",
-          description: "This meetup has reached its capacity.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Update attendee count
-      const { error: updateError } = await supabase
-        .from('meetups')
-        .update({ attendees: meetup.attendees + 1 })
-        .eq('id', meetupId);
-      
-      if (updateError) throw updateError;
-      
-      toast({
-        title: "RSVP Successful",
-        description: "You've successfully registered for this meetup.",
-      });
-    } catch (err: any) {
-      console.error("Error RSVPing for meetup:", err);
-      toast({
-        title: "RSVP Failed",
-        description: err.message || "Failed to register for meetup.",
-        variant: "destructive"
-      });
-    }
-  }, [toast, user]);
   
   // Create a new meetup
   const createMeetup = useCallback(async (newMeetup: Omit<Meetup, 'id' | 'user_id' | 'created_at'>) => {
@@ -227,7 +174,6 @@ export function useMeetups() {
     isLoading,
     error,
     filterMeetups,
-    rsvpMeetup,
     createMeetup
   };
 }

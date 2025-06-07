@@ -63,6 +63,35 @@ export type Database = {
         }
         Relationships: []
       }
+      meetup_attendees: {
+        Row: {
+          created_at: string
+          id: string
+          meetup_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meetup_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meetup_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_attendees_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetups: {
         Row: {
           attendees: number
