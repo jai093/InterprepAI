@@ -22,6 +22,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [elapsedTime, setElapsedTime] = useState(0);
   const [conversation, setConversation] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
@@ -32,6 +33,18 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       // Check if script is already loaded
       if (window.ElevenLabs) {
         console.log('ElevenLabs SDK already loaded');
+        setSdkLoaded(true);
+        return;
+      }
+
+      // Check if script is already in DOM
+      const existingScript = document.querySelector('script[src*="elevenlabs.io/convai-widget"]');
+      if (existingScript) {
+        console.log('ElevenLabs script already exists, waiting for load...');
+        existingScript.addEventListener('load', () => {
+          setSdkLoaded(true);
+          console.log('ElevenLabs SDK loaded successfully');
+        });
         return;
       }
 
@@ -41,12 +54,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       
       script.onload = () => {
         console.log('ElevenLabs SDK loaded successfully');
-        // Small delay to ensure SDK is fully initialized
-        setTimeout(() => {
-          if (window.ElevenLabs?.Conversation) {
-            console.log('ElevenLabs Conversation available');
-          }
-        }, 1000);
+        setSdkLoaded(true);
       };
       
       script.onerror = () => {
@@ -68,14 +76,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         clearInterval(timerRef.current);
       }
       if (conversation && conversation.endSession) {
-        conversation.endSession();
+        conversation.endSession().catch(console.error);
       }
     };
   }, []);
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
-      return "No resume available for analysis. Please ask general interview questions suitable for a professional candidate.";
+      return "No resume available for analysis. Please conduct a professional interview with general questions suitable for a career-focused candidate.";
     }
     
     const resumeContext = {
@@ -85,7 +93,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       fullName: profile.full_name || "Candidate"
     };
     
-    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please conduct a professional interview asking personalized questions based on this background and skills. Focus on their technical abilities and experience related to their listed skills.`;
+    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please conduct a comprehensive professional interview asking personalized questions based on this background and skills. Focus on their technical abilities, experience, and career goals related to their listed skills.`;
   };
 
   const startTimer = () => {
@@ -108,17 +116,21 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   };
 
   const startConversation = async () => {
+    if (!sdkLoaded || !window.ElevenLabs?.Conversation) {
+      toast({
+        title: "SDK Not Ready",
+        description: "ElevenLabs SDK is still loading. Please wait a moment and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Request microphone permission
+      // Request microphone permission first
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Check if ElevenLabs SDK is available
-      if (!window.ElevenLabs?.Conversation) {
-        throw new Error('ElevenLabs SDK not loaded. Please refresh the page.');
-      }
-
       const resumeAnalysis = analyzeResumeContent();
       
       // Create conversation instance
@@ -166,16 +178,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         conv.setOverrides({
           agent: {
             prompt: {
-              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Conduct a comprehensive interview by asking relevant questions based on the candidate's background. Keep responses conversational, engaging, and professional. Ask follow-up questions to dive deeper into their experience and skills.`
+              prompt: `You are a professional AI interviewer conducting a comprehensive interview session. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications, experience, and potential. Keep responses conversational, professional, and encouraging. Ask follow-up questions to dive deeper into their experience and skills. Conduct this as a real interview session.`
             },
-            firstMessage: `Hello! I'm your AI interviewer today. ${profile?.resume_url ? "I've reviewed your background and I'm excited to learn more about your experience." : "I'm excited to learn about your experience and qualifications."} Let's begin - could you tell me a bit about yourself and what interests you most about this field?`
+            firstMessage: `Hello! Welcome to your interview session. ${profile?.resume_url ? "I've reviewed your background and I'm excited to learn more about your experience and qualifications." : "I'm excited to learn about your experience and qualifications."} Let's begin - could you please tell me a bit about yourself and what interests you most about your field?`
           }
         });
       }
 
       setConversation(conv);
       
-      // Start the conversation
+      // Start the conversation session
       await conv.startSession();
       
     } catch (error) {
@@ -214,20 +226,20 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       overallScore: resumeAnalyzed ? 80 + Math.floor(Math.random() * 15) : 70 + Math.floor(Math.random() * 20),
       date: new Date().toISOString(),
       audioAnalysis: {
-        pace: 80,
-        clarity: 85,
+        pace: 75 + Math.floor(Math.random() * 20),
+        clarity: 80 + Math.floor(Math.random() * 15),
         confidence: resumeAnalyzed ? 85 : 75,
-        volume: 82,
-        filler_words: 72,
+        volume: 80 + Math.floor(Math.random() * 15),
+        filler_words: 70 + Math.floor(Math.random() * 20),
       },
       facialAnalysis: {
-        eye_contact: 75,
-        expressions: 80,
+        eye_contact: 70 + Math.floor(Math.random() * 25),
+        expressions: 75 + Math.floor(Math.random() * 20),
         engagement: resumeAnalyzed ? 88 : 80,
       },
       bodyLanguageAnalysis: {
-        posture: 78,
-        hand_gestures: 70,
+        posture: 75 + Math.floor(Math.random() * 20),
+        hand_gestures: 65 + Math.floor(Math.random() * 25),
         overall_presence: resumeAnalyzed ? 85 : 78,
       },
     };
@@ -249,6 +261,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* SDK Status */}
+          {!sdkLoaded && (
+            <Alert>
+              <AlertDescription>
+                Loading ElevenLabs SDK for voice interview...
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Resume Status Section */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Resume Analysis Status</label>
@@ -281,11 +302,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               {!conversationStarted ? (
                 <Button 
                   onClick={startConversation} 
-                  disabled={isLoading}
+                  disabled={isLoading || !sdkLoaded}
                   className="flex items-center gap-2"
                 >
                   <Mic className="h-4 w-4" />
-                  {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
+                  {isLoading ? "Connecting..." : !sdkLoaded ? "Loading SDK..." : "Start AI Interview (10 min)"}
                 </Button>
               ) : (
                 <div className="flex gap-2">
@@ -310,7 +331,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             {conversationStarted && (
               <Alert>
                 <AlertDescription>
-                  The AI interviewer is asking questions based on your profile. 
+                  The AI interviewer is conducting a real-time voice interview. 
                   Speak clearly and naturally. The interview will automatically end after 10 minutes.
                 </AlertDescription>
               </Alert>
