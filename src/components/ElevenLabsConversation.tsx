@@ -21,63 +21,63 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [conversationStarted, setConversationStarted] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [conversation, setConversation] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
 
   useEffect(() => {
-    // Load ElevenLabs SDK
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@11labs/react@latest/dist/index.umd.js';
-    script.onload = () => {
-      console.log('ElevenLabs SDK loaded');
-      // Initialize conversation when SDK is loaded
-      if (window.ElevenLabs && window.ElevenLabs.useConversation) {
-        const conv = window.ElevenLabs.useConversation({
-          onConnect: () => {
-            console.log('Connected to ElevenLabs');
-            setIsConnected(true);
-          },
-          onDisconnect: () => {
-            console.log('Disconnected from ElevenLabs');
-            setIsConnected(false);
-            setConversationStarted(false);
-          },
-          onMessage: (message: any) => {
-            console.log('Message received:', message);
-            if (message.type === 'agent_response') {
-              setIsSpeaking(true);
-              setTimeout(() => setIsSpeaking(false), 3000);
-            }
-          },
-          onError: (error: any) => {
-            console.error('ElevenLabs error:', error);
-            toast({
-              title: "Conversation Error",
-              description: "There was an issue with the AI conversation.",
-              variant: "destructive"
-            });
-          }
-        });
-        setConversation(conv);
+    const loadElevenLabsSDK = () => {
+      // Check if script is already loaded
+      if (window.ElevenLabs) {
+        console.log('ElevenLabs SDK already loaded');
+        return;
       }
+
+      const script = document.createElement('script');
+      script.src = 'https://elevenlabs.io/convai-widget/index.js';
+      script.async = true;
+      
+      script.onload = () => {
+        console.log('ElevenLabs SDK loaded successfully');
+        // Small delay to ensure SDK is fully initialized
+        setTimeout(() => {
+          if (window.ElevenLabs?.Conversation) {
+            console.log('ElevenLabs Conversation available');
+          }
+        }, 1000);
+      };
+      
+      script.onerror = () => {
+        console.error('Failed to load ElevenLabs SDK');
+        toast({
+          title: "SDK Error",
+          description: "Failed to load ElevenLabs SDK. Please refresh the page.",
+          variant: "destructive"
+        });
+      };
+      
+      document.head.appendChild(script);
     };
-    document.head.appendChild(script);
+
+    loadElevenLabsSDK();
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (conversation && conversation.endSession) {
+        conversation.endSession();
+      }
     };
-  }, [toast]);
+  }, []);
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
       return "No resume available for analysis. Please ask general interview questions suitable for a professional candidate.";
     }
     
-    // Create resume context based on profile data
     const resumeContext = {
       skills: profile.skills || "No specific skills listed",
       experience: "Based on uploaded resume",
@@ -85,7 +85,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       fullName: profile.full_name || "Candidate"
     };
     
-    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please ask personalized interview questions based on this background and skills. Focus on their technical abilities and experience related to their listed skills.`;
+    return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please conduct a professional interview asking personalized questions based on this background and skills. Focus on their technical abilities and experience related to their listed skills.`;
   };
 
   const startTimer = () => {
@@ -108,50 +108,82 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   };
 
   const startConversation = async () => {
+    setIsLoading(true);
+    
     try {
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      if (conversation && conversation.startSession) {
-        const resumeAnalysis = analyzeResumeContent();
-        
-        // Start session with agent ID and resume context
-        await conversation.startSession({ 
-          agentId: AGENT_ID,
-          overrides: {
-            agent: {
-              prompt: {
-                prompt: `You are an AI interviewer conducting a professional job interview. ${resumeAnalysis} Conduct a comprehensive interview by asking relevant questions based on the candidate's background. Keep responses conversational, engaging, and professional. Ask follow-up questions to dive deeper into their experience and skills.`
-              },
-              firstMessage: `Hello! I'm your AI interviewer today. ${profile?.resume_url ? "I've reviewed your background and I'm excited to learn more about your experience." : "I'm excited to learn about your experience and qualifications."} Let's begin with a simple question: Could you tell me a bit about yourself and what interests you most about this field?`
-            }
+      // Check if ElevenLabs SDK is available
+      if (!window.ElevenLabs?.Conversation) {
+        throw new Error('ElevenLabs SDK not loaded. Please refresh the page.');
+      }
+
+      const resumeAnalysis = analyzeResumeContent();
+      
+      // Create conversation instance
+      const conv = new window.ElevenLabs.Conversation({
+        agentId: AGENT_ID,
+        onConnect: () => {
+          console.log('Connected to ElevenLabs agent');
+          setIsConnected(true);
+          setConversationStarted(true);
+          setIsLoading(false);
+          startTimer();
+          
+          toast({
+            title: "Interview Started",
+            description: "Connected to AI interviewer. Start speaking when ready!",
+          });
+        },
+        onDisconnect: () => {
+          console.log('Disconnected from ElevenLabs agent');
+          setIsConnected(false);
+          setConversationStarted(false);
+          setIsLoading(false);
+        },
+        onMessage: (message: any) => {
+          console.log('Message received:', message);
+          if (message.type === 'agent_response_start') {
+            setIsSpeaking(true);
+          } else if (message.type === 'agent_response_end') {
+            setIsSpeaking(false);
+          }
+        },
+        onError: (error: any) => {
+          console.error('ElevenLabs conversation error:', error);
+          setIsLoading(false);
+          toast({
+            title: "Conversation Error",
+            description: "There was an issue with the AI conversation. Please try again.",
+            variant: "destructive"
+          });
+        }
+      });
+
+      // Set conversation overrides for personalized interview
+      if (resumeAnalysis) {
+        conv.setOverrides({
+          agent: {
+            prompt: {
+              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Conduct a comprehensive interview by asking relevant questions based on the candidate's background. Keep responses conversational, engaging, and professional. Ask follow-up questions to dive deeper into their experience and skills.`
+            },
+            firstMessage: `Hello! I'm your AI interviewer today. ${profile?.resume_url ? "I've reviewed your background and I'm excited to learn more about your experience." : "I'm excited to learn about your experience and qualifications."} Let's begin - could you tell me a bit about yourself and what interests you most about this field?`
           }
         });
-        
-        setConversationStarted(true);
-        startTimer();
-        
-        toast({
-          title: "Interview Started",
-          description: "Your AI interview has begun. The AI will ask personalized questions based on your profile.",
-        });
-      } else {
-        // Fallback if SDK not loaded properly
-        setIsConnected(true);
-        setConversationStarted(true);
-        startTimer();
-        
-        toast({
-          title: "Interview Started",
-          description: "Your AI interview has begun. Speak naturally and answer the questions.",
-        });
       }
+
+      setConversation(conv);
+      
+      // Start the conversation
+      await conv.startSession();
       
     } catch (error) {
       console.error('Error starting conversation:', error);
+      setIsLoading(false);
       toast({
         title: "Error",
-        description: "Failed to start the interview. Please check your microphone permissions.",
+        description: "Failed to start the interview. Please check your microphone permissions and try again.",
         variant: "destructive",
       });
     }
@@ -163,13 +195,18 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     }
     
     if (conversation && conversation.endSession) {
-      await conversation.endSession();
+      try {
+        await conversation.endSession();
+      } catch (error) {
+        console.error('Error ending conversation:', error);
+      }
     }
     
     setIsConnected(false);
     setConversationStarted(false);
+    setConversation(null);
     
-    // Generate mock feedback data based on resume analysis
+    // Generate feedback data
     const resumeAnalyzed = !!profile?.resume_url;
     const interviewData = {
       duration: elapsedTime,
@@ -242,9 +279,13 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
             <div className="flex justify-center gap-4">
               {!conversationStarted ? (
-                <Button onClick={startConversation} className="flex items-center gap-2">
+                <Button 
+                  onClick={startConversation} 
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
                   <Mic className="h-4 w-4" />
-                  Start AI Interview (10 min)
+                  {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
                 </Button>
               ) : (
                 <div className="flex gap-2">
@@ -271,6 +312,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 <AlertDescription>
                   The AI interviewer is asking questions based on your profile. 
                   Speak clearly and naturally. The interview will automatically end after 10 minutes.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isLoading && (
+              <Alert>
+                <AlertDescription>
+                  Connecting to AI interviewer... Please allow microphone access when prompted.
                 </AlertDescription>
               </Alert>
             )}

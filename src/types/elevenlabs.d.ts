@@ -2,24 +2,23 @@
 declare global {
   interface Window {
     ElevenLabs: {
-      useConversation: (options: {
+      Conversation: new (options: {
+        agentId: string;
         onConnect?: () => void;
         onDisconnect?: () => void;
         onMessage?: (message: any) => void;
         onError?: (error: any) => void;
       }) => {
-        startSession: (config: {
-          agentId: string;
-          overrides?: {
-            agent?: {
-              prompt?: {
-                prompt: string;
-              };
-              firstMessage?: string;
-            };
-          };
-        }) => Promise<void>;
+        startSession: () => Promise<void>;
         endSession: () => Promise<void>;
+        setOverrides: (overrides: {
+          agent?: {
+            prompt?: {
+              prompt: string;
+            };
+            firstMessage?: string;
+          };
+        }) => void;
         setVolume: (options: { volume: number }) => Promise<void>;
         status: string;
         isSpeaking: boolean;
