@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, FileText } from "lucide-react";
+import { Mic, MicOff, FileText, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -23,63 +22,141 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [conversation, setConversation] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
+  const [loadingAttempts, setLoadingAttempts] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
+  const MAX_LOAD_ATTEMPTS = 3;
+  const LOAD_TIMEOUT = 15000; // 15 seconds timeout
 
-  useEffect(() => {
-    const loadElevenLabsSDK = () => {
-      // Check if script is already loaded
-      if (window.ElevenLabs) {
-        console.log('ElevenLabs SDK already loaded');
-        setSdkLoaded(true);
-        return;
-      }
+  const checkSDKAvailability = () => {
+    return window.ElevenLabs && window.ElevenLabs.Conversation;
+  };
 
-      // Check if script is already in DOM
-      const existingScript = document.querySelector('script[src*="elevenlabs.io/convai-widget"]');
-      if (existingScript) {
-        console.log('ElevenLabs script already exists, waiting for load...');
-        existingScript.addEventListener('load', () => {
-          setSdkLoaded(true);
-          console.log('ElevenLabs SDK loaded successfully');
-        });
-        return;
-      }
+  const loadElevenLabsSDK = () => {
+    console.log(`Loading ElevenLabs SDK - Attempt ${loadingAttempts + 1}/${MAX_LOAD_ATTEMPTS}`);
+    
+    // Clear any existing timeout
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
 
-      const script = document.createElement('script');
-      script.src = 'https://elevenlabs.io/convai-widget/index.js';
-      script.async = true;
+    // Check if SDK is already available
+    if (checkSDKAvailability()) {
+      console.log('ElevenLabs SDK already available');
+      setSdkLoaded(true);
+      setSdkError(null);
+      return;
+    }
+
+    // Check if script is already in DOM
+    const existingScript = document.querySelector('script[src*="elevenlabs.io/convai-widget"]');
+    if (existingScript && !checkSDKAvailability()) {
+      console.log('Script exists but SDK not ready, removing and retrying...');
+      existingScript.remove();
+    }
+
+    // Create new script
+    const script = document.createElement('script');
+    script.src = 'https://elevenlabs.io/convai-widget/index.js';
+    script.async = true;
+    
+    // Set timeout for loading
+    loadTimeoutRef.current = setTimeout(() => {
+      console.error('SDK loading timeout');
+      script.remove();
       
-      script.onload = () => {
-        console.log('ElevenLabs SDK loaded successfully');
-        setSdkLoaded(true);
-      };
-      
-      script.onerror = () => {
-        console.error('Failed to load ElevenLabs SDK');
+      if (loadingAttempts < MAX_LOAD_ATTEMPTS - 1) {
+        setLoadingAttempts(prev => prev + 1);
+        setTimeout(() => loadElevenLabsSDK(), 2000); // Retry after 2 seconds
+      } else {
+        setSdkError('Failed to load ElevenLabs SDK after multiple attempts. Please refresh the page.');
         toast({
-          title: "SDK Error",
-          description: "Failed to load ElevenLabs SDK. Please refresh the page.",
+          title: "SDK Load Failed",
+          description: "Failed to load ElevenLabs SDK. Please refresh the page and try again.",
           variant: "destructive"
         });
-      };
+      }
+    }, LOAD_TIMEOUT);
+    
+    script.onload = () => {
+      console.log('ElevenLabs script loaded, checking SDK availability...');
       
-      document.head.appendChild(script);
+      // Clear timeout
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+      
+      // Wait a bit for SDK to initialize
+      setTimeout(() => {
+        if (checkSDKAvailability()) {
+          console.log('ElevenLabs SDK loaded and ready');
+          setSdkLoaded(true);
+          setSdkError(null);
+          toast({
+            title: "SDK Ready",
+            description: "ElevenLabs SDK loaded successfully. You can now start the interview.",
+          });
+        } else {
+          console.error('Script loaded but SDK not available');
+          if (loadingAttempts < MAX_LOAD_ATTEMPTS - 1) {
+            setLoadingAttempts(prev => prev + 1);
+            setTimeout(() => loadElevenLabsSDK(), 2000);
+          } else {
+            setSdkError('SDK failed to initialize properly.');
+          }
+        }
+      }, 1000);
     };
+    
+    script.onerror = () => {
+      console.error('Failed to load ElevenLabs script');
+      
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+      
+      if (loadingAttempts < MAX_LOAD_ATTEMPTS - 1) {
+        setLoadingAttempts(prev => prev + 1);
+        setTimeout(() => loadElevenLabsSDK(), 2000);
+      } else {
+        setSdkError('Network error loading ElevenLabs SDK.');
+        toast({
+          title: "Network Error",
+          description: "Failed to load ElevenLabs SDK due to network issues.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    document.head.appendChild(script);
+  };
 
+  useEffect(() => {
     loadElevenLabsSDK();
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
       if (conversation && conversation.endSession) {
         conversation.endSession().catch(console.error);
       }
     };
   }, []);
+
+  const retrySDKLoad = () => {
+    setLoadingAttempts(0);
+    setSdkError(null);
+    setSdkLoaded(false);
+    loadElevenLabsSDK();
+  };
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
@@ -116,10 +193,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   };
 
   const startConversation = async () => {
-    if (!sdkLoaded || !window.ElevenLabs?.Conversation) {
+    if (!sdkLoaded || !checkSDKAvailability()) {
       toast({
         title: "SDK Not Ready",
-        description: "ElevenLabs SDK is still loading. Please wait a moment and try again.",
+        description: "ElevenLabs SDK is not ready. Please wait for it to load or try refreshing.",
         variant: "destructive"
       });
       return;
@@ -262,10 +339,33 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         </CardHeader>
         <CardContent className="space-y-4">
           {/* SDK Status */}
-          {!sdkLoaded && (
+          {!sdkLoaded && !sdkError && (
             <Alert>
-              <AlertDescription>
-                Loading ElevenLabs SDK for voice interview...
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <AlertDescription>
+                  Loading ElevenLabs SDK for voice interview... (Attempt {loadingAttempts + 1}/{MAX_LOAD_ATTEMPTS})
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+
+          {sdkError && (
+            <Alert variant="destructive">
+              <AlertDescription className="flex items-center justify-between">
+                <span>{sdkError}</span>
+                <Button size="sm" variant="outline" onClick={retrySDKLoad}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {sdkLoaded && (
+            <Alert>
+              <AlertDescription className="text-green-600">
+                ✅ ElevenLabs SDK ready for voice interview
               </AlertDescription>
             </Alert>
           )}
