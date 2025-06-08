@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, FileText, RefreshCw, AlertCircle } from "lucide-react";
+import { Mic, MicOff, FileText, RefreshCw, AlertCircle, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -24,13 +23,22 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [audioQueue, setAudioQueue] = useState<string[]>([]);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const conversationRef = useRef<any>(null);
+  const conversationRef = useRef<WebSocket | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
 
   useEffect(() => {
+    // Initialize AudioContext for better audio handling
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -38,8 +46,39 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
     };
   }, [mediaRecorder]);
+
+  // Process audio queue to play audio sequentially
+  useEffect(() => {
+    if (audioQueue.length > 0 && !isPlayingAudio) {
+      playNextAudio();
+    }
+  }, [audioQueue, isPlayingAudio]);
+
+  const playNextAudio = async () => {
+    if (audioQueue.length === 0 || isPlayingAudio) return;
+
+    setIsPlayingAudio(true);
+    const audioData = audioQueue[0];
+    
+    try {
+      await playAudioResponse(audioData);
+      setAudioQueue(prev => prev.slice(1)); // Remove played audio from queue
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setAudioQueue(prev => prev.slice(1)); // Remove failed audio from queue
+    } finally {
+      setIsPlayingAudio(false);
+    }
+  };
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
@@ -77,8 +116,22 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
   const initializeWebSocket = async () => {
     try {
+      setIsLoading(true);
+      
+      // Ensure AudioContext is resumed (required for audio playback)
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100
+        } 
+      });
       
       // Create WebSocket connection to ElevenLabs
       const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}`;
@@ -101,7 +154,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               conversation_config_override: {
                 agent: {
                   prompt: {
-                    prompt: `You are a professional AI interviewer conducting a comprehensive interview session. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications, experience, and potential. Keep responses conversational, professional, and encouraging. Ask follow-up questions to dive deeper into their experience and skills. Conduct this as a real interview session.`
+                    prompt: `You are a professional AI interviewer conducting a comprehensive interview session. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications, experience, and potential. Keep responses conversational, professional, and encouraging. Ask follow-up questions to dive deeper into their experience and skills. Conduct this as a real interview session. Always speak clearly and at a moderate pace.`
                   },
                   first_message: profile?.resume_url 
                     ? "Hello! Welcome to your interview session. I've reviewed your background and I'm excited to learn more about your experience and qualifications. Let's begin - could you please tell me a bit about yourself and what interests you most about your field?"
@@ -114,22 +167,33 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         
         toast({
           title: "Interview Started",
-          description: "Connected to AI interviewer. Start speaking when ready!",
+          description: "Connected to AI interviewer. You should hear the AI speak shortly!",
         });
       };
 
       websocket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log('WebSocket message:', message);
-        
-        if (message.type === 'agent_response') {
-          setIsSpeaking(true);
-          // Handle audio response
-          if (message.audio) {
-            playAudioResponse(message.audio);
+        try {
+          const message = JSON.parse(event.data);
+          console.log('WebSocket message:', message);
+          
+          if (message.type === 'agent_response') {
+            console.log('Agent response received:', message);
+            setIsSpeaking(true);
+            
+            // Handle audio response - add to queue for sequential playback
+            if (message.audio) {
+              console.log('Audio data received, adding to queue');
+              setAudioQueue(prev => [...prev, message.audio]);
+            }
+          } else if (message.type === 'agent_response_end') {
+            console.log('Agent response ended');
+            setIsSpeaking(false);
+          } else if (message.type === 'ping') {
+            // Respond to ping to keep connection alive
+            websocket.send(JSON.stringify({ type: 'pong', ping_event: message.ping_event }));
           }
-        } else if (message.type === 'agent_response_end') {
-          setIsSpeaking(false);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
       };
 
@@ -139,16 +203,20 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setIsLoading(false);
       };
 
-      websocket.onclose = () => {
-        console.log('WebSocket connection closed');
+      websocket.onclose = (event) => {
+        console.log('WebSocket connection closed:', event.code, event.reason);
         setIsConnected(false);
         setConversationStarted(false);
+        setIsSpeaking(false);
       };
 
       conversationRef.current = websocket;
 
       // Set up MediaRecorder for audio streaming
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN) {
           // Convert audio to base64 and send to WebSocket
@@ -164,6 +232,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         }
       };
 
+      // Start recording in small chunks for real-time streaming
+      recorder.start(250); // 250ms chunks for better real-time experience
       setMediaRecorder(recorder);
       
     } catch (error) {
@@ -178,27 +248,81 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     }
   };
 
-  const playAudioResponse = async (audioBase64: string) => {
-    try {
-      const audioBlob = new Blob([Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      
-      audio.onended = () => {
+  const playAudioResponse = async (audioBase64: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('Playing audio response...');
+        
+        // Stop any currently playing audio
+        if (currentAudioRef.current) {
+          currentAudioRef.current.pause();
+          currentAudioRef.current = null;
+        }
+
+        // Decode base64 audio
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create blob and audio URL
+        const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        // Set audio properties for better playback
+        audio.volume = 0.8;
+        audio.preload = 'auto';
+        
+        currentAudioRef.current = audio;
+        
+        audio.onloadeddata = () => {
+          console.log('Audio loaded successfully');
+        };
+        
+        audio.onplay = () => {
+          console.log('Audio started playing');
+          setIsSpeaking(true);
+        };
+        
+        audio.onended = () => {
+          console.log('Audio playback ended');
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          currentAudioRef.current = null;
+          resolve();
+        };
+        
+        audio.onerror = (error) => {
+          console.error('Audio playback error:', error);
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          currentAudioRef.current = null;
+          reject(error);
+        };
+        
+        // Play the audio
+        audio.play().catch((playError) => {
+          console.error('Error starting audio playback:', playError);
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          currentAudioRef.current = null;
+          reject(playError);
+        });
+        
+      } catch (error) {
+        console.error('Error in playAudioResponse:', error);
         setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      await audio.play();
-    } catch (error) {
-      console.error('Error playing audio response:', error);
-      setIsSpeaking(false);
-    }
+        reject(error);
+      }
+    });
   };
 
   const startConversation = async () => {
     setIsLoading(true);
     setSdkError(null);
+    setAudioQueue([]); // Clear any existing audio queue
     await initializeWebSocket();
   };
 
@@ -211,12 +335,19 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       mediaRecorder.stop();
     }
     
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    
     if (conversationRef.current && conversationRef.current.readyState === WebSocket.OPEN) {
       conversationRef.current.close();
     }
     
     setIsConnected(false);
     setConversationStarted(false);
+    setIsSpeaking(false);
+    setAudioQueue([]);
     
     // Generate feedback data
     const resumeAnalyzed = !!profile?.resume_url;
@@ -283,6 +414,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             </Alert>
           )}
 
+          {/* Audio Status */}
+          {conversationStarted && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md">
+              <Volume2 className="h-4 w-4 text-blue-600" />
+              <span className="text-sm text-blue-700">
+                Audio System: {audioQueue.length > 0 ? `${audioQueue.length} audio clips queued` : 'Ready for playback'}
+              </span>
+            </div>
+          )}
+
           {/* Resume Status Section */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Resume Analysis Status</label>
@@ -345,7 +486,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               <Alert>
                 <AlertDescription>
                   The AI interviewer is conducting a real-time voice interview. 
-                  Speak clearly and naturally. The interview will automatically end after 10 minutes.
+                  Speak clearly and naturally. You should hear the AI's voice responses. 
+                  If you can't hear anything, check your device volume and speakers.
                 </AlertDescription>
               </Alert>
             )}
@@ -354,6 +496,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               <Alert>
                 <AlertDescription>
                   Connecting to AI interviewer... Please allow microphone access when prompted.
+                  Audio system is being initialized for voice responses.
                 </AlertDescription>
               </Alert>
             )}
