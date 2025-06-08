@@ -1,8 +1,8 @@
 
 declare global {
   interface Window {
-    ElevenLabs: {
-      Conversation: new (options: {
+    ElevenLabs?: {
+      Conversation?: new (options: {
         agentId: string;
         onConnect?: () => void;
         onDisconnect?: () => void;
@@ -25,6 +25,22 @@ declare global {
       };
     };
   }
+}
+
+// WebSocket message types for ElevenLabs Conversational AI
+export interface ElevenLabsMessage {
+  type: 'audio' | 'agent_response' | 'agent_response_end' | 'conversation_initiation_metadata';
+  audio?: string;
+  conversation_initiation_metadata?: {
+    conversation_config_override: {
+      agent: {
+        prompt?: {
+          prompt: string;
+        };
+        first_message?: string;
+      };
+    };
+  };
 }
 
 export {};
