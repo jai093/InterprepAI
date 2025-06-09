@@ -27,20 +27,42 @@ declare global {
   }
 }
 
-// WebSocket message types for ElevenLabs Conversational AI
-export interface ElevenLabsMessage {
-  type: 'audio' | 'agent_response' | 'agent_response_end' | 'conversation_initiation_metadata';
-  audio?: string;
-  conversation_initiation_metadata?: {
-    conversation_config_override: {
-      agent: {
-        prompt?: {
-          prompt: string;
-        };
-        first_message?: string;
+// WebSocket message types for ElevenLabs Conversational AI - Updated to match API spec
+export interface ElevenLabsInitMessage {
+  message_type: 'conversation_init';
+  agent_id: string;
+  voice_id?: string;
+  text_to_speech_model_id?: string;
+  latency_optimization_level?: number;
+  conversation_config_override?: {
+    agent?: {
+      prompt?: {
+        prompt: string;
       };
+      first_message?: string;
     };
   };
+}
+
+export interface ElevenLabsAudioMessage {
+  message_type: 'audio';
+  audio_chunk: string; // base64 encoded audio data
+}
+
+export interface ElevenLabsPongMessage {
+  message_type: 'pong';
+  event_id?: string;
+}
+
+export interface ElevenLabsIncomingMessage {
+  message_type: 'conversation_initiation_metadata' | 'audio' | 'agent_response' | 'ping';
+  type?: string; // fallback for older format
+  audio_chunk?: string;
+  audio?: string;
+  agent_response?: {
+    audio: string;
+  };
+  event_id?: string;
 }
 
 export {};

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +22,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [initResponseReceived, setInitResponseReceived] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -170,22 +170,25 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setConversationStarted(true);
         setIsLoading(false);
         setSdkError(null);
+        setInitResponseReceived(false);
         startTimer();
         
-        // Send conversation configuration with simplified message format
+        // Send conversation initialization with correct ElevenLabs format
         const resumeAnalysis = analyzeResumeContent();
         const initMessage = {
-          type: "conversation_initiation_metadata",
-          conversation_initiation_metadata: {
-            conversation_config_override: {
-              agent: {
-                prompt: {
-                  prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
-                },
-                first_message: profile?.resume_url 
-                  ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
-                  : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
-              }
+          message_type: "conversation_init",
+          agent_id: AGENT_ID,
+          voice_id: "EXAVITQu4vr4xnSDxMaL", // Sarah voice
+          text_to_speech_model_id: "eleven_turbo_v2",
+          latency_optimization_level: 2,
+          conversation_config_override: {
+            agent: {
+              prompt: {
+                prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
+              },
+              first_message: profile?.resume_url 
+                ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
+                : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
             }
           }
         };
@@ -195,26 +198,37 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         
         toast({
           title: "Interview Started",
-          description: "Connected! You should hear the AI speak shortly.",
+          description: "Connected! Waiting for AI response...",
         });
       };
 
       websocket.onmessage = async (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('Received message:', message.type);
+          console.log('Received message:', message.message_type || message.type);
           
-          if (message.type === 'agent_response') {
-            // Handle audio data from agent response
-            if (message.agent_response && message.agent_response.audio) {
+          if (message.message_type === 'conversation_initiation_metadata' || message.type === 'conversation_initiation_metadata') {
+            console.log('Received init response - can now send audio');
+            setInitResponseReceived(true);
+          } else if (message.message_type === 'audio' || message.type === 'audio') {
+            // Handle audio data from agent
+            if (message.audio_chunk || message.audio) {
               console.log('Received audio data');
+              const audioData = message.audio_chunk || message.audio;
+              audioQueueRef.current.push(audioData);
+              playAudioQueue();
+            }
+          } else if (message.message_type === 'agent_response' || message.type === 'agent_response') {
+            // Handle agent response with audio
+            if (message.agent_response && message.agent_response.audio) {
+              console.log('Received agent response audio');
               audioQueueRef.current.push(message.agent_response.audio);
               playAudioQueue();
             }
-          } else if (message.type === 'ping') {
+          } else if (message.message_type === 'ping' || message.type === 'ping') {
             // Respond to ping with correct format
             const pongMessage = { 
-              type: 'pong',
+              message_type: 'pong',
               event_id: message.event_id
             };
             console.log('Sending pong:', pongMessage);
@@ -236,31 +250,33 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setIsConnected(false);
         setConversationStarted(false);
         setIsSpeaking(false);
+        setInitResponseReceived(false);
         
         if (event.code === 1008) {
           setSdkError('Invalid message format. Please try again.');
+        } else if (event.code === 1006) {
+          setSdkError('Connection lost. Please try again.');
         }
       };
 
       conversationRef.current = websocket;
 
-      // Set up audio recording with correct format
+      // Set up audio recording with correct format for 16-bit PCM WAV at 16kHz
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
       
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN) {
+        // Only send audio after receiving init response and when connected
+        if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN && initResponseReceived) {
           const reader = new FileReader();
           reader.onload = () => {
             const arrayBuffer = reader.result as ArrayBuffer;
             const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
             
             const audioMessage = {
-              type: "audio",
-              audio_event: {
-                audio: base64Audio
-              }
+              message_type: "audio",
+              audio_chunk: base64Audio
             };
             console.log('Sending audio message');
             websocket.send(JSON.stringify(audioMessage));
@@ -269,7 +285,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         }
       };
 
-      recorder.start(100); // Send audio every 100ms
+      recorder.start(1000); // Send audio every 1 second to avoid spamming
       setMediaRecorder(recorder);
       
     } catch (error) {
@@ -306,6 +322,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     setIsConnected(false);
     setConversationStarted(false);
     setIsSpeaking(false);
+    setInitResponseReceived(false);
     
     // Generate feedback data
     const resumeAnalyzed = !!profile?.resume_url;
@@ -423,7 +440,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                   <div className="flex items-center gap-2 px-3 py-2 bg-green-100 rounded-md">
                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-sm text-green-700">
-                      {isSpeaking ? "AI Speaking..." : "Listening..."}
+                      {isSpeaking ? "AI Speaking..." : initResponseReceived ? "Listening..." : "Initializing..."}
                     </span>
                   </div>
                 </div>
@@ -454,6 +471,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               <div className="text-xs text-gray-500 space-y-1">
                 <div>Audio Context State: {audioContextRef.current?.state || 'Not initialized'}</div>
                 <div>Connection Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
+                <div>Init Response: {initResponseReceived ? 'Received' : 'Waiting'}</div>
                 <div>Speaking Status: {isSpeaking ? 'AI is speaking' : 'Listening for your response'}</div>
                 <div>Audio Queue: {audioQueueRef.current.length} items</div>
               </div>
