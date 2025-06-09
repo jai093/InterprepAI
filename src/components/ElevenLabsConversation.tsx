@@ -172,10 +172,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setSdkError(null);
         startTimer();
         
-        // Send conversation configuration with proper message format
+        // Send conversation configuration with simplified message format
         const resumeAnalysis = analyzeResumeContent();
         const initMessage = {
-          type: 'conversation_initiation_metadata',
+          type: "conversation_initiation_metadata",
           conversation_initiation_metadata: {
             conversation_config_override: {
               agent: {
@@ -205,15 +205,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           console.log('Received message:', message.type);
           
           if (message.type === 'agent_response') {
-            if (message.agent_response_event?.audio_event?.audio) {
+            // Handle audio data from agent response
+            if (message.agent_response && message.agent_response.audio) {
               console.log('Received audio data');
-              audioQueueRef.current.push(message.agent_response_event.audio_event.audio);
+              audioQueueRef.current.push(message.agent_response.audio);
               playAudioQueue();
             }
           } else if (message.type === 'ping') {
-            // Respond to ping with proper format
+            // Respond to ping with correct format
             const pongMessage = { 
-              type: 'pong', 
+              type: 'pong',
               event_id: message.event_id
             };
             console.log('Sending pong:', pongMessage);
@@ -243,7 +244,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
       conversationRef.current = websocket;
 
-      // Set up audio recording with proper format
+      // Set up audio recording with correct format
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -252,9 +253,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN) {
           const reader = new FileReader();
           reader.onload = () => {
-            const base64Audio = (reader.result as string).split(',')[1];
+            const arrayBuffer = reader.result as ArrayBuffer;
+            const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            
             const audioMessage = {
-              type: 'audio',
+              type: "audio",
               audio_event: {
                 audio: base64Audio
               }
@@ -262,7 +265,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             console.log('Sending audio message');
             websocket.send(JSON.stringify(audioMessage));
           };
-          reader.readAsDataURL(event.data);
+          reader.readAsArrayBuffer(event.data);
         }
       };
 
