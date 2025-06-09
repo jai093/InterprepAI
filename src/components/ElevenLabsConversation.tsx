@@ -26,6 +26,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isPlayingRef = useRef(false);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
@@ -78,11 +80,21 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const playAudio = async (audioData: string) => {
+  const playAudioQueue = async () => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
+      return;
+    }
+
+    isPlayingRef.current = true;
+    setIsSpeaking(true);
+
     try {
-      console.log('Playing audio data...');
+      const audioData = audioQueueRef.current.shift();
+      if (!audioData) return;
+
+      console.log('Playing audio from queue...');
       
-      // Create audio blob from base64
+      // Decode base64 audio data
       const binaryString = atob(audioData);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -95,27 +107,31 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       
       audio.volume = 1.0;
       
-      audio.onplay = () => {
-        console.log('Audio started playing');
-        setIsSpeaking(true);
-      };
-      
       audio.onended = () => {
         console.log('Audio finished playing');
-        setIsSpeaking(false);
         URL.revokeObjectURL(audioUrl);
+        isPlayingRef.current = false;
+        
+        // Play next audio in queue
+        if (audioQueueRef.current.length > 0) {
+          setTimeout(() => playAudioQueue(), 100);
+        } else {
+          setIsSpeaking(false);
+        }
       };
       
       audio.onerror = (error) => {
         console.error('Audio playback error:', error);
-        setIsSpeaking(false);
         URL.revokeObjectURL(audioUrl);
+        isPlayingRef.current = false;
+        setIsSpeaking(false);
       };
       
       await audio.play();
       
     } catch (error) {
       console.error('Error playing audio:', error);
+      isPlayingRef.current = false;
       setIsSpeaking(false);
     }
   };
@@ -156,7 +172,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setSdkError(null);
         startTimer();
         
-        // Send conversation configuration
+        // Send conversation configuration with proper message format
         const resumeAnalysis = analyzeResumeContent();
         const initMessage = {
           type: 'conversation_initiation_metadata',
@@ -174,6 +190,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           }
         };
         
+        console.log('Sending init message:', initMessage);
         websocket.send(JSON.stringify(initMessage));
         
         toast({
@@ -188,16 +205,19 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           console.log('Received message:', message.type);
           
           if (message.type === 'agent_response') {
-            if (message.agent_response_event?.audio) {
+            if (message.agent_response_event?.audio_event?.audio) {
               console.log('Received audio data');
-              await playAudio(message.agent_response_event.audio);
+              audioQueueRef.current.push(message.agent_response_event.audio_event.audio);
+              playAudioQueue();
             }
           } else if (message.type === 'ping') {
-            // Respond to ping
-            websocket.send(JSON.stringify({ 
+            // Respond to ping with proper format
+            const pongMessage = { 
               type: 'pong', 
-              ping_event: message.ping_event 
-            }));
+              event_id: message.event_id
+            };
+            console.log('Sending pong:', pongMessage);
+            websocket.send(JSON.stringify(pongMessage));
           }
         } catch (error) {
           console.error('Error processing message:', error);
@@ -215,11 +235,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setIsConnected(false);
         setConversationStarted(false);
         setIsSpeaking(false);
+        
+        if (event.code === 1008) {
+          setSdkError('Invalid message format. Please try again.');
+        }
       };
 
       conversationRef.current = websocket;
 
-      // Set up audio recording
+      // Set up audio recording with proper format
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -229,10 +253,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           const reader = new FileReader();
           reader.onload = () => {
             const base64Audio = (reader.result as string).split(',')[1];
-            websocket.send(JSON.stringify({
+            const audioMessage = {
               type: 'audio',
-              audio: base64Audio
-            }));
+              audio_event: {
+                audio: base64Audio
+              }
+            };
+            console.log('Sending audio message');
+            websocket.send(JSON.stringify(audioMessage));
           };
           reader.readAsDataURL(event.data);
         }
@@ -424,6 +452,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 <div>Audio Context State: {audioContextRef.current?.state || 'Not initialized'}</div>
                 <div>Connection Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
                 <div>Speaking Status: {isSpeaking ? 'AI is speaking' : 'Listening for your response'}</div>
+                <div>Audio Queue: {audioQueueRef.current.length} items</div>
               </div>
             )}
           </div>
