@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,9 +29,12 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
+  const lastAudioSentRef = useRef<number>(0);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
+  const AUDIO_SEND_INTERVAL = 1000; // 1 second between audio sends
 
   useEffect(() => {
     return () => {
@@ -136,6 +140,48 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     }
   };
 
+  // Convert audio blob to proper format for ElevenLabs
+  const convertAudioToFormat = async (audioBlob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const arrayBuffer = reader.result as ArrayBuffer;
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const base64 = btoa(String.fromCharCode(...uint8Array));
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(audioBlob);
+    });
+  };
+
+  const sendAudioChunk = async (audioBlob: Blob) => {
+    if (!conversationRef.current || conversationRef.current.readyState !== WebSocket.OPEN || !initResponseReceived) {
+      return;
+    }
+
+    // Rate limiting - don't send too frequently
+    const now = Date.now();
+    if (now - lastAudioSentRef.current < AUDIO_SEND_INTERVAL) {
+      return;
+    }
+    lastAudioSentRef.current = now;
+
+    try {
+      const base64Audio = await convertAudioToFormat(audioBlob);
+      
+      const audioMessage = {
+        message_type: "audio",
+        audio_chunk: base64Audio
+      };
+      
+      console.log('Sending audio message with length:', base64Audio.length);
+      conversationRef.current.send(JSON.stringify(audioMessage));
+    } catch (error) {
+      console.error('Error sending audio chunk:', error);
+    }
+  };
+
   const initializeWebSocket = async () => {
     try {
       setIsLoading(true);
@@ -150,13 +196,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         await audioContextRef.current.resume();
       }
 
-      // Request microphone permission
+      // Request microphone permission with specific constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 16000
+          sampleRate: 16000,
+          channelCount: 1
         } 
       });
       
@@ -173,7 +220,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setInitResponseReceived(false);
         startTimer();
         
-        // Send conversation initialization with correct ElevenLabs format
+        // Send conversation initialization with correct format
         const resumeAnalysis = analyzeResumeContent();
         const initMessage = {
           message_type: "conversation_init",
@@ -193,7 +240,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           }
         };
         
-        console.log('Sending init message:', initMessage);
+        console.log('Sending init message:', JSON.stringify(initMessage));
         websocket.send(JSON.stringify(initMessage));
         
         toast({
@@ -205,24 +252,25 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       websocket.onmessage = async (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('Received message:', message.message_type || message.type);
+          console.log('Received message type:', message.message_type || message.type);
           
           if (message.message_type === 'conversation_initiation_metadata' || message.type === 'conversation_initiation_metadata') {
             console.log('Received init response - can now send audio');
             setInitResponseReceived(true);
           } else if (message.message_type === 'audio' || message.type === 'audio') {
             // Handle audio data from agent
-            if (message.audio_chunk || message.audio) {
-              console.log('Received audio data');
-              const audioData = message.audio_chunk || message.audio;
+            const audioData = message.audio_chunk || message.audio;
+            if (audioData) {
+              console.log('Received audio data, adding to queue');
               audioQueueRef.current.push(audioData);
               playAudioQueue();
             }
           } else if (message.message_type === 'agent_response' || message.type === 'agent_response') {
             // Handle agent response with audio
-            if (message.agent_response && message.agent_response.audio) {
-              console.log('Received agent response audio');
-              audioQueueRef.current.push(message.agent_response.audio);
+            const audioData = message.agent_response?.audio || message.audio;
+            if (audioData) {
+              console.log('Received agent response audio, adding to queue');
+              audioQueueRef.current.push(audioData);
               playAudioQueue();
             }
           } else if (message.message_type === 'ping' || message.type === 'ping') {
@@ -231,7 +279,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               message_type: 'pong',
               event_id: message.event_id
             };
-            console.log('Sending pong:', pongMessage);
+            console.log('Sending pong:', JSON.stringify(pongMessage));
             websocket.send(JSON.stringify(pongMessage));
           }
         } catch (error) {
@@ -253,7 +301,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setInitResponseReceived(false);
         
         if (event.code === 1008) {
-          setSdkError('Invalid message format. Please try again.');
+          setSdkError('Invalid message format. Check audio encoding.');
         } else if (event.code === 1006) {
           setSdkError('Connection lost. Please try again.');
         }
@@ -261,31 +309,27 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
       conversationRef.current = websocket;
 
-      // Set up audio recording with correct format for 16-bit PCM WAV at 16kHz
+      // Set up audio recording with proper format
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
       
+      // Collect audio chunks and send periodically
       recorder.ondataavailable = (event) => {
-        // Only send audio after receiving init response and when connected
-        if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN && initResponseReceived) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const arrayBuffer = reader.result as ArrayBuffer;
-            const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-            
-            const audioMessage = {
-              message_type: "audio",
-              audio_chunk: base64Audio
-            };
-            console.log('Sending audio message');
-            websocket.send(JSON.stringify(audioMessage));
-          };
-          reader.readAsArrayBuffer(event.data);
+        if (event.data.size > 0 && initResponseReceived) {
+          audioChunksRef.current.push(event.data);
+          
+          // Send accumulated audio chunks
+          if (audioChunksRef.current.length > 0) {
+            const combinedBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            sendAudioChunk(combinedBlob);
+            audioChunksRef.current = []; // Clear chunks after sending
+          }
         }
       };
 
-      recorder.start(1000); // Send audio every 1 second to avoid spamming
+      // Start recording with longer intervals to avoid flooding
+      recorder.start(AUDIO_SEND_INTERVAL);
       setMediaRecorder(recorder);
       
     } catch (error) {
@@ -469,11 +513,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             {/* Audio Debug Info */}
             {conversationStarted && (
               <div className="text-xs text-gray-500 space-y-1">
-                <div>Audio Context State: {audioContextRef.current?.state || 'Not initialized'}</div>
                 <div>Connection Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
                 <div>Init Response: {initResponseReceived ? 'Received' : 'Waiting'}</div>
                 <div>Speaking Status: {isSpeaking ? 'AI is speaking' : 'Listening for your response'}</div>
                 <div>Audio Queue: {audioQueueRef.current.length} items</div>
+                <div>Last Audio Sent: {lastAudioSentRef.current ? new Date(lastAudioSentRef.current).toLocaleTimeString() : 'None'}</div>
               </div>
             )}
           </div>
