@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,23 +23,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [audioQueue, setAudioQueue] = useState<string[]>([]);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
 
   useEffect(() => {
-    // Initialize AudioContext for better audio handling
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -46,39 +38,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-        currentAudioRef.current = null;
-      }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };
   }, [mediaRecorder]);
-
-  // Process audio queue to play audio sequentially
-  useEffect(() => {
-    if (audioQueue.length > 0 && !isPlayingAudio) {
-      playNextAudio();
-    }
-  }, [audioQueue, isPlayingAudio]);
-
-  const playNextAudio = async () => {
-    if (audioQueue.length === 0 || isPlayingAudio) return;
-
-    setIsPlayingAudio(true);
-    const audioData = audioQueue[0];
-    
-    try {
-      await playAudioResponse(audioData);
-      setAudioQueue(prev => prev.slice(1)); // Remove played audio from queue
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      setAudioQueue(prev => prev.slice(1)); // Remove failed audio from queue
-    } finally {
-      setIsPlayingAudio(false);
-    }
-  };
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
@@ -114,12 +78,59 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const playAudio = async (audioData: string) => {
+    try {
+      console.log('Playing audio data...');
+      
+      // Create audio blob from base64
+      const binaryString = atob(audioData);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      audio.volume = 1.0;
+      
+      audio.onplay = () => {
+        console.log('Audio started playing');
+        setIsSpeaking(true);
+      };
+      
+      audio.onended = () => {
+        console.log('Audio finished playing');
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = (error) => {
+        console.error('Audio playback error:', error);
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+      
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setIsSpeaking(false);
+    }
+  };
+
   const initializeWebSocket = async () => {
     try {
       setIsLoading(true);
       
-      // Ensure AudioContext is resumed (required for audio playback)
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      // Initialize audio context
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      // Resume audio context if suspended
+      if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
       }
 
@@ -129,82 +140,78 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 44100
+          sampleRate: 16000
         } 
       });
       
-      // Create WebSocket connection to ElevenLabs
+      // Create WebSocket connection
       const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}`;
       const websocket = new WebSocket(wsUrl);
       
       websocket.onopen = () => {
-        console.log('Connected to ElevenLabs Conversational AI');
+        console.log('Connected to ElevenLabs');
         setIsConnected(true);
         setConversationStarted(true);
         setIsLoading(false);
         setSdkError(null);
         startTimer();
         
-        // Send initial context if resume exists
+        // Send conversation configuration
         const resumeAnalysis = analyzeResumeContent();
-        if (resumeAnalysis) {
-          websocket.send(JSON.stringify({
-            type: 'conversation_initiation_metadata',
-            conversation_initiation_metadata: {
-              conversation_config_override: {
-                agent: {
-                  prompt: {
-                    prompt: `You are a professional AI interviewer conducting a comprehensive interview session. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications, experience, and potential. Keep responses conversational, professional, and encouraging. Ask follow-up questions to dive deeper into their experience and skills. Conduct this as a real interview session. Always speak clearly and at a moderate pace.`
-                  },
-                  first_message: profile?.resume_url 
-                    ? "Hello! Welcome to your interview session. I've reviewed your background and I'm excited to learn more about your experience and qualifications. Let's begin - could you please tell me a bit about yourself and what interests you most about your field?"
-                    : "Hello! Welcome to your interview session. I'm excited to learn about your experience and qualifications. Let's begin - could you please tell me a bit about yourself and what interests you most about your field?"
-                }
+        const initMessage = {
+          type: 'conversation_initiation_metadata',
+          conversation_initiation_metadata: {
+            conversation_config_override: {
+              agent: {
+                prompt: {
+                  prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
+                },
+                first_message: profile?.resume_url 
+                  ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
+                  : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
               }
             }
-          }));
-        }
+          }
+        };
+        
+        websocket.send(JSON.stringify(initMessage));
         
         toast({
           title: "Interview Started",
-          description: "Connected to AI interviewer. You should hear the AI speak shortly!",
+          description: "Connected! You should hear the AI speak shortly.",
         });
       };
 
-      websocket.onmessage = (event) => {
+      websocket.onmessage = async (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('WebSocket message:', message);
+          console.log('Received message:', message.type);
           
           if (message.type === 'agent_response') {
-            console.log('Agent response received:', message);
-            setIsSpeaking(true);
-            
-            // Handle audio response - add to queue for sequential playback
-            if (message.audio) {
-              console.log('Audio data received, adding to queue');
-              setAudioQueue(prev => [...prev, message.audio]);
+            if (message.agent_response_event?.audio) {
+              console.log('Received audio data');
+              await playAudio(message.agent_response_event.audio);
             }
-          } else if (message.type === 'agent_response_end') {
-            console.log('Agent response ended');
-            setIsSpeaking(false);
           } else if (message.type === 'ping') {
-            // Respond to ping to keep connection alive
-            websocket.send(JSON.stringify({ type: 'pong', ping_event: message.ping_event }));
+            // Respond to ping
+            websocket.send(JSON.stringify({ 
+              type: 'pong', 
+              ping_event: message.ping_event 
+            }));
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('Error processing message:', error);
         }
       };
 
       websocket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        setSdkError('Connection error. Please check your network and try again.');
+        setSdkError('Connection error. Please try again.');
         setIsLoading(false);
       };
 
       websocket.onclose = (event) => {
-        console.log('WebSocket connection closed:', event.code, event.reason);
+        console.log('WebSocket closed:', event.code, event.reason);
         setIsConnected(false);
         setConversationStarted(false);
         setIsSpeaking(false);
@@ -212,14 +219,13 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
       conversationRef.current = websocket;
 
-      // Set up MediaRecorder for audio streaming
+      // Set up audio recording
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
       
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN) {
-          // Convert audio to base64 and send to WebSocket
           const reader = new FileReader();
           reader.onload = () => {
             const base64Audio = (reader.result as string).split(',')[1];
@@ -232,97 +238,24 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         }
       };
 
-      // Start recording in small chunks for real-time streaming
-      recorder.start(250); // 250ms chunks for better real-time experience
+      recorder.start(100); // Send audio every 100ms
       setMediaRecorder(recorder);
       
     } catch (error) {
-      console.error('Error initializing conversation:', error);
+      console.error('Error initializing:', error);
       setIsLoading(false);
-      setSdkError('Failed to access microphone or connect to service.');
+      setSdkError('Failed to access microphone or connect.');
       toast({
         title: "Error",
-        description: "Failed to start the interview. Please check your microphone permissions and try again.",
+        description: "Failed to start interview. Check microphone permissions.",
         variant: "destructive",
       });
     }
   };
 
-  const playAudioResponse = async (audioBase64: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log('Playing audio response...');
-        
-        // Stop any currently playing audio
-        if (currentAudioRef.current) {
-          currentAudioRef.current.pause();
-          currentAudioRef.current = null;
-        }
-
-        // Decode base64 audio
-        const binaryString = atob(audioBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        // Create blob and audio URL
-        const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        // Set audio properties for better playback
-        audio.volume = 0.8;
-        audio.preload = 'auto';
-        
-        currentAudioRef.current = audio;
-        
-        audio.onloadeddata = () => {
-          console.log('Audio loaded successfully');
-        };
-        
-        audio.onplay = () => {
-          console.log('Audio started playing');
-          setIsSpeaking(true);
-        };
-        
-        audio.onended = () => {
-          console.log('Audio playback ended');
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          currentAudioRef.current = null;
-          resolve();
-        };
-        
-        audio.onerror = (error) => {
-          console.error('Audio playback error:', error);
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          currentAudioRef.current = null;
-          reject(error);
-        };
-        
-        // Play the audio
-        audio.play().catch((playError) => {
-          console.error('Error starting audio playback:', playError);
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          currentAudioRef.current = null;
-          reject(playError);
-        });
-        
-      } catch (error) {
-        console.error('Error in playAudioResponse:', error);
-        setIsSpeaking(false);
-        reject(error);
-      }
-    });
-  };
-
   const startConversation = async () => {
     setIsLoading(true);
     setSdkError(null);
-    setAudioQueue([]); // Clear any existing audio queue
     await initializeWebSocket();
   };
 
@@ -335,11 +268,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       mediaRecorder.stop();
     }
     
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    
     if (conversationRef.current && conversationRef.current.readyState === WebSocket.OPEN) {
       conversationRef.current.close();
     }
@@ -347,7 +275,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     setIsConnected(false);
     setConversationStarted(false);
     setIsSpeaking(false);
-    setAudioQueue([]);
     
     // Generate feedback data
     const resumeAnalyzed = !!profile?.resume_url;
@@ -412,16 +339,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 ✅ Connected to ElevenLabs Conversational AI
               </AlertDescription>
             </Alert>
-          )}
-
-          {/* Audio Status */}
-          {conversationStarted && (
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md">
-              <Volume2 className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-700">
-                Audio System: {audioQueue.length > 0 ? `${audioQueue.length} audio clips queued` : 'Ready for playback'}
-              </span>
-            </div>
           )}
 
           {/* Resume Status Section */}
@@ -499,6 +416,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                   Audio system is being initialized for voice responses.
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Audio Debug Info */}
+            {conversationStarted && (
+              <div className="text-xs text-gray-500 space-y-1">
+                <div>Audio Context State: {audioContextRef.current?.state || 'Not initialized'}</div>
+                <div>Connection Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
+                <div>Speaking Status: {isSpeaking ? 'AI is speaking' : 'Listening for your response'}</div>
+              </div>
             )}
           </div>
         </CardContent>
