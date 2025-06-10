@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ElevenLabsConversationClient } from "@elevenlabs/elevenlabs-js";
 
 interface ElevenLabsConversationProps {
   onInterviewComplete?: (data: any) => void;
@@ -24,7 +23,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const conversationRef = useRef<ElevenLabsConversationClient | null>(null);
+  const conversationRef = useRef<any>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
@@ -79,8 +78,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       setIsLoading(true);
       setSdkError(null);
 
-      // Initialize the ElevenLabs Conversation Client
-      const conversation = new ElevenLabsConversationClient({
+      // Check if ElevenLabs global SDK is available
+      if (!window.ElevenLabs?.Conversation) {
+        setSdkError('ElevenLabs SDK not loaded. Please ensure the script is included.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Initialize the ElevenLabs Conversation using the global SDK
+      const conversation = new window.ElevenLabs.Conversation({
         agentId: AGENT_ID,
         onConnect: () => {
           console.log('Connected to ElevenLabs');
@@ -102,7 +108,12 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         },
         onMessage: (message) => {
           console.log('Received message:', message);
-          // Handle incoming messages if needed
+          // Update speaking status based on message type
+          if (message.type === 'agent_response_start') {
+            setIsSpeaking(true);
+          } else if (message.type === 'agent_response_end') {
+            setIsSpeaking(false);
+          }
         },
         onError: (error) => {
           console.error('ElevenLabs error:', error);
@@ -202,6 +213,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* ElevenLabs SDK Script */}
+          {typeof window !== 'undefined' && !window.ElevenLabs && (
+            <script
+              src="https://elevenlabs.io/convai-widget/index.js"
+              async
+              onLoad={() => console.log('ElevenLabs SDK loaded')}
+            />
+          )}
+
           {/* Connection Status */}
           {sdkError && (
             <Alert variant="destructive">
