@@ -22,11 +22,39 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<any>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
+
+  // Check if SDK is loaded
+  useEffect(() => {
+    const checkSDK = () => {
+      if (typeof window !== 'undefined' && window.ElevenLabs?.Conversation) {
+        setSdkLoaded(true);
+        setSdkError(null);
+        console.log('ElevenLabs SDK detected');
+      } else {
+        // Try again in 500ms
+        setTimeout(checkSDK, 500);
+      }
+    };
+
+    // Start checking immediately
+    checkSDK();
+
+    // Also listen for window load event
+    const handleLoad = () => {
+      setTimeout(checkSDK, 1000);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', handleLoad);
+      return () => window.removeEventListener('load', handleLoad);
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -80,10 +108,12 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
       // Check if ElevenLabs global SDK is available
       if (!window.ElevenLabs?.Conversation) {
-        setSdkError('ElevenLabs SDK not loaded. Please ensure the script is included.');
+        setSdkError('ElevenLabs SDK not loaded. Please refresh the page and try again.');
         setIsLoading(false);
         return;
       }
+
+      console.log('Initializing ElevenLabs Conversation...');
 
       // Initialize the ElevenLabs Conversation using the global SDK
       const conversation = new window.ElevenLabs.Conversation({
@@ -213,13 +243,13 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* ElevenLabs SDK Script */}
-          {typeof window !== 'undefined' && !window.ElevenLabs && (
-            <script
-              src="https://elevenlabs.io/convai-widget/index.js"
-              async
-              onLoad={() => console.log('ElevenLabs SDK loaded')}
-            />
+          {/* SDK Loading Status */}
+          {!sdkLoaded && (
+            <Alert>
+              <AlertDescription>
+                Loading ElevenLabs SDK... Please wait.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Connection Status */}
@@ -228,9 +258,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex items-center justify-between">
                 <span>{sdkError}</span>
-                <Button size="sm" variant="outline" onClick={startConversation}>
+                <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Retry
+                  Refresh Page
                 </Button>
               </AlertDescription>
             </Alert>
@@ -276,11 +306,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               {!conversationStarted ? (
                 <Button 
                   onClick={startConversation} 
-                  disabled={isLoading}
+                  disabled={isLoading || !sdkLoaded}
                   className="flex items-center gap-2"
                 >
                   <Mic className="h-4 w-4" />
-                  {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
+                  {isLoading ? "Connecting..." : !sdkLoaded ? "Loading SDK..." : "Start AI Interview (10 min)"}
                 </Button>
               ) : (
                 <div className="flex gap-2">
