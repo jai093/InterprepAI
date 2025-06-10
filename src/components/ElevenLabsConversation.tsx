@@ -22,60 +22,51 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [loadingAttempts, setLoadingAttempts] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<any>(null);
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
-  const MAX_LOADING_ATTEMPTS = 20; // Maximum attempts before giving up
 
-  // Check if SDK is loaded with improved detection
+  // Check if SDK is loaded
   useEffect(() => {
     let attempts = 0;
+    const maxAttempts = 50; // Increase max attempts
     
     const checkSDK = () => {
       attempts++;
-      setLoadingAttempts(attempts);
+      console.log(`SDK check attempt ${attempts}/${maxAttempts}`);
+      console.log('Window object exists:', typeof window !== 'undefined');
+      console.log('ElevenLabs exists:', !!window.ElevenLabs);
+      console.log('Conversation exists:', !!window.ElevenLabs?.Conversation);
       
-      console.log(`Checking for ElevenLabs SDK... Attempt ${attempts}`);
-      console.log('Window object:', typeof window);
-      console.log('ElevenLabs available:', !!window.ElevenLabs);
-      console.log('Conversation available:', !!window.ElevenLabs?.Conversation);
-      
-      if (typeof window !== 'undefined' && window.ElevenLabs?.Conversation) {
-        console.log('✅ ElevenLabs SDK successfully detected!');
+      if (window.ElevenLabs?.Conversation) {
+        console.log('✅ ElevenLabs SDK loaded successfully!');
         setSdkLoaded(true);
         setSdkError(null);
-        if (checkIntervalRef.current) {
-          clearInterval(checkIntervalRef.current);
-        }
-        return;
+        return true;
       }
       
-      if (attempts >= MAX_LOADING_ATTEMPTS) {
-        console.error('❌ Failed to load ElevenLabs SDK after maximum attempts');
+      if (attempts >= maxAttempts) {
+        console.error('❌ SDK loading timeout');
         setSdkError('Failed to load ElevenLabs SDK. Please refresh the page and try again.');
-        if (checkIntervalRef.current) {
-          clearInterval(checkIntervalRef.current);
-        }
-        return;
+        return false;
       }
+      
+      return false;
     };
 
     // Check immediately
-    checkSDK();
+    if (checkSDK()) return;
     
-    // Set up interval to check every 500ms
-    checkIntervalRef.current = setInterval(checkSDK, 500);
-
-    // Cleanup function
-    return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
+    // Check every 100ms
+    const interval = setInterval(() => {
+      if (checkSDK()) {
+        clearInterval(interval);
       }
-    };
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -128,16 +119,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       setIsLoading(true);
       setSdkError(null);
 
-      // Final check if ElevenLabs global SDK is available
       if (!window.ElevenLabs?.Conversation) {
         setSdkError('ElevenLabs SDK not available. Please refresh the page and try again.');
         setIsLoading(false);
         return;
       }
 
-      console.log('🚀 Initializing ElevenLabs Conversation...');
+      console.log('🚀 Starting ElevenLabs Conversation...');
 
-      // Initialize the ElevenLabs Conversation using the global SDK
       const conversation = new window.ElevenLabs.Conversation({
         agentId: AGENT_ID,
         onConnect: () => {
@@ -160,7 +149,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         },
         onMessage: (message) => {
           console.log('📨 Received message:', message);
-          // Update speaking status based on message type
           if (message.type === 'agent_response_start') {
             setIsSpeaking(true);
           } else if (message.type === 'agent_response_end') {
@@ -179,7 +167,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         }
       });
 
-      // Set conversation overrides with resume analysis
       const resumeAnalysis = analyzeResumeContent();
       conversation.setOverrides({
         agent: {
@@ -193,8 +180,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       });
 
       conversationRef.current = conversation;
-
-      // Start the session
       await conversation.startSession();
       
     } catch (error) {
@@ -265,21 +250,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* SDK Loading Status */}
+          {/* SDK Status */}
           {!sdkLoaded && !sdkError && (
             <Alert>
               <AlertDescription>
-                Loading ElevenLabs SDK... Attempt {loadingAttempts}/{MAX_LOADING_ATTEMPTS}
-                {loadingAttempts > 5 && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    This is taking longer than expected. The SDK should load within a few seconds.
-                  </div>
-                )}
+                Loading ElevenLabs SDK... Please wait.
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Connection Status */}
           {sdkError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -287,7 +266,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 <span>{sdkError}</span>
                 <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh Page
+                  Refresh
                 </Button>
               </AlertDescription>
             </Alert>
@@ -296,15 +275,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           {sdkLoaded && !sdkError && (
             <Alert>
               <AlertDescription className="text-green-600">
-                ✅ ElevenLabs SDK loaded successfully
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {isConnected && (
-            <Alert>
-              <AlertDescription className="text-green-600">
-                ✅ Connected to ElevenLabs Conversational AI
+                ✅ ElevenLabs SDK ready
               </AlertDescription>
             </Alert>
           )}
@@ -345,7 +316,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                   className="flex items-center gap-2"
                 >
                   <Mic className="h-4 w-4" />
-                  {isLoading ? "Connecting..." : !sdkLoaded ? `Loading SDK... (${loadingAttempts}/${MAX_LOADING_ATTEMPTS})` : "Start AI Interview (10 min)"}
+                  {isLoading ? "Connecting..." : !sdkLoaded ? "Loading SDK..." : "Start AI Interview (10 min)"}
                 </Button>
               ) : (
                 <div className="flex gap-2">
