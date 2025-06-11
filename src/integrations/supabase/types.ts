@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      batch_call_sessions: {
+        Row: {
+          audio_urls: string[]
+          callback_url: string | null
+          candidate_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          phone_number: string
+          prompts: string[]
+          status: string
+          voice_id: string
+          webhook_data: Json | null
+        }
+        Insert: {
+          audio_urls?: string[]
+          callback_url?: string | null
+          candidate_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          phone_number: string
+          prompts?: string[]
+          status?: string
+          voice_id: string
+          webhook_data?: Json | null
+        }
+        Update: {
+          audio_urls?: string[]
+          callback_url?: string | null
+          candidate_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          phone_number?: string
+          prompts?: string[]
+          status?: string
+          voice_id?: string
+          webhook_data?: Json | null
+        }
+        Relationships: []
+      }
       interview_sessions: {
         Row: {
           body_analysis: Json | null

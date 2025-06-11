@@ -18,6 +18,8 @@ interface BatchCallSession {
   prompts: string[];
   audio_urls: string[];
   status: 'ready' | 'calling' | 'completed' | 'failed';
+  callback_url?: string;
+  webhook_data?: any;
   created_at: string;
   completed_at?: string;
 }
@@ -59,12 +61,12 @@ const BatchCallManager: React.FC = () => {
   const fetchSessions = async () => {
     try {
       const { data, error } = await supabase
-        .from('batch_call_sessions')
+        .from('batch_call_sessions' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSessions(data || []);
+      setSessions((data as BatchCallSession[]) || []);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     }
