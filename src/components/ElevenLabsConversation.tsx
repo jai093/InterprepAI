@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<any>(null);
+  const sdkCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
@@ -31,7 +33,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   // Check if SDK is loaded
   useEffect(() => {
     let attempts = 0;
-    const maxAttempts = 50; // Increase max attempts
+    const maxAttempts = 50;
     
     const checkSDK = () => {
       attempts++;
@@ -44,12 +46,20 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         console.log('✅ ElevenLabs SDK loaded successfully!');
         setSdkLoaded(true);
         setSdkError(null);
+        if (sdkCheckIntervalRef.current) {
+          clearInterval(sdkCheckIntervalRef.current);
+          sdkCheckIntervalRef.current = null;
+        }
         return true;
       }
       
       if (attempts >= maxAttempts) {
         console.error('❌ SDK loading timeout');
         setSdkError('Failed to load ElevenLabs SDK. Please refresh the page and try again.');
+        if (sdkCheckIntervalRef.current) {
+          clearInterval(sdkCheckIntervalRef.current);
+          sdkCheckIntervalRef.current = null;
+        }
         return false;
       }
       
@@ -60,13 +70,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     if (checkSDK()) return;
     
     // Check every 100ms
-    const interval = setInterval(() => {
-      if (checkSDK()) {
-        clearInterval(interval);
-      }
+    sdkCheckIntervalRef.current = setInterval(() => {
+      checkSDK();
     }, 100);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (sdkCheckIntervalRef.current) {
+        clearInterval(sdkCheckIntervalRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -76,6 +88,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       }
       if (conversationRef.current) {
         conversationRef.current.endSession();
+      }
+      if (sdkCheckIntervalRef.current) {
+        clearInterval(sdkCheckIntervalRef.current);
       }
     };
   }, []);
