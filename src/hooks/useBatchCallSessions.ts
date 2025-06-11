@@ -8,7 +8,7 @@ export const useBatchCallSessions = () => {
 
   const fetchSessions = async () => {
     try {
-      // Use rpc call instead of direct table access to work around type issues
+      // Use rpc call to get batch call sessions
       const { data, error } = await supabase.rpc('get_batch_call_sessions');
       
       if (error) {

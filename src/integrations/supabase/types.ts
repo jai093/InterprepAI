@@ -235,7 +235,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_batch_call_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          audio_urls: string[]
+          callback_url: string | null
+          candidate_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          phone_number: string
+          prompts: string[]
+          status: string
+          voice_id: string
+          webhook_data: Json | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
