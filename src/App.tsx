@@ -17,6 +17,7 @@ function App() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/interview" element={<InterviewSimulation />} />
+      <Route path="/simulation" element={<InterviewSimulation />} />
       <Route path="/start-practice" element={<InterviewSimulation />} />
       <Route path="/practice" element={<InterviewSimulation />} />
       <Route path="/meetups" element={<Meetups />} />
