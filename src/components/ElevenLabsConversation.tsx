@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,78 +23,72 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [sdkCheckAttempts, setSdkCheckAttempts] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<any>(null);
-  const sdkCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const scriptLoadedRef = useRef(false);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
-  const MAX_SDK_CHECK_ATTEMPTS = 30; // Reduced from 50 to 30
 
-  // Check if SDK is loaded
+  // Load ElevenLabs SDK script dynamically
   useEffect(() => {
-    const checkSDK = () => {
-      setSdkCheckAttempts(prev => prev + 1);
-      
-      console.log(`SDK check attempt ${sdkCheckAttempts + 1}/${MAX_SDK_CHECK_ATTEMPTS}`);
-      console.log('Window object exists:', typeof window !== 'undefined');
-      console.log('ElevenLabs exists:', !!window.ElevenLabs);
-      console.log('Conversation exists:', !!window.ElevenLabs?.Conversation);
-      
+    const loadElevenLabsSDK = () => {
+      // Check if script is already loaded
       if (window.ElevenLabs?.Conversation) {
-        console.log('✅ ElevenLabs SDK loaded successfully!');
+        console.log('✅ ElevenLabs SDK already loaded');
         setSdkLoaded(true);
         setSdkError(null);
-        if (sdkCheckIntervalRef.current) {
-          clearInterval(sdkCheckIntervalRef.current);
-          sdkCheckIntervalRef.current = null;
-        }
-        return true;
+        return;
       }
-      
-      if (sdkCheckAttempts >= MAX_SDK_CHECK_ATTEMPTS) {
-        console.error('❌ SDK loading timeout after', MAX_SDK_CHECK_ATTEMPTS, 'attempts');
-        setSdkError('Failed to load ElevenLabs SDK. The SDK script may not be loaded. Please refresh the page and try again.');
-        if (sdkCheckIntervalRef.current) {
-          clearInterval(sdkCheckIntervalRef.current);
-          sdkCheckIntervalRef.current = null;
-        }
-        return false;
+
+      // Check if script tag already exists
+      if (document.querySelector('script[src*="elevenlabs"]') || scriptLoadedRef.current) {
+        console.log('📦 ElevenLabs script tag already exists, waiting for load...');
+        return;
       }
+
+      console.log('🔄 Loading ElevenLabs SDK...');
       
-      return false;
+      const script = document.createElement('script');
+      script.src = 'https://elevenlabs.io/convai-widget/index.js';
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => {
+        console.log('✅ ElevenLabs script loaded successfully');
+        scriptLoadedRef.current = true;
+        
+        // Wait a bit for the SDK to initialize
+        setTimeout(() => {
+          if (window.ElevenLabs?.Conversation) {
+            console.log('✅ ElevenLabs SDK ready');
+            setSdkLoaded(true);
+            setSdkError(null);
+          } else {
+            console.log('⚠️ Script loaded but SDK not available');
+            setSdkError('ElevenLabs SDK not properly initialized. Please refresh the page.');
+          }
+        }, 1000);
+      };
+      
+      script.onerror = (error) => {
+        console.error('❌ Failed to load ElevenLabs script:', error);
+        setSdkError('Failed to load ElevenLabs SDK script. Please check your internet connection and try again.');
+        scriptLoadedRef.current = false;
+      };
+      
+      document.head.appendChild(script);
     };
 
-    // Check immediately
-    if (checkSDK()) return;
-    
-    // Only start interval if SDK not loaded and we haven't exceeded attempts
-    if (!sdkLoaded && sdkCheckAttempts < MAX_SDK_CHECK_ATTEMPTS) {
-      sdkCheckIntervalRef.current = setInterval(() => {
-        checkSDK();
-      }, 200); // Increased interval to 200ms
-    }
+    loadElevenLabsSDK();
 
-    return () => {
-      if (sdkCheckIntervalRef.current) {
-        clearInterval(sdkCheckIntervalRef.current);
-        sdkCheckIntervalRef.current = null;
-      }
-    };
-  }, [sdkCheckAttempts, sdkLoaded]);
-
-  // Cleanup effect
-  useEffect(() => {
+    // Cleanup
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       if (conversationRef.current) {
         conversationRef.current.endSession();
-      }
-      if (sdkCheckIntervalRef.current) {
-        clearInterval(sdkCheckIntervalRef.current);
       }
     };
   }, []);
@@ -273,10 +268,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         </CardHeader>
         <CardContent className="space-y-4">
           {/* SDK Status */}
-          {!sdkLoaded && !sdkError && sdkCheckAttempts < MAX_SDK_CHECK_ATTEMPTS && (
+          {!sdkLoaded && !sdkError && (
             <Alert>
               <AlertDescription>
-                Loading ElevenLabs SDK... Please wait. (Attempt {sdkCheckAttempts}/{MAX_SDK_CHECK_ATTEMPTS})
+                Loading ElevenLabs SDK... Please wait.
               </AlertDescription>
             </Alert>
           )}
