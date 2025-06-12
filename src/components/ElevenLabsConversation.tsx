@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,21 +22,21 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [isLoading, setIsLoading] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [sdkCheckAttempts, setSdkCheckAttempts] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const conversationRef = useRef<any>(null);
   const sdkCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
+  const MAX_SDK_CHECK_ATTEMPTS = 30; // Reduced from 50 to 30
 
   // Check if SDK is loaded
   useEffect(() => {
-    let attempts = 0;
-    const maxAttempts = 50;
-    
     const checkSDK = () => {
-      attempts++;
-      console.log(`SDK check attempt ${attempts}/${maxAttempts}`);
+      setSdkCheckAttempts(prev => prev + 1);
+      
+      console.log(`SDK check attempt ${sdkCheckAttempts + 1}/${MAX_SDK_CHECK_ATTEMPTS}`);
       console.log('Window object exists:', typeof window !== 'undefined');
       console.log('ElevenLabs exists:', !!window.ElevenLabs);
       console.log('Conversation exists:', !!window.ElevenLabs?.Conversation);
@@ -53,9 +52,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         return true;
       }
       
-      if (attempts >= maxAttempts) {
-        console.error('❌ SDK loading timeout');
-        setSdkError('Failed to load ElevenLabs SDK. Please refresh the page and try again.');
+      if (sdkCheckAttempts >= MAX_SDK_CHECK_ATTEMPTS) {
+        console.error('❌ SDK loading timeout after', MAX_SDK_CHECK_ATTEMPTS, 'attempts');
+        setSdkError('Failed to load ElevenLabs SDK. The SDK script may not be loaded. Please refresh the page and try again.');
         if (sdkCheckIntervalRef.current) {
           clearInterval(sdkCheckIntervalRef.current);
           sdkCheckIntervalRef.current = null;
@@ -69,18 +68,22 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     // Check immediately
     if (checkSDK()) return;
     
-    // Check every 100ms
-    sdkCheckIntervalRef.current = setInterval(() => {
-      checkSDK();
-    }, 100);
+    // Only start interval if SDK not loaded and we haven't exceeded attempts
+    if (!sdkLoaded && sdkCheckAttempts < MAX_SDK_CHECK_ATTEMPTS) {
+      sdkCheckIntervalRef.current = setInterval(() => {
+        checkSDK();
+      }, 200); // Increased interval to 200ms
+    }
 
     return () => {
       if (sdkCheckIntervalRef.current) {
         clearInterval(sdkCheckIntervalRef.current);
+        sdkCheckIntervalRef.current = null;
       }
     };
-  }, []);
+  }, [sdkCheckAttempts, sdkLoaded]);
 
+  // Cleanup effect
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -258,6 +261,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     });
   };
 
+  const handleRefreshPage = () => {
+    window.location.reload();
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Card>
@@ -266,10 +273,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         </CardHeader>
         <CardContent className="space-y-4">
           {/* SDK Status */}
-          {!sdkLoaded && !sdkError && (
+          {!sdkLoaded && !sdkError && sdkCheckAttempts < MAX_SDK_CHECK_ATTEMPTS && (
             <Alert>
               <AlertDescription>
-                Loading ElevenLabs SDK... Please wait.
+                Loading ElevenLabs SDK... Please wait. (Attempt {sdkCheckAttempts}/{MAX_SDK_CHECK_ATTEMPTS})
               </AlertDescription>
             </Alert>
           )}
@@ -279,7 +286,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex items-center justify-between">
                 <span>{sdkError}</span>
-                <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                <Button size="sm" variant="outline" onClick={handleRefreshPage}>
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Refresh
                 </Button>
