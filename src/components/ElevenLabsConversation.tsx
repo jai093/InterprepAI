@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useConversation } from "@elevenlabs/react";
 
 interface ElevenLabsConversationProps {
   onInterviewComplete?: (data: any) => void;
@@ -16,82 +17,43 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const { user } = useAuth();
   const { profile } = useProfile();
   const { toast } = useToast();
-  const [isConnected, setIsConnected] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [sdkError, setSdkError] = useState<string | null>(null);
-  const [sdkLoaded, setSdkLoaded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const conversationRef = useRef<any>(null);
-  const scriptLoadedRef = useRef(false);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
 
-  // Load ElevenLabs SDK script dynamically
-  useEffect(() => {
-    const loadElevenLabsSDK = () => {
-      // Check if script is already loaded
-      if (window.ElevenLabs?.Conversation) {
-        console.log('✅ ElevenLabs SDK already loaded');
-        setSdkLoaded(true);
-        setSdkError(null);
-        return;
-      }
-
-      // Check if script tag already exists
-      if (document.querySelector('script[src*="elevenlabs"]') || scriptLoadedRef.current) {
-        console.log('📦 ElevenLabs script tag already exists, waiting for load...');
-        return;
-      }
-
-      console.log('🔄 Loading ElevenLabs SDK...');
+  const conversation = useConversation({
+    onConnect: () => {
+      console.log('✅ Connected to ElevenLabs');
+      setConversationStarted(true);
+      setIsLoading(false);
+      startTimer();
       
-      const script = document.createElement('script');
-      script.src = 'https://elevenlabs.io/convai-widget/index.js';
-      script.async = true;
-      script.defer = true;
-      
-      script.onload = () => {
-        console.log('✅ ElevenLabs script loaded successfully');
-        scriptLoadedRef.current = true;
-        
-        // Wait a bit for the SDK to initialize
-        setTimeout(() => {
-          if (window.ElevenLabs?.Conversation) {
-            console.log('✅ ElevenLabs SDK ready');
-            setSdkLoaded(true);
-            setSdkError(null);
-          } else {
-            console.log('⚠️ Script loaded but SDK not available');
-            setSdkError('ElevenLabs SDK not properly initialized. Please refresh the page.');
-          }
-        }, 1000);
-      };
-      
-      script.onerror = (error) => {
-        console.error('❌ Failed to load ElevenLabs script:', error);
-        setSdkError('Failed to load ElevenLabs SDK script. Please check your internet connection and try again.');
-        scriptLoadedRef.current = false;
-      };
-      
-      document.head.appendChild(script);
-    };
-
-    loadElevenLabsSDK();
-
-    // Cleanup
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (conversationRef.current) {
-        conversationRef.current.endSession();
-      }
-    };
-  }, []);
+      toast({
+        title: "Interview Started",
+        description: "Connected to AI interviewer!",
+      });
+    },
+    onDisconnect: () => {
+      console.log('❌ Disconnected from ElevenLabs');
+      setConversationStarted(false);
+    },
+    onMessage: (message) => {
+      console.log('📨 Received message:', message);
+    },
+    onError: (error) => {
+      console.error('❌ ElevenLabs error:', error);
+      setIsLoading(false);
+      toast({
+        title: "Error",
+        description: "Failed to connect to AI interviewer.",
+        variant: "destructive",
+      });
+    }
+  });
 
   const analyzeResumeContent = () => {
     if (!profile?.resume_url) {
@@ -130,75 +92,32 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const startConversation = async () => {
     try {
       setIsLoading(true);
-      setSdkError(null);
 
-      if (!window.ElevenLabs?.Conversation) {
-        setSdkError('ElevenLabs SDK not available. Please refresh the page and try again.');
-        setIsLoading(false);
-        return;
-      }
+      // Request microphone permissions first
+      await navigator.mediaDevices.getUserMedia({ audio: true });
 
       console.log('🚀 Starting ElevenLabs Conversation...');
 
-      const conversation = new window.ElevenLabs.Conversation({
-        agentId: AGENT_ID,
-        onConnect: () => {
-          console.log('✅ Connected to ElevenLabs');
-          setIsConnected(true);
-          setConversationStarted(true);
-          setIsLoading(false);
-          startTimer();
-          
-          toast({
-            title: "Interview Started",
-            description: "Connected to AI interviewer!",
-          });
-        },
-        onDisconnect: () => {
-          console.log('❌ Disconnected from ElevenLabs');
-          setIsConnected(false);
-          setConversationStarted(false);
-          setIsSpeaking(false);
-        },
-        onMessage: (message) => {
-          console.log('📨 Received message:', message);
-          if (message.type === 'agent_response_start') {
-            setIsSpeaking(true);
-          } else if (message.type === 'agent_response_end') {
-            setIsSpeaking(false);
-          }
-        },
-        onError: (error) => {
-          console.error('❌ ElevenLabs error:', error);
-          setSdkError('Connection error. Please try again.');
-          setIsLoading(false);
-          toast({
-            title: "Error",
-            description: "Failed to connect to AI interviewer.",
-            variant: "destructive",
-          });
-        }
-      });
-
       const resumeAnalysis = analyzeResumeContent();
-      conversation.setOverrides({
-        agent: {
-          prompt: {
-            prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
-          },
-          firstMessage: profile?.resume_url 
-            ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
-            : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
+      
+      // Start the conversation with agent ID
+      await conversation.startSession({
+        agentId: AGENT_ID,
+        overrides: {
+          agent: {
+            prompt: {
+              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
+            },
+            firstMessage: profile?.resume_url 
+              ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
+              : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
+          }
         }
       });
-
-      conversationRef.current = conversation;
-      await conversation.startSession();
       
     } catch (error) {
       console.error('❌ Error starting conversation:', error);
       setIsLoading(false);
-      setSdkError('Failed to start interview session.');
       toast({
         title: "Error",
         description: "Failed to start interview. Please check your microphone permissions.",
@@ -212,13 +131,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       clearInterval(timerRef.current);
     }
     
-    if (conversationRef.current) {
-      await conversationRef.current.endSession();
-    }
-    
-    setIsConnected(false);
+    await conversation.endSession();
     setConversationStarted(false);
-    setIsSpeaking(false);
     
     // Generate feedback data
     const resumeAnalyzed = !!profile?.resume_url;
@@ -256,9 +170,14 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     });
   };
 
-  const handleRefreshPage = () => {
-    window.location.reload();
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -267,36 +186,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           <CardTitle>AI Voice Interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* SDK Status */}
-          {!sdkLoaded && !sdkError && (
-            <Alert>
-              <AlertDescription>
-                Loading ElevenLabs SDK... Please wait.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {sdkError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>{sdkError}</span>
-                <Button size="sm" variant="outline" onClick={handleRefreshPage}>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {sdkLoaded && !sdkError && (
-            <Alert>
-              <AlertDescription className="text-green-600">
-                ✅ ElevenLabs SDK ready
-              </AlertDescription>
-            </Alert>
-          )}
-
           {/* Resume Status Section */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Resume Analysis Status</label>
@@ -329,11 +218,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               {!conversationStarted ? (
                 <Button 
                   onClick={startConversation} 
-                  disabled={isLoading || !sdkLoaded}
+                  disabled={isLoading}
                   className="flex items-center gap-2"
                 >
                   <Mic className="h-4 w-4" />
-                  {isLoading ? "Connecting..." : !sdkLoaded ? "Loading SDK..." : "Start AI Interview (10 min)"}
+                  {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
                 </Button>
               ) : (
                 <div className="flex gap-2">
@@ -348,7 +237,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                   <div className="flex items-center gap-2 px-3 py-2 bg-green-100 rounded-md">
                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-sm text-green-700">
-                      {isSpeaking ? "AI Speaking..." : "Listening..."}
+                      {conversation.isSpeaking ? "AI Speaking..." : "Listening..."}
                     </span>
                   </div>
                 </div>
@@ -371,6 +260,13 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* Connection Status */}
+            <div className="text-center">
+              <div className="text-sm text-gray-500">
+                Status: {conversation.status || 'disconnected'}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
