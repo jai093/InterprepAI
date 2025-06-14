@@ -129,17 +129,18 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
 
     // Compose interview session payload
     const payload = {
-      user_id: user?.id,
+      user_id: user?.id || "", // Required
       type: config.type,
       role: config.jobRole,
       duration: `${config.duration} min`,
       date: new Date().toISOString(),
+      score: 85, // Required numeric score for DB   
       // Add all evaluation fields:
       ...resultAnalysis,
       // Demo static additions:
       target_role: config.jobRole,
       mobile_number: "",
-      candidate_name: user?.full_name || "",
+      candidate_name: user?.email || "", // Fallback to email or blank
       email_address: user?.email || "",
       language_used: "English",
       confidence_score: "80",
@@ -155,7 +156,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const { error } = await import("@/integrations/supabase/client").then(({ supabase }) =>
         supabase
           .from("interview_sessions")
-          .insert([payload])
+          .insert([payload]) // Single object in array
       );
       if (error) {
         toast({ title: "Error saving interview", description: error.message, variant: "destructive" });
