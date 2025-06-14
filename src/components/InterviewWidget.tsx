@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import "./InterviewWidget.css";
@@ -47,10 +46,22 @@ const InterviewWidget: React.FC = () => {
     } catch (e) {
       setStatus("idle");
       setStarted(false);
-      alert(
-        "Could not start conversation: " +
-          (e instanceof Error ? e.message : String(e))
-      );
+      // Improved error message: handle CloseEvent
+      let errorMsg = "";
+      if (
+        typeof window !== "undefined" &&
+        typeof window.CloseEvent !== "undefined" &&
+        e instanceof window.CloseEvent
+      ) {
+        errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
+      } else if (e && typeof e === "object" && "code" in e && "reason" in e) {
+        errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
+      } else if (e instanceof Error) {
+        errorMsg = e.message;
+      } else {
+        errorMsg = String(e);
+      }
+      alert("Could not start conversation: " + errorMsg);
     }
   };
 
@@ -144,4 +155,3 @@ const InterviewWidget: React.FC = () => {
 };
 
 export default InterviewWidget;
-
