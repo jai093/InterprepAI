@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useConversation } from "@elevenlabs/react";
+import { useToast } from "@/hooks/use-toast";
 import "./InterviewWidget.css";
 
 const AGENT_ID = "YflyhSHD0Yqq3poIbnan"; // Provided by user
@@ -14,8 +15,11 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   onEndInterview,
   showCamera = true,
 }) => {
+  const { toast } = useToast();
   const [started, setStarted] = useState(false);
-  const [status, setStatus] = useState<"idle" | "user" | "ai">("idle");
+  const [status, setStatus] = useState<"idle" | "user" | "ai" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -46,21 +50,55 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     isSpeaking
   } = useConversation({
     agentId: AGENT_ID,
-    onConnect: () => setStatus("ai"),
-    onDisconnect: () => setStatus("idle"),
-    onMessage: () => {
-      // no-op since chat UI is removed
+    onConnect: () => {
+      setStatus("ai");
+      setIsConnecting(false);
+      setErrorMsg(null);
     },
-    onError: () => setStatus("idle"),
+    onDisconnect: () => {
+      setStatus("idle");
+      setStarted(false);
+      setIsConnecting(false);
+    },
+    onMessage: () => { /* no-op */ },
+    onError: (error) => {
+      setStatus("error");
+      setStarted(false);
+      setIsConnecting(false);
+      let errorMsg = "";
+      // Try to parse ElevenLabs-style error
+      if (
+        typeof window !== "undefined" &&
+        typeof window.CloseEvent !== "undefined" &&
+        error instanceof window.CloseEvent
+      ) {
+        errorMsg = `WebSocket closed - code: ${error.code}, reason: ${error.reason || "No reason"}, wasClean: ${error.wasClean}`;
+      } else if (error && typeof error === "object" && "code" in error && "reason" in error) {
+        errorMsg = `WebSocket closed - code: ${error.code}, reason: ${error.reason || "No reason"}, wasClean: ${error.wasClean}`;
+      } else if (error instanceof Error) {
+        errorMsg = error.message;
+      } else {
+        errorMsg = String(error);
+      }
+      setErrorMsg(errorMsg);
+      toast({
+        title: "Interview session failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleStart = async () => {
-    setStarted(true);
-    setStatus("ai");
+    setErrorMsg(null);
+    setIsConnecting(true);
     try {
       await startSession();
-    } catch (e) {
-      setStatus("idle");
+      setStarted(true);
+      setStatus("ai");
+    } catch (e: any) {
+      setIsConnecting(false);
+      setStatus("error");
       setStarted(false);
       let errorMsg = "";
       if (
@@ -76,13 +114,25 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       } else {
         errorMsg = String(e);
       }
-      alert("Could not start conversation: " + errorMsg);
+      setErrorMsg(errorMsg);
+      toast({
+        title: "Could not start interview",
+        description: errorMsg.includes("Could not authorize") 
+          ? "Authorization error: Please check your agent ID and API key permissions." 
+          : errorMsg,
+        variant: "destructive",
+      });
     }
   };
 
   const handleEnd = async () => {
-    await endSession();
+    try {
+      await endSession();
+    } catch (e) {
+      // Session may already be disconnected; ignore errors
+    }
     setStarted(false);
+    setStatus("idle");
     if (onEndInterview) onEndInterview();
   };
 
@@ -93,16 +143,40 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     return "start-button";
   };
 
+  // UI: Error Message panel
+  const ErrorPanel = ({ error }: { error: string }) => (
+    <div className="bg-red-100 border border-red-300 rounded-lg p-3 text-sm text-red-700 my-3">
+      <strong>Conversation failed:</strong>
+      <div>{error}</div>
+      {error.includes("authorize") && (
+        <div className="mt-1">
+          Please check your agent configuration and API key.<br />
+          <span className="text-xs">
+            If you're using ElevenLabs, make sure your account has permissions for this agent and your key is valid.<br />
+            (If running locally, check network access and CORS settings.)
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="interview-container flex flex-col items-center">
       <div className="flex flex-col items-center gap-4 w-full">
         <button
           className={getButtonClass()}
-          onClick={!started ? handleStart : undefined}
+          onClick={!started && !isConnecting ? handleStart : undefined}
+          disabled={started || isConnecting || status === "error"}
           style={started ? { pointerEvents: "none" } : {}}
         >
-          {!started ? "Start Interview" : "Interview in progress..."}
+          {isConnecting
+            ? "Starting..."
+            : !started
+            ? "Start Interview"
+            : "Interview in progress..."}
         </button>
+        {status === "error" && errorMsg && <ErrorPanel error={errorMsg} />}
+
         {started && (
           <button
             className="end-interview-btn mt-2 rounded bg-red-600 text-white px-6 py-2 hover:bg-red-700 transition"
