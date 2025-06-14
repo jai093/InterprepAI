@@ -68,19 +68,23 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
       let errorMsg = "";
 
-      // Type-safe error detection
+      // SAFELY handle error object (fixes null checks/typescript errors)
       if (error && typeof error === "object") {
-        // Check if it's a WebSocket close event (duck-typing as we can't use instanceof directly)
+        // Attempt to duck-type for WebSocket CloseEvent (code/reason/wasClean present)
+        const maybeHasCode = Object.prototype.hasOwnProperty.call(error, "code");
+        const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
+        const maybeHasWasClean = Object.prototype.hasOwnProperty.call(error, "wasClean");
         if (
-          "code" in error && typeof (error as any).code === "number" &&
-          "reason" in error &&
-          "wasClean" in error
+          maybeHasCode && maybeHasReason && maybeHasWasClean &&
+          typeof (error as any).code === "number"
         ) {
           const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-        } else if (error instanceof Error) {
+        }
+        else if (error instanceof Error) {
           errorMsg = error.message;
-        } else {
+        }
+        else {
           errorMsg = JSON.stringify(error);
         }
       } else if (typeof error === "string") {
@@ -109,12 +113,16 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       setIsConnecting(false);
       setStatus("error");
       setStarted(false);
+
       let errorMsg = "";
+      // SAFELY handle error object (fixes null checks/typescript errors)
       if (e && typeof e === "object") {
+        const maybeHasCode = Object.prototype.hasOwnProperty.call(e, "code");
+        const maybeHasReason = Object.prototype.hasOwnProperty.call(e, "reason");
+        const maybeHasWasClean = Object.prototype.hasOwnProperty.call(e, "wasClean");
         if (
-          "code" in e && typeof (e as any).code === "number" &&
-          "reason" in e &&
-          "wasClean" in e
+          maybeHasCode && maybeHasReason && maybeHasWasClean &&
+          typeof (e as any).code === "number"
         ) {
           const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
