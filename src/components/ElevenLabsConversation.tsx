@@ -215,8 +215,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       // Request microphone permissions first
       console.log('🎙️ Requesting microphone permissions...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Stop the stream immediately as we just needed permission
       stream.getTracks().forEach(track => track.stop());
 
       console.log('🚀 Getting ElevenLabs signed URL...');
@@ -228,7 +226,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       await waitForSDKReady();
 
       const resumeAnalysis = analyzeResumeContent();
-      
+
       // Set a connection timeout
       connectionTimeoutRef.current = setTimeout(() => {
         if (isConnecting || isLoading) {
@@ -241,8 +239,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           });
         }
       }, CONNECTION_TIMEOUT);
-      
-      // Start the conversation with agent ID and proper error handling
+
+      // ✅ FIX: Pass url as a top-level property
       await conversation.startSession({
         url: signedUrl,
         overrides: {
@@ -256,7 +254,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           }
         }
       });
-      
+
     } catch (error) {
       console.error('❌ Error starting conversation:', error);
       setIsLoading(false);
