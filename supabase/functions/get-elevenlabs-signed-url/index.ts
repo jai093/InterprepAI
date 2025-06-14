@@ -14,7 +14,7 @@ const getCORSHeaders = (origin: string | null = "*") => {
   return {
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info",
     "Content-Type": "application/json"
   };
 };
