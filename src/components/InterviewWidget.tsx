@@ -73,16 +73,16 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(error, "wasClean");
         if (
-          maybeHasCode && maybeHasReason && maybeHasWasClean &&
+          maybeHasCode &&
+          maybeHasReason &&
+          maybeHasWasClean &&
           typeof (error as any).code === "number"
         ) {
           const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-        }
-        else if (error && error instanceof Error) {
+        } else if (typeof error === "object" && error !== null && error instanceof Error) {
           errorMsg = error.message;
-        }
-        else {
+        } else {
           errorMsg = JSON.stringify(error);
         }
       } else if (typeof error === "string") {
@@ -124,7 +124,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
-        } else if (e && e instanceof Error) {
+        } else if (typeof e === "object" && e !== null && e instanceof Error) {
           errorMsg = e.message;
         } else {
           errorMsg = JSON.stringify(e);
