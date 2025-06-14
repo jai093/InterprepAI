@@ -158,20 +158,18 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     });
   };
 
-  // Helper to get signed url from edge function -- updated to use the full Supabase Edge Functions URL
+  // Helper to get signed url from edge function -- updated to use Supabase client to avoid 401 error
   const getSignedUrl = async (agentId: string): Promise<string> => {
-    const res = await fetch(
-      "https://mybjsygfhrzzknwalyov.functions.supabase.co/get-elevenlabs-signed-url",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId }),
-      }
-    );
-    if (!res.ok) {
-      throw new Error(`Failed to get signed url: ${await res.text()}`);
+    // Use the Supabase client to securely invoke the edge function with Authorization header
+    const { data, error } = await supabase.functions.invoke("get-elevenlabs-signed-url", {
+      body: { agentId },
+    });
+    if (error || !data) {
+      throw new Error(
+        error?.message ? `Failed to get signed url: ${error.message}` : "No response from edge function"
+      );
     }
-    const { signed_url } = await res.json();
+    const { signed_url } = typeof data === "string" ? JSON.parse(data) : data;
     if (!signed_url) throw new Error("No signed_url returned from edge function.");
     return signed_url;
   };
