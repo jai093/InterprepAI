@@ -1,73 +1,120 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
+import { useConversation, Conversation, Message } from "@elevenlabs/react";
 import "./InterviewWidget.css";
 
-// TODO: Replace with your own Agent ID and Project Key/API Key from ElevenLabs
+// FILL IN WITH YOUR REAL ELEVENLABS AGENT ID AND API KEY/PROJECT KEY
 const AGENT_ID = "YOUR_AGENT_ID_HERE";
-const PROJECT_KEY = "YOUR_PROJECT_KEY_HERE"; // Could be the API key or project key (see ElevenLabs docs)
+const PROJECT_KEY = "YOUR_PROJECT_KEY_HERE"; // Only needed if agent is private
 
 const InterviewWidget: React.FC = () => {
+  const [started, setStarted] = useState(false);
+  // Track status for button: "idle" | "user" | "ai"
   const [status, setStatus] = useState<"idle" | "user" | "ai">("idle");
-  const [isStarted, setIsStarted] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Load the ElevenLabs agent script dynamically
-  useEffect(() => {
-    if ((window as any).Elevenlabs) return; // Already loaded
+  // ElevenLabs useConversation: manages audio, websocket, agent events, messages
+  const {
+    startSession,
+    endSession,
+    sendMessage,
+    messages,
+    status: elStatus,
+    isSpeaking,
+    isConnected,
+    isMicActive,
+    setVolume,
+  }: Conversation = useConversation({
+    agentId: AGENT_ID,
+    // For private agent, set apiKey: PROJECT_KEY,
+    onConnect: () => setStatus("ai"),
+    onDisconnect: () => setStatus("idle"),
+    onMessage: (msg: Message) => {
+      if (msg.role === "user") setStatus("user");
+      else if (msg.role === "agent") setStatus("ai");
+    },
+    onError: () => setStatus("idle"),
+  });
 
-    const script = document.createElement("script");
-    script.src = "https://cdn.elevenlabs.io/agent-sdk/v1/agent.js";
-    script.async = true;
-    script.onload = () => {
-      // ready to initialize agent
-    };
-    document.body.appendChild(script);
-  }, []);
-
-  // Agent init (runs after script and when "start" pressed)
-  const handleStart = () => {
-    if (isStarted) return;
-    setIsStarted(true);
-
-    // Ensure window agent is present
-    const checkAgent = setInterval(() => {
-      // @ts-ignore
-      if ((window as any).Elevenlabs && (window as any).Elevenlabs.init) {
-        clearInterval(checkAgent);
-        // @ts-ignore
-        (window as any).Elevenlabs.init({
-          agentId: AGENT_ID,
-          projectKey: PROJECT_KEY,
-          stream: true,
-          container: containerRef.current,
-          mode: "embedded",
-          onStart: () => setStatus("ai"),
-          onUserSpeak: () => setStatus("user"),
-          onAgentSpeak: () => setStatus("ai"),
-          onEnd: () => {
-            setStatus("idle");
-            setIsStarted(false);
-          },
-        });
-        // Start conversation
-        // @ts-ignore
-        (window as any).Elevenlabs.startConversation();
-      }
-    }, 100);
+  const handleStart = async () => {
+    setStarted(true);
+    setStatus("ai");
+    try {
+      await startSession();
+    } catch (e) {
+      setStatus("idle");
+      setStarted(false);
+      alert("Could not start conversation: " + e?.toString());
+    }
   };
 
+  // Send text message
+  const [input, setInput] = useState("");
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim()) {
+      await sendMessage(input.trim());
+      setInput("");
+    }
+  };
+
+  // Button color logic
   const getButtonClass = () => {
+    if (!started) return "start-button";
     if (status === "user") return "start-button user-speaking";
-    if (status === "ai") return "start-button ai-speaking";
+    if (status === "ai" && isSpeaking) return "start-button ai-speaking";
     return "start-button";
   };
 
   return (
     <div className="interview-container">
-      <button className={getButtonClass()} onClick={handleStart}>
-        {isStarted ? "Interview in progress..." : "Start Interview"}
-      </button>
-      <div ref={containerRef} className="chat-box" />
+      {/* CIRCULAR BUTTON */}
+      {!started ? (
+        <button className={getButtonClass()} onClick={handleStart}>
+          Start Interview
+        </button>
+      ) : (
+        <button className={getButtonClass()} style={{ pointerEvents: "none" }}>
+          Interview in progress...
+        </button>
+      )}
+
+      {/* EMBEDDED CHAT UI (only after started) */}
+      {started && (
+        <div className="chat-box">
+          <div className="messages">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`msg msg-${msg.role === "user" ? "user" : "ai"}`}
+              >
+                <span>{msg.content}</span>
+              </div>
+            ))}
+          </div>
+          <form
+            className="chat-input-row"
+            onSubmit={handleSend}
+            style={{ display: "flex", gap: 8, marginTop: 10 }}
+            autoComplete="off"
+          >
+            <input
+              className="chat-input"
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              disabled={!isConnected}
+              placeholder={
+                isConnected
+                  ? "Type a message or use your mic..."
+                  : "Connecting..."
+              }
+            />
+            <button className="send-btn" type="submit" disabled={!isConnected}>
+              Send
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
