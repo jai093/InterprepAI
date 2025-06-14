@@ -21,6 +21,7 @@ const InterviewWidget: React.FC = () => {
     endSession,
     status: elStatus,
     isSpeaking,
+    sendMessage
   } = useConversation({
     agentId: AGENT_ID,
     onConnect: () => setStatus("ai"),
@@ -67,15 +68,22 @@ const InterviewWidget: React.FC = () => {
 
   // Dummy sendMessage: just locally echo the message, since SDK doesn't provide.
   // Actual voice chat will work via the microphone.
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
       setMessages((old) => [
         ...old,
         { role: "user", content: input.trim() },
       ]);
-      // In real scenario, you might send the message here using SDK
       setStatus("user");
+      // Send message to ElevenLabs agent so it will reply
+      if (typeof sendMessage === "function") {
+        try {
+          await sendMessage(input.trim());
+        } catch (err) {
+          alert("Failed to send message to AI agent.");
+        }
+      }
       setInput("");
     }
   };
