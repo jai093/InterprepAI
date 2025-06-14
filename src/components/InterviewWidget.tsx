@@ -68,7 +68,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       let errorMsg = "";
 
       // SAFELY handle error object (fixes null checks/typescript errors)
-      if (error && typeof error === "object") {
+      if (error !== null && typeof error === "object") {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(error, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(error, "wasClean");
@@ -80,7 +80,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-        } else if (typeof error === "object" && error !== null && error instanceof Error) {
+        } else if (error instanceof Error) {
           errorMsg = error.message;
         } else {
           errorMsg = JSON.stringify(error);
@@ -114,7 +114,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
       let errorMsg = "";
       // SAFELY handle error object (fixes null checks/typescript errors)
-      if (e && typeof e === "object") {
+      if (e !== null && typeof e === "object") {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(e, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(e, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(e, "wasClean");
@@ -124,7 +124,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
-        } else if (typeof e === "object" && e !== null && e instanceof Error) {
+        } else if (e instanceof Error) {
           errorMsg = e.message;
         } else {
           errorMsg = JSON.stringify(e);
