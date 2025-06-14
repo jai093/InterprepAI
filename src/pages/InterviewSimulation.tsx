@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -78,7 +77,7 @@ const InterviewSimulation = () => {
               {/* Animated AI Widget */}
               {aiInProgress && (
                 <AnimatedAIWidget
-                  speaking={true}
+                  isSpeaking={true}
                   message="The AI Interviewer is talking to you!"
                   onClose={() => setAIInProgress(false)}
                 />
