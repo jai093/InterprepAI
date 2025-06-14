@@ -240,7 +240,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         }
       }, CONNECTION_TIMEOUT);
 
-      // ✅ FIX: Pass url as a top-level property
+      // 🎯 FIX: Cast options as any to allow 'url' property (avoids TS error)
       await conversation.startSession({
         url: signedUrl,
         overrides: {
@@ -253,7 +253,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               : "Hello! Welcome to your interview. I'm excited to learn about your experience. Let's begin - could you tell me a bit about yourself?"
           }
         }
-      });
+      } as any);
 
     } catch (error) {
       console.error('❌ Error starting conversation:', error);
