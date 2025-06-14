@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -190,7 +189,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               </TabsList>
               
               <TabsContent value="interview" className="flex-1 flex flex-col space-y-0 data-[state=active]:flex-1">
-                <ElevenLabsConversation onInterviewComplete={handleInterviewComplete} />
+                <ElevenLabsConversation />
               </TabsContent>
               
               <TabsContent value="info" className="space-y-4 data-[state=active]:flex-1">
