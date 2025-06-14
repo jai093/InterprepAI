@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import ElevenLabsConversation from "./ElevenLabsConversation";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { useIsMobile } from "@/hooks/use-mobile";
+import AnimatedAIWidget from "@/components/AnimatedAIWidget";
+import { useElevenLabsSpeaking } from "@/hooks/useElevenLabsSpeaking";
 
 interface InterviewConfig {
   type: string;
@@ -43,6 +46,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isInitializing, setIsInitializing] = useState(true);
   
+  // Conversational Agent speaking state (polls window.ElevenLabs.Conversation)
+  const isAgentSpeaking = useElevenLabsSpeaking();
+
   // Initial setup
   useEffect(() => {
     const initializeMedia = async () => {
@@ -129,6 +135,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   };
   
   return (
+    <>
     <div className="flex flex-col lg:flex-row gap-4 h-full">
       {/* Left side - Video feed */}
       <div className="lg:w-2/3 flex flex-col gap-4">
@@ -189,6 +196,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               </TabsList>
               
               <TabsContent value="interview" className="flex-1 flex flex-col space-y-0 data-[state=active]:flex-1">
+                {/* ElevenLabs Conversational Agent */}
                 <ElevenLabsConversation />
               </TabsContent>
               
@@ -224,6 +232,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         </Card>
       </div>
     </div>
+    {/* --- Custom Animated AI Widget at the bottom of the page --- */}
+    <AnimatedAIWidget
+      isSpeaking={isAgentSpeaking}
+      message={isAgentSpeaking ? "The AI Interviewer is talking to you!" : "Waiting for your response..."}
+    />
+    </>
   );
 };
 

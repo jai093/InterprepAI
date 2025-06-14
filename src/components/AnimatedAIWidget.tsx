@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useTextToSpeech } from "@/utils/textToSpeech";
 import { useElevenLabs } from "@/contexts/ElevenLabsContext";
@@ -12,25 +11,21 @@ const COLORS = [
 ];
 
 interface AnimatedAIWidgetProps {
-  speaking?: boolean; // ignorable - now speaks when audio is active
+  isSpeaking?: boolean;
   message?: string;
   onClose?: () => void;
 }
 
-/**
- * Animated custom AI Interviewer Widget with animated avatar, TTS, and mouth movement synced to audio.
- */
+// Animated custom AI Interviewer Widget with animated avatar and mouth movement synced to provided speaking state.
 const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
+  isSpeaking = false,
   message = "The AI Interviewer is speaking...",
   onClose,
 }) => {
-  const { speak, stopSpeaking, isSpeaking } = useTextToSpeech();
-  const { elevenVoiceId, elevenApiKey } = useElevenLabs();
-
   const [colorIndex, setColorIndex] = useState(0);
   const avatarRef = useRef<HTMLDivElement>(null);
 
-  // Animate color cycling while audio is playing
+  // Animate color cycling while speaking
   useEffect(() => {
     if (!isSpeaking) return;
     const interval = setInterval(() => {
@@ -39,7 +34,7 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
     return () => clearInterval(interval);
   }, [isSpeaking]);
 
-  // Mouth animation synced with audio
+  // Mouth animation synced with isSpeaking
   const [mouthOpen, setMouthOpen] = useState(false);
   useEffect(() => {
     if (!isSpeaking) {
@@ -52,34 +47,21 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
     return () => clearInterval(mouthTimer);
   }, [isSpeaking]);
 
-  // Speak when message changes
-  useEffect(() => {
-    if (message) {
-      stopSpeaking(); // Stop any old audio
-      setTimeout(() => {
-        speak(message, elevenVoiceId, elevenApiKey);
-      }, 170); // slight UI sync delay
-    }
-    // Stop on unmount/close
-    return () => {
-      stopSpeaking();
-    };
-    // Only trigger on message/voice/apiKey change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, elevenVoiceId, elevenApiKey]);
-
   return (
     <div
-      className="fixed bottom-4 right-4 w-[360px] max-w-full z-[9999] animate-fade-in"
+      className="fixed bottom-4 left-0 w-full z-[9999] flex justify-center pointer-events-none"
       style={{
-        boxShadow: "0 0 32px 0 rgba(80,74,203,0.25)",
+        pointerEvents: "none",
+        animation: "fade-in 0.3s ease",
       }}
     >
       <div
-        className="relative bg-white rounded-xl p-4 flex gap-4 items-center ring-2"
+        className="relative bg-white rounded-xl p-4 flex gap-4 items-center ring-2 pointer-events-auto shadow-lg"
         style={{
           borderColor: isSpeaking ? COLORS[colorIndex] : "#e5e7eb",
           transition: "border-color 0.3s",
+          minWidth: 320,
+          maxWidth: 460,
         }}
       >
         {/* Animated Avatar */}
@@ -132,11 +114,9 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
           <button
             className="absolute top-1 right-2 text-gray-400 hover:text-destructive transition"
             aria-label="Close widget"
-            onClick={() => {
-              stopSpeaking();
-              onClose();
-            }}
+            onClick={onClose}
             tabIndex={0}
+            style={{ pointerEvents: "auto" }}
           >
             ×
           </button>
