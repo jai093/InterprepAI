@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Video, VideoOff, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ConversationInput from "./ConversationInput";
 import AnimatedStartCallButton from "./AnimatedStartCallButton";
 import CallTimer from "./CallTimer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,17 +40,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
   const [callStarted, setCallStarted] = useState(false);
-  const [whoSpeaking, setWhoSpeaking] = useState<"idle" | "user" | "ai">("idle");
   const [timerRunning, setTimerRunning] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
-  const [messages, setMessages] = useState<{ role: "ai" | "user"; text: string }[]>([
-    {
-      role: "ai",
-      text: "Welcome to your AI interview! You can interact by voice or message. Click Start Call when ready.",
-    },
-  ]);
 
-  // Use to control embedding ElevenLabs conversation
+  // Only show EL widget after call started
   const [showELWidget, setShowELWidget] = useState(false);
 
   // Set up devices on mount
@@ -100,55 +92,13 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     });
   };
 
-  // Timer complete handler: hard stop at 10 mins
+  // Timer complete handler (hard 10 min stop)
   const handleTimerComplete = () => {
     setCallEnded(true);
     setTimerRunning(false);
     setCallStarted(false);
-    onEnd({
-      messages,
-      endedBy: "timer",
-    });
+    onEnd({ endedBy: "timer" });
   };
-
-  // Sending message and voice input
-  const handleSendMessage = (text: string) => {
-    if (!callStarted || callEnded) return;
-    setMessages(m => [...m, { role: "user", text }]);
-    setWhoSpeaking("user");
-    setTimeout(() => {
-      // Mock AI reply
-      setMessages(m => [
-        ...m,
-        {
-          role: "ai",
-          text:
-            text.length % 2
-              ? "That's interesting! Let's talk more."
-              : "Thank you. Next question.",
-        },
-      ]);
-      setWhoSpeaking("ai");
-      setTimeout(() => setWhoSpeaking("idle"), 1600);
-    }, 1300);
-    setTimeout(() => setWhoSpeaking("idle"), 400);
-  };
-  const handleVoiceInput = () => {
-    handleSendMessage("Voice input from user");
-  };
-
-  // UI: Chat bubbles
-  const ChatBubble = ({ role, text }: { role: "ai" | "user"; text: string }) => (
-    <div className={`flex w-full mb-1 ${role === "user" ? "justify-end" : ""}`}>
-      <div
-        className={`rounded-lg px-4 py-2 max-w-[80%] text-base
-          ${role === "ai" ? "bg-indigo-100 text-indigo-800" : "bg-blue-100 text-blue-800"}
-        `}
-      >
-        {text}
-      </div>
-    </div>
-  );
 
   return (
     <div
@@ -203,14 +153,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
               {/* Show call timer overlay if call started */}
               {callStarted && timerRunning && (
                 <div className="absolute top-4 left-4 z-10">
-                  <CallTimer maxSeconds={MAX_DURATION_SECONDS} onComplete={handleTimerComplete} running={timerRunning} />
+                  <CallTimer maxSeconds={600} onComplete={handleTimerComplete} running={timerRunning} />
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Right: Interview/Chat/Start button area */}
+        {/* Right: Interview panel */}
         <div className="flex flex-col w-full lg:w-[370px] max-w-sm gap-4">
           <Card className="shadow-md flex-1 flex flex-col h-full">
             <CardContent className="p-0 flex flex-col h-full">
@@ -220,52 +170,35 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                   <TabsTrigger value="interview">AI Interview</TabsTrigger>
                   <TabsTrigger value="info">Interview Info</TabsTrigger>
                 </TabsList>
-                {/* Interview: Chat log + input + start button */}
+                {/* Interview tab: static intro, then embed ElevenLabs after call starts */}
                 <TabsContent value="interview" className="flex-1 flex flex-col">
-                  {/* Chat log area */}
-                  <div className="flex-1 px-4 pb-1 pt-1 overflow-y-auto mb-1" style={{ minHeight: 150, maxHeight: 200 }}>
-                    {messages.map((msg, i) => (
-                      <ChatBubble key={i} role={msg.role} text={msg.text} />
-                    ))}
-                  </div>
-                  {/* Input area (show only if call started & not ended) */}
-                  <div className="px-3 mb-1">
-                    <ConversationInput
-                      onSend={handleSendMessage}
-                      onVoiceInput={handleVoiceInput}
-                      disabled={!callStarted || callEnded}
-                      loading={false}
-                    />
-                  </div>
-                  {/* Animated Start Call button (show if not started or ended) */}
+                  {/* Intro/Start */}
                   {!callStarted && !showELWidget && (
                     <div className="flex flex-col gap-6 items-center mt-8 mb-6">
                       <div className="font-semibold text-lg text-indigo-700 text-center px-3">
                         Ready to start your mock interview?
                       </div>
                       <AnimatedStartCallButton
-                        status={whoSpeaking}
+                        status="idle"
                         onClick={() => {
                           setCallStarted(true);
                           setTimerRunning(true);
                           setShowELWidget(true);
-                          setWhoSpeaking("ai");
-                          setTimeout(() => setWhoSpeaking("idle"), 1200);
                         }}
                         disabled={isInitializing}
                       />
                       <div className="text-sm text-muted-foreground">
-                        You can interact by voice or by typing during the interview.
+                        When you start, you may use both <b>voice and text input</b> with the AI interviewer.
                       </div>
                     </div>
                   )}
+                  {/* Show ElevenLabs agent inline after Start Call */}
                   {callStarted && showELWidget && !callEnded && (
-                    <div className="flex flex-col w-full items-center">
-                      {/* Show live ElevenLabs agent with full chat window */}
+                    <div className="flex flex-col w-full items-center animate-fade-in">
                       <ElevenLabsConversation />
-                      {/* Optionally, a call timer indicator here */}
                     </div>
                   )}
+                  {/* Timer ended */}
                   {callEnded && (
                     <div className="text-center my-5 text-destructive font-semibold">
                       Interview ended (Max time reached)
