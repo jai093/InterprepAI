@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { useToast } from "@/hooks/use-toast";
@@ -70,7 +69,6 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
       // SAFELY handle error object (fixes null checks/typescript errors)
       if (error && typeof error === "object") {
-        // Attempt to duck-type for WebSocket CloseEvent (code/reason/wasClean present)
         const maybeHasCode = Object.prototype.hasOwnProperty.call(error, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(error, "wasClean");
@@ -81,7 +79,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
         }
-        else if (error instanceof Error) {
+        else if (error && error instanceof Error) {
           errorMsg = error.message;
         }
         else {
@@ -126,7 +124,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
-        } else if (e instanceof Error) {
+        } else if (e && e instanceof Error) {
           errorMsg = e.message;
         } else {
           errorMsg = JSON.stringify(e);
