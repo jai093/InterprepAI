@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -21,6 +20,8 @@ interface FullInterviewConfig {
 interface InterviewConfig {
   type: string;
   jobRole: string;
+  difficultyLevel: string;
+  interviewerPersona: string;
 }
 
 const InterviewSimulation = () => {
@@ -37,8 +38,16 @@ const InterviewSimulation = () => {
   const [showWidget, setShowWidget] = useState(false);
 
   // Function to "start" interview simulation
-  const handleStart = (interviewConfig: FullInterviewConfig) => {
-    setConfig(interviewConfig);
+  const handleStart = (interviewConfig: any) => {
+    // interviewConfig comes from InterviewSetup, matches InterviewConfig
+    // We'll create a FullInterviewConfig with default values for duration & difficulty.
+    setConfig({
+      ...interviewConfig,
+      jobRole: interviewConfig.jobRole,
+      type: interviewConfig.type,
+      duration: 20, // Default or allow user customization if available
+      difficulty: interviewConfig.difficultyLevel || "medium",
+    });
     setStep("interview");
   };
 
@@ -56,9 +65,7 @@ const InterviewSimulation = () => {
         {/* Show Interview Simulation Steps */}
         {step === "setup" && (
           <>
-            <InterviewSetup
-              onStart={handleStart}
-            />
+            <InterviewSetup onStart={handleStart} />
             {/* Add the ElevenLabs launcher below, as per user request */}
             <div className="mt-10 w-full max-w-md text-center">
               <button
@@ -94,13 +101,12 @@ const InterviewSimulation = () => {
         {step === "interview" && config && (
           <InterviewSession
             config={config}
-            user={user}
-            onInterviewComplete={handleComplete}
+            onEnd={handleComplete}
           />
         )}
 
         {step === "feedback" && feedback && (
-          <FeedbackReport feedback={feedback} onBack={() => setStep("setup")} />
+          <FeedbackReport interviewData={feedback} onRestart={() => setStep("setup")} />
         )}
       </main>
     </div>
