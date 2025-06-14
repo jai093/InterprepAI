@@ -67,7 +67,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
       let errorMsg = "";
 
-      // SAFELY handle error object (fixes null checks/typescript errors)
+      // FIX: Check for null + proper object type before instanceof Error or property access
       if (error !== null && typeof error === "object") {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(error, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
@@ -80,9 +80,14 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-        } else if (error instanceof Error) {
+        } else if (
+          typeof window !== "undefined" &&
+          typeof Error !== "undefined" &&
+          error instanceof Error
+        ) {
           errorMsg = error.message;
         } else {
+          // fallback for unknown object
           errorMsg = JSON.stringify(error);
         }
       } else if (typeof error === "string") {
@@ -113,7 +118,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       setStarted(false);
 
       let errorMsg = "";
-      // SAFELY handle error object (fixes null checks/typescript errors)
+      // FIX: Check for null + proper object type before instanceof Error or property access
       if (e !== null && typeof e === "object") {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(e, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(e, "reason");
@@ -124,7 +129,11 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         ) {
           const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
           errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
-        } else if (e instanceof Error) {
+        } else if (
+          typeof window !== "undefined" &&
+          typeof Error !== "undefined" &&
+          e instanceof Error
+        ) {
           errorMsg = e.message;
         } else {
           errorMsg = JSON.stringify(e);
