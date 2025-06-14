@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import InterviewSetup from "@/components/InterviewSetup";
+import InterviewSetup, { InterviewConfig } from "@/components/InterviewSetup";
 import InterviewSession from "@/components/InterviewSession";
 import FeedbackReport from "@/components/FeedbackReport";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,36 +37,33 @@ const InterviewSimulation = () => {
   // For ElevenLabs Widget
   const [showWidget, setShowWidget] = useState(false);
 
-  // Function to "start" interview simulation
-  const handleStart = (interviewConfig: any) => {
-    // interviewConfig comes from InterviewSetup, matches InterviewConfig
-    // We'll create a FullInterviewConfig with default values for duration & difficulty.
+  // Correct type for handler, InterviewConfig as param
+  const handleStart = (interviewConfig: InterviewConfig) => {
+    // Map InterviewConfig to FullInterviewConfig
     setConfig({
-      ...interviewConfig,
-      jobRole: interviewConfig.jobRole,
       type: interviewConfig.type,
-      duration: 20, // Default or allow user customization if available
+      jobRole: interviewConfig.jobRole,
+      duration: 20, // Default duration
       difficulty: interviewConfig.difficultyLevel || "medium",
     });
     setStep("interview");
   };
 
-  // Complete simulation and show feedback
+  // Interview complete handler
   const handleComplete = (report: any) => {
     setFeedback(report);
     setStep("feedback");
   };
 
-  // ---- UI ----
   return (
     <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center">
       <Header />
       <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8">
-        {/* Show Interview Simulation Steps */}
+        {/* Step: Setup */}
         {step === "setup" && (
           <>
             <InterviewSetup onStart={handleStart} />
-            {/* Add the ElevenLabs launcher below, as per user request */}
+            {/* AI Interviewer (ElevenLabs widget launcher) */}
             <div className="mt-10 w-full max-w-md text-center">
               <button
                 type="button"
@@ -75,10 +72,13 @@ const InterviewSimulation = () => {
               >
                 Start Interview (AI Agent)
               </button>
-              {/* Widget container is hidden until button pressed */}
+              {/* The widget is only shown when showWidget is true */}
               <div
                 id="interviewWidget"
-                style={{ display: showWidget ? "block" : "none", marginTop: 32 }}
+                style={{
+                  display: showWidget ? "block" : "none",
+                  marginTop: 32,
+                }}
               >
                 <elevenlabs-convai
                   agent-id="YflyhSHD0Yqq3poIbnan"
@@ -86,18 +86,19 @@ const InterviewSimulation = () => {
                   local-storage-key="terms_accepted"
                 ></elevenlabs-convai>
               </div>
-              {/* Load widget script only when widget is displayed */}
+              {/* Ensure widget script is loaded only when widget is displayed */}
               {showWidget && (
                 <script
                   src="https://unpkg.com/@elevenlabs/convai-widget-embed"
                   async
                   type="text/javascript"
-                />
+                ></script>
               )}
             </div>
           </>
         )}
 
+        {/* Step: Interview */}
         {step === "interview" && config && (
           <InterviewSession
             config={config}
@@ -105,8 +106,12 @@ const InterviewSimulation = () => {
           />
         )}
 
+        {/* Step: Feedback */}
         {step === "feedback" && feedback && (
-          <FeedbackReport interviewData={feedback} onRestart={() => setStep("setup")} />
+          <FeedbackReport
+            interviewData={feedback}
+            onRestart={() => setStep("setup")}
+          />
         )}
       </main>
     </div>
