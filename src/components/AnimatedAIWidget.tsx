@@ -1,6 +1,5 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { useTextToSpeech } from "@/utils/textToSpeech";
-import { useElevenLabs } from "@/contexts/ElevenLabsContext";
 
 // Animation utility: cycles through colors for speaking effect
 const COLORS = [
@@ -11,57 +10,56 @@ const COLORS = [
 ];
 
 interface AnimatedAIWidgetProps {
-  isSpeaking?: boolean;
+  speaking?: boolean;
   message?: string;
   onClose?: () => void;
 }
 
-// Animated custom AI Interviewer Widget with animated avatar and mouth movement synced to provided speaking state.
+/**
+ * Custom AI Interviewer Widget with animated avatar and color-changing talking state.
+ */
 const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
-  isSpeaking = false,
+  speaking = true,
   message = "The AI Interviewer is speaking...",
   onClose,
 }) => {
   const [colorIndex, setColorIndex] = useState(0);
   const avatarRef = useRef<HTMLDivElement>(null);
 
-  // Animate color cycling while speaking
+  // Cycle avatar border color when "speaking"
   useEffect(() => {
-    if (!isSpeaking) return;
+    if (!speaking) return;
+
     const interval = setInterval(() => {
       setColorIndex((prev) => (prev + 1) % COLORS.length);
     }, 350);
-    return () => clearInterval(interval);
-  }, [isSpeaking]);
 
-  // Mouth animation synced with isSpeaking
+    return () => clearInterval(interval);
+  }, [speaking]);
+
+  // "Mouth" animates open and close
   const [mouthOpen, setMouthOpen] = useState(false);
   useEffect(() => {
-    if (!isSpeaking) {
-      setMouthOpen(false);
-      return;
-    }
+    if (!speaking) return setMouthOpen(false);
+
     const mouthTimer = setInterval(() => {
       setMouthOpen((open) => !open);
     }, 220);
+
     return () => clearInterval(mouthTimer);
-  }, [isSpeaking]);
+  }, [speaking]);
 
   return (
     <div
-      className="fixed bottom-4 left-0 w-full z-[9999] flex justify-center pointer-events-none"
+      className="fixed bottom-4 right-4 w-[360px] max-w-full z-[9999] animate-fade-in"
       style={{
-        pointerEvents: "none",
-        animation: "fade-in 0.3s ease",
+        boxShadow: "0 0 32px 0 rgba(80,74,203,0.25)",
       }}
     >
-      <div
-        className="relative bg-white rounded-xl p-4 flex gap-4 items-center ring-2 pointer-events-auto shadow-lg"
+      <div className="relative bg-white rounded-xl p-4 flex gap-4 items-center ring-2"
         style={{
-          borderColor: isSpeaking ? COLORS[colorIndex] : "#e5e7eb",
+          borderColor: speaking ? COLORS[colorIndex] : "#e5e7eb",
           transition: "border-color 0.3s",
-          minWidth: 320,
-          maxWidth: 460,
         }}
       >
         {/* Animated Avatar */}
@@ -71,11 +69,11 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
           style={{
             width: 74,
             height: 74,
-            background: isSpeaking
+            background: speaking
               ? `radial-gradient(circle at 55% 45%, ${COLORS[colorIndex]} 70%, #fff 130%)`
               : "#e0e7ff",
             transition: "background 0.3s",
-            boxShadow: isSpeaking
+            boxShadow: speaking
               ? `0 0 18px 4px ${COLORS[colorIndex]}66`
               : "0 2px 16px #6366f133",
           }}
@@ -83,7 +81,7 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
           {/* Face */}
           <svg width="60" height="60" viewBox="0 0 60 60" className="block">
             {/* Head */}
-            <circle cx="30" cy="30" r="28" fill="#fff" stroke="#d1d5db" strokeWidth="2" />
+            <circle cx="30" cy="30" r="28" fill="#fff" stroke="#d1d5db" strokeWidth="2"/>
             {/* Eyes */}
             <ellipse cx="22" cy="27" rx="3" ry="5" fill="#4338ca" />
             <ellipse cx="38" cy="27" rx="3" ry="5" fill="#4338ca" />
@@ -93,7 +91,7 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
               cy="41"
               rx={mouthOpen ? 7 : 7}
               ry={mouthOpen ? 7 : 1.8}
-              fill={isSpeaking ? COLORS[colorIndex] : "#aeaeae"}
+              fill={speaking ? COLORS[colorIndex] : "#aeaeae"}
               style={{
                 transition: "all 0.17s cubic-bezier(.4,0,.6,1)",
               }}
@@ -116,7 +114,6 @@ const AnimatedAIWidget: React.FC<AnimatedAIWidgetProps> = ({
             aria-label="Close widget"
             onClick={onClose}
             tabIndex={0}
-            style={{ pointerEvents: "auto" }}
           >
             ×
           </button>
