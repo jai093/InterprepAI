@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -173,6 +172,21 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     });
   };
 
+  // Helper to get signed url from edge function
+  const getSignedUrl = async (agentId: string): Promise<string> => {
+    const res = await fetch("/functions/v1/get-elevenlabs-signed-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId }),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to get signed url: ${await res.text()}`);
+    }
+    const { signed_url } = await res.json();
+    if (!signed_url) throw new Error("No signed_url returned from edge function.");
+    return signed_url;
+  };
+
   const startConversation = async () => {
     // Prevent multiple connection attempts
     if (isLoading || conversationStarted || isConnecting) {
@@ -202,6 +216,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       // Stop the stream immediately as we just needed permission
       stream.getTracks().forEach(track => track.stop());
 
+      console.log('🚀 Getting ElevenLabs signed URL...');
+      const signedUrl = await getSignedUrl(AGENT_ID);
+
       console.log('🚀 Starting ElevenLabs Conversation...');
 
       // Wait for SDK to be ready
@@ -224,7 +241,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       
       // Start the conversation with agent ID and proper error handling
       await conversation.startSession({
-        agentId: AGENT_ID,
+        url: signedUrl,
         overrides: {
           agent: {
             prompt: {
