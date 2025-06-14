@@ -13,6 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import ElevenLabsConversation from "./ElevenLabsConversation";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { useIsMobile } from "@/hooks/use-mobile";
+import AnimatedStartCallButton from "./AnimatedStartCallButton";
+import ConversationInput from "./ConversationInput";
+import CallTimer from "./CallTimer";
 
 interface InterviewConfig {
   type: string;
@@ -25,6 +28,8 @@ interface InterviewSessionProps {
   config: InterviewConfig;
   onEnd: (feedbackData: any) => void;
 }
+
+const MAX_DURATION_SECONDS = 600; // 10 minutes
 
 const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) => {
   const { user } = useAuth();
@@ -42,6 +47,21 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isInitializing, setIsInitializing] = useState(true);
+  
+  // Conversation/chat states
+  const [messages, setMessages] = useState<
+    { role: "ai" | "user"; text: string }[]
+  >([
+    {
+      role: "ai",
+      text: "Welcome to your AI interview! You can interact by voice or message. Click Start Call when ready.",
+    },
+  ]);
+  const [callActive, setCallActive] = useState(false);
+  const [whoSpeaking, setWhoSpeaking] = useState<"idle" | "user" | "ai">("idle");
+  const [recording, setRecording] = useState(false);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
   
   // Initial setup
   useEffect(() => {
@@ -128,6 +148,51 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     onEnd(data);
   };
   
+  // Timer logic
+  const handleTimerComplete = () => {
+    setCallActive(false);
+    setTimerRunning(false);
+    setCallEnded(true);
+    handleInterviewComplete({
+      messages,
+      endedBy: "timer",
+    });
+  };
+
+  // Recording logic
+  useEffect(() => {
+    if (!callActive) setRecording(false);
+    else setRecording(true);
+  }, [callActive]);
+
+  // Chat logic
+  const handleSendMessage = (text: string) => {
+    if (!callActive) return;
+    setMessages(m => [...m, { role: "user", text }]);
+    setWhoSpeaking("user");
+    setTimeout(() => {
+      // mock AI reply
+      setMessages(m => [
+        ...m,
+        {
+          role: "ai",
+          text:
+            text.length % 2
+              ? "That's interesting! Let's talk more."
+              : "Thank you. Next question.",
+        },
+      ]);
+      setWhoSpeaking("ai");
+      setTimeout(() => setWhoSpeaking("idle"), 1400);
+    }, 1500);
+    setTimeout(() => setWhoSpeaking("idle"), 400);
+  };
+
+  const handleVoiceInput = () => {
+    // Placeholder: Simulate user voice input triggering the same as message
+    handleSendMessage("Voice input from user");
+  };
+
   return (
     <div
       className="
