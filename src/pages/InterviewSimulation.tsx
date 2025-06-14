@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -8,7 +7,6 @@ import FeedbackReport from "@/components/FeedbackReport";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import AnimatedAIWidget from "@/components/AnimatedAIWidget";
 
 interface FullInterviewConfig {
   type: string;
@@ -27,9 +25,6 @@ const InterviewSimulation = () => {
   const [config, setConfig] = useState<FullInterviewConfig | null>(null);
   const [feedback, setFeedback] = useState<any>(null);
 
-  // Animated AI Widget (shown after "Start AI Interview")
-  const [aiInProgress, setAIInProgress] = useState(false);
-
   // Handler: Begin interview with config
   const handleStart = (interviewConfig: InterviewConfig) => {
     setConfig({
@@ -45,13 +40,6 @@ const InterviewSimulation = () => {
   const handleComplete = (report: any) => {
     setFeedback(report);
     setStep("feedback");
-    setAIInProgress(false);
-  };
-
-  // Start custom AI Widget (instead of ElevenLabs)
-  const handleStartAIAgent = () => {
-    setAIInProgress(true);
-    // Former ElevenLabs widget is no longer mounted.
   };
 
   return (
@@ -63,27 +51,7 @@ const InterviewSimulation = () => {
           <>
             <InterviewSetup onStart={handleStart} />
             {/* AI Interviewer (Custom Widget launcher) */}
-            <div className="mt-10 w-full max-w-md text-center relative">
-              {!aiInProgress && (
-                <button
-                  id="start-interview-btn"
-                  type="button"
-                  className="px-8 py-4 text-lg bg-indigo-600 rounded-lg text-white hover:bg-indigo-700 transition hover-scale shadow-md"
-                  onClick={handleStartAIAgent}
-                >
-                  Start Interview (AI Agent)
-                </button>
-              )}
-
-              {/* Animated AI Widget */}
-              {aiInProgress && (
-                <AnimatedAIWidget
-                  speaking={true}
-                  message="The AI Interviewer is talking to you!"
-                  onClose={() => setAIInProgress(false)}
-                />
-              )}
-            </div>
+            {/* The button and custom widget are removed */}
           </>
         )}
 
