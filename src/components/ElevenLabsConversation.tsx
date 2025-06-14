@@ -20,16 +20,26 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [conversationStarted, setConversationStarted] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
+  const MAX_CONNECTION_ATTEMPTS = 3;
 
   const conversation = useConversation({
     onConnect: () => {
       console.log('✅ Connected to ElevenLabs');
       setConversationStarted(true);
       setIsLoading(false);
+      setConnectionAttempts(0);
+      
+      // Clear any pending timeout
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+      
       startTimer();
       
       toast({
@@ -40,6 +50,15 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     onDisconnect: () => {
       console.log('❌ Disconnected from ElevenLabs');
       setConversationStarted(false);
+      setIsLoading(false);
+      
+      // Clear timers on disconnect
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
     },
     onMessage: (message) => {
       console.log('📨 Received message:', message);
@@ -47,9 +66,19 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     onError: (error) => {
       console.error('❌ ElevenLabs error:', error);
       setIsLoading(false);
+      setConversationStarted(false);
+      
+      // Clear timers on error
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to connect to AI interviewer.",
+        title: "Connection Error",
+        description: "Failed to connect to AI interviewer. Please try again.",
         variant: "destructive",
       });
     }
@@ -71,6 +100,10 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   };
 
   const startTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
     timerRef.current = setInterval(() => {
       setElapsedTime((prev) => {
         const newTime = prev + 1;
@@ -90,15 +123,44 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   };
 
   const startConversation = async () => {
+    // Prevent multiple connection attempts
+    if (isLoading || conversationStarted) {
+      return;
+    }
+
+    // Check connection attempts
+    if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+      toast({
+        title: "Connection Failed",
+        description: "Maximum connection attempts reached. Please refresh the page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
+      setConnectionAttempts(prev => prev + 1);
 
       // Request microphone permissions first
+      console.log('🎙️ Requesting microphone permissions...');
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       console.log('🚀 Starting ElevenLabs Conversation...');
 
       const resumeAnalysis = analyzeResumeContent();
+      
+      // Set a timeout for connection
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (isLoading) {
+          setIsLoading(false);
+          toast({
+            title: "Connection Timeout",
+            description: "Connection took too long. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }, 15000); // 15 second timeout
       
       // Start the conversation with agent ID
       await conversation.startSession({
@@ -106,7 +168,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         overrides: {
           agent: {
             prompt: {
-              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace.`
+              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace. Keep your responses concise and focused.`
             },
             firstMessage: profile?.resume_url 
               ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
@@ -118,56 +180,88 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     } catch (error) {
       console.error('❌ Error starting conversation:', error);
       setIsLoading(false);
+      setConversationStarted(false);
+      
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+      
+      let errorMessage = "Failed to start interview. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Permission denied') || error.message.includes('NotAllowedError')) {
+          errorMessage = "Microphone access denied. Please allow microphone permissions and try again.";
+        } else if (error.message.includes('agent')) {
+          errorMessage = "AI agent unavailable. Please try again later.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to start interview. Please check your microphone permissions.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
   const endConversation = async () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
+    try {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+      
+      // Only end session if we have an active conversation
+      if (conversationStarted) {
+        await conversation.endSession();
+      }
+      
+      setConversationStarted(false);
+      setIsLoading(false);
+      
+      // Generate feedback data
+      const resumeAnalyzed = !!profile?.resume_url;
+      const interviewData = {
+        duration: elapsedTime,
+        resumeAnalyzed,
+        overallScore: resumeAnalyzed ? 80 + Math.floor(Math.random() * 15) : 70 + Math.floor(Math.random() * 20),
+        date: new Date().toISOString(),
+        audioAnalysis: {
+          pace: 75 + Math.floor(Math.random() * 20),
+          clarity: 80 + Math.floor(Math.random() * 15),
+          confidence: resumeAnalyzed ? 85 : 75,
+          volume: 80 + Math.floor(Math.random() * 15),
+          filler_words: 70 + Math.floor(Math.random() * 20),
+        },
+        facialAnalysis: {
+          eye_contact: 70 + Math.floor(Math.random() * 25),
+          expressions: 75 + Math.floor(Math.random() * 20),
+          engagement: resumeAnalyzed ? 88 : 80,
+        },
+        bodyLanguageAnalysis: {
+          posture: 75 + Math.floor(Math.random() * 20),
+          hand_gestures: 65 + Math.floor(Math.random() * 25),
+          overall_presence: resumeAnalyzed ? 85 : 78,
+        },
+      };
+      
+      if (onInterviewComplete) {
+        onInterviewComplete(interviewData);
+      }
+      
+      toast({
+        title: "Interview Complete",
+        description: `Your ${formatTime(elapsedTime)} interview session has ended.`,
+      });
+    } catch (error) {
+      console.error('❌ Error ending conversation:', error);
+      // Force reset state even if ending fails
+      setConversationStarted(false);
+      setIsLoading(false);
     }
-    
-    await conversation.endSession();
-    setConversationStarted(false);
-    
-    // Generate feedback data
-    const resumeAnalyzed = !!profile?.resume_url;
-    const interviewData = {
-      duration: elapsedTime,
-      resumeAnalyzed,
-      overallScore: resumeAnalyzed ? 80 + Math.floor(Math.random() * 15) : 70 + Math.floor(Math.random() * 20),
-      date: new Date().toISOString(),
-      audioAnalysis: {
-        pace: 75 + Math.floor(Math.random() * 20),
-        clarity: 80 + Math.floor(Math.random() * 15),
-        confidence: resumeAnalyzed ? 85 : 75,
-        volume: 80 + Math.floor(Math.random() * 15),
-        filler_words: 70 + Math.floor(Math.random() * 20),
-      },
-      facialAnalysis: {
-        eye_contact: 70 + Math.floor(Math.random() * 25),
-        expressions: 75 + Math.floor(Math.random() * 20),
-        engagement: resumeAnalyzed ? 88 : 80,
-      },
-      bodyLanguageAnalysis: {
-        posture: 75 + Math.floor(Math.random() * 20),
-        hand_gestures: 65 + Math.floor(Math.random() * 25),
-        overall_presence: resumeAnalyzed ? 85 : 78,
-      },
-    };
-    
-    if (onInterviewComplete) {
-      onInterviewComplete(interviewData);
-    }
-    
-    toast({
-      title: "Interview Complete",
-      description: `Your ${formatTime(elapsedTime)} interview session has ended.`,
-    });
   };
 
   // Cleanup on unmount
@@ -176,8 +270,25 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Reset connection attempts when user navigates away or reloads
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (conversationStarted) {
+        conversation.endSession().catch(console.error);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [conversationStarted, conversation]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -203,6 +314,17 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             )}
           </div>
 
+          {/* Connection Attempts Warning */}
+          {connectionAttempts > 0 && !conversationStarted && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Connection attempt {connectionAttempts} of {MAX_CONNECTION_ATTEMPTS}. 
+                {connectionAttempts >= MAX_CONNECTION_ATTEMPTS ? " Please refresh the page to try again." : ""}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Interview Controls */}
           <div className="space-y-4">
             {conversationStarted && (
@@ -216,14 +338,27 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
             <div className="flex justify-center gap-4">
               {!conversationStarted ? (
-                <Button 
-                  onClick={startConversation} 
-                  disabled={isLoading}
-                  className="flex items-center gap-2"
-                >
-                  <Mic className="h-4 w-4" />
-                  {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
-                </Button>
+                <div className="flex flex-col items-center gap-2">
+                  <Button 
+                    onClick={startConversation} 
+                    disabled={isLoading || connectionAttempts >= MAX_CONNECTION_ATTEMPTS}
+                    className="flex items-center gap-2"
+                  >
+                    <Mic className="h-4 w-4" />
+                    {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
+                  </Button>
+                  {connectionAttempts >= MAX_CONNECTION_ATTEMPTS && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.location.reload()}
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh Page
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <Button
@@ -265,6 +400,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             <div className="text-center">
               <div className="text-sm text-gray-500">
                 Status: {conversation.status || 'disconnected'}
+                {connectionAttempts > 0 && ` (Attempt ${connectionAttempts})`}
               </div>
             </div>
           </div>
