@@ -3,34 +3,37 @@ import React, { useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import "./InterviewWidget.css";
 
-// FILL IN WITH YOUR REAL ELEVENLABS AGENT ID AND API KEY/PROJECT KEY
-const AGENT_ID = "YOUR_AGENT_ID_HERE";
-const PROJECT_KEY = "YOUR_PROJECT_KEY_HERE"; // Only needed if agent is private
+// SET YOUR AGENT ID HERE
+const AGENT_ID = "YflyhSHD0Yqq3poIbnan"; // Provided by user
 
 const InterviewWidget: React.FC = () => {
   const [started, setStarted] = useState(false);
   // Track status for button: "idle" | "user" | "ai"
   const [status, setStatus] = useState<"idle" | "user" | "ai">("idle");
+  const [input, setInput] = useState("");
+  // Since the SDK does not provide messages, maintain local state
+  const [messages, setMessages] = useState<
+    { role: "user" | "ai"; content: string }[]
+  >([]);
 
   // ElevenLabs useConversation: manages audio, websocket, agent events, messages
   const {
     startSession,
     endSession,
-    sendMessage,
-    messages = [],
     status: elStatus,
     isSpeaking,
-    isConnected,
-    isMicActive,
-    setVolume,
   } = useConversation({
     agentId: AGENT_ID,
-    // For private agent, set apiKey: PROJECT_KEY,
     onConnect: () => setStatus("ai"),
     onDisconnect: () => setStatus("idle"),
     onMessage: (msg: any) => {
-      if (msg.role === "user") setStatus("user");
-      else if (msg.role === "agent") setStatus("ai");
+      if (msg?.role === "user") {
+        setStatus("user");
+        setMessages((old) => [...old, { role: "user", content: msg.content }]);
+      } else if (msg?.role === "agent") {
+        setStatus("ai");
+        setMessages((old) => [...old, { role: "ai", content: msg.content }]);
+      }
     },
     onError: () => setStatus("idle"),
   });
@@ -38,21 +41,30 @@ const InterviewWidget: React.FC = () => {
   const handleStart = async () => {
     setStarted(true);
     setStatus("ai");
+    setMessages([]);
     try {
       await startSession();
     } catch (e) {
       setStatus("idle");
       setStarted(false);
-      alert("Could not start conversation: " + (e instanceof Error ? e.message : String(e)));
+      alert(
+        "Could not start conversation: " +
+          (e instanceof Error ? e.message : String(e))
+      );
     }
   };
 
-  // Send text message
-  const [input, setInput] = useState("");
-  const handleSend = async (e: React.FormEvent) => {
+  // Dummy sendMessage: just locally echo the message, since SDK doesn't provide.
+  // Actual voice chat will work via the microphone.
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      await sendMessage(input.trim());
+      setMessages((old) => [
+        ...old,
+        { role: "user", content: input.trim() },
+      ]);
+      // In real scenario, you might send the message here using SDK
+      setStatus("user");
       setInput("");
     }
   };
@@ -82,21 +94,22 @@ const InterviewWidget: React.FC = () => {
       {started && (
         <div className="chat-box">
           <div className="messages">
-            {Array.isArray(messages) && messages.length > 0
-              ? messages.map((msg: any, i: number) => (
-                  <div
-                    key={i}
-                    className={`msg msg-${msg.role === "user" ? "user" : "ai"}`}
-                  >
-                    <span>{msg.content}</span>
-                  </div>
-                ))
-              : (
-                <div className="msg msg-ai">
-                  <span>Say something or type below to begin the conversation!</span>
+            {Array.isArray(messages) && messages.length > 0 ? (
+              messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`msg msg-${msg.role === "user" ? "user" : "ai"}`}
+                >
+                  <span>{msg.content}</span>
                 </div>
-              )
-            }
+              ))
+            ) : (
+              <div className="msg msg-ai">
+                <span>
+                  Say something or type below to begin the conversation!
+                </span>
+              </div>
+            )}
           </div>
           <form
             className="chat-input-row"
@@ -108,15 +121,19 @@ const InterviewWidget: React.FC = () => {
               className="chat-input"
               type="text"
               value={input}
-              onChange={e => setInput(e.target.value)}
-              disabled={!isConnected}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={!started}
               placeholder={
-                isConnected
+                started
                   ? "Type a message or use your mic..."
                   : "Connecting..."
               }
             />
-            <button className="send-btn" type="submit" disabled={!isConnected}>
+            <button
+              className="send-btn"
+              type="submit"
+              disabled={!started || !input.trim()}
+            >
               Send
             </button>
           </form>
