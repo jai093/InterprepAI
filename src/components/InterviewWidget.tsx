@@ -67,8 +67,11 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
       let errorMsg = "";
 
-      // FIX: Check for null + proper object type before instanceof Error or property access
-      if (error !== null && typeof error === "object") {
+      // --- FIX BEGINS ---
+      if (
+        error !== null &&
+        typeof error === "object"
+      ) {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(error, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(error, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(error, "wasClean");
@@ -85,9 +88,8 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           typeof Error !== "undefined" &&
           error instanceof Error
         ) {
-          errorMsg = error.message;
+          errorMsg = (error as Error).message;
         } else {
-          // fallback for unknown object
           errorMsg = JSON.stringify(error);
         }
       } else if (typeof error === "string") {
@@ -95,6 +97,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       } else {
         errorMsg = "Unknown error occurred";
       }
+      // --- FIX ENDS ---
 
       setErrorMsg(errorMsg);
       toast({
@@ -118,8 +121,11 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       setStarted(false);
 
       let errorMsg = "";
-      // FIX: Check for null + proper object type before instanceof Error or property access
-      if (e !== null && typeof e === "object") {
+      // --- FIX BEGINS ---
+      if (
+        e !== null &&
+        typeof e === "object"
+      ) {
         const maybeHasCode = Object.prototype.hasOwnProperty.call(e, "code");
         const maybeHasReason = Object.prototype.hasOwnProperty.call(e, "reason");
         const maybeHasWasClean = Object.prototype.hasOwnProperty.call(e, "wasClean");
@@ -134,7 +140,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           typeof Error !== "undefined" &&
           e instanceof Error
         ) {
-          errorMsg = e.message;
+          errorMsg = (e as Error).message;
         } else {
           errorMsg = JSON.stringify(e);
         }
@@ -143,6 +149,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       } else {
         errorMsg = "Unknown error occurred";
       }
+      // --- FIX ENDS ---
       setErrorMsg(errorMsg);
       toast({
         title: "Could not start interview",
