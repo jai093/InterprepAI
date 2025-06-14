@@ -78,14 +78,7 @@ const InterviewSimulation = () => {
                   local-storage-key="terms_accepted"
                 ></elevenlabs-convai>
               </div>
-              {/* Ensure widget script is loaded only when widget is displayed */}
-              {showWidget && (
-                <script
-                  src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-                  async
-                  type="text/javascript"
-                ></script>
-              )}
+              {/* Removed extra <script src="https://unpkg.com/@elevenlabs/convai-widget-embed"> to prevent duplicate registration */}
             </div>
           </>
         )}

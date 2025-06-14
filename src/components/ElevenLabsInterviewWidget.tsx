@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useState } from "react";
 
 /**
  * ElevenLabsInterviewWidget uses the official ElevenLabs embed code and displays a Start Interview launcher.
@@ -8,16 +8,7 @@ const ElevenLabsInterviewWidget: React.FC = () => {
   const [started, setStarted] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
-  // Load the ElevenLabs script if not already loaded, but only after widget is shown
-  useEffect(() => {
-    if (started && !document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
-      script.async = true;
-      script.type = "text/javascript";
-      document.body.appendChild(script);
-    }
-  }, [started]);
+  // No need to load the ElevenLabs script; it's loaded in index.html
 
   return (
     <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center">
@@ -56,3 +47,4 @@ const ElevenLabsInterviewWidget: React.FC = () => {
 };
 
 export default ElevenLabsInterviewWidget;
+

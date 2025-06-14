@@ -1,21 +1,12 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 
 /**
  * This component embeds the ElevenLabs Conversational AI widget using the official embed code.
+ * The script is included once from index.html.
  */
 const ElevenLabsConversation: React.FC = () => {
-  useEffect(() => {
-    // If the script already exists, don't add it again
-    if (!document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
-      script.async = true;
-      script.type = "text/javascript";
-      document.body.appendChild(script);
-    }
-  }, []);
-
+  // No need to inject the script here; it's already loaded in index.html
   return (
     <div className="flex justify-center my-12">
       {/* Embed the ElevenLabs Conversational Agent using the provided agent-id */}
@@ -25,3 +16,4 @@ const ElevenLabsConversation: React.FC = () => {
 };
 
 export default ElevenLabsConversation;
+
