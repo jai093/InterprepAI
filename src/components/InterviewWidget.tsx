@@ -20,8 +20,7 @@ const InterviewWidget: React.FC = () => {
     startSession,
     endSession,
     status: elStatus,
-    isSpeaking,
-    sendMessage
+    isSpeaking
   } = useConversation({
     agentId: AGENT_ID,
     onConnect: () => setStatus("ai"),
@@ -66,9 +65,8 @@ const InterviewWidget: React.FC = () => {
     }
   };
 
-  // Dummy sendMessage: just locally echo the message, since SDK doesn't provide.
-  // Actual voice chat will work via the microphone.
-  const handleSend = async (e: React.FormEvent) => {
+  // Text input will only echo locally—no chat is sent to the agent, only spoken messages work
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
       setMessages((old) => [
@@ -76,14 +74,6 @@ const InterviewWidget: React.FC = () => {
         { role: "user", content: input.trim() },
       ]);
       setStatus("user");
-      // Send message to ElevenLabs agent so it will reply
-      if (typeof sendMessage === "function") {
-        try {
-          await sendMessage(input.trim());
-        } catch (err) {
-          alert("Failed to send message to AI agent.");
-        }
-      }
       setInput("");
     }
   };
@@ -144,7 +134,7 @@ const InterviewWidget: React.FC = () => {
               disabled={!started}
               placeholder={
                 started
-                  ? "Type a message or use your mic..."
+                  ? "Type a message (will NOT be sent to AI; use your mic)"
                   : "Connecting..."
               }
             />
@@ -152,10 +142,16 @@ const InterviewWidget: React.FC = () => {
               className="send-btn"
               type="submit"
               disabled={!started || !input.trim()}
+              title="Text messages are local only—speak to interact with the AI"
             >
               Send
             </button>
           </form>
+          <div className="text-xs text-gray-500 px-4 pt-2 pb-1">
+            <span>
+              <b>Note:</b> Only voice/microphone input is sent to the AI agent. Typing a message will <b>NOT</b> trigger an AI reply.
+            </span>
+          </div>
         </div>
       )}
     </div>
