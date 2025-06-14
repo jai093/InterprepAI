@@ -16,14 +16,6 @@ interface FullInterviewConfig {
   difficulty: string;
 }
 
-// Interface for config from InterviewSetup
-interface InterviewConfig {
-  type: string;
-  jobRole: string;
-  difficultyLevel: string;
-  interviewerPersona: string;
-}
-
 const InterviewSimulation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
