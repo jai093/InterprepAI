@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useMediaDevices } from "@/hooks/useMediaDevices";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ElevenLabsConversation from "./ElevenLabsConversation";
+import InterviewWidget from "./InterviewWidget";
+import "../components/InterviewWidget.css"; // Ensure styles are loaded
 
 interface InterviewConfig {
   type: string;
@@ -100,6 +102,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     onEnd({ endedBy: "timer" });
   };
 
+  // Overwrite Interview info with fixed values
+  const fixedInfo = {
+    type: "behavioral",
+    jobRole: "Software Engineer",
+    difficulty: "medium",
+    duration: 10, // always 10 minutes
+  };
+
   return (
     <div
       className="w-full min-h-[80vh] flex items-center justify-center py-12 bg-[#f9fafb]"
@@ -170,59 +180,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                   <TabsTrigger value="interview">AI Interview</TabsTrigger>
                   <TabsTrigger value="info">Interview Info</TabsTrigger>
                 </TabsList>
-                {/* Interview tab: static intro, then embed ElevenLabs after call starts */}
+                {/* Interview tab: Launches custom ElevenLabs interview widget */}
                 <TabsContent value="interview" className="flex-1 flex flex-col">
-                  {/* Intro/Start */}
-                  {!callStarted && !showELWidget && (
-                    <div className="flex flex-col gap-6 items-center mt-8 mb-6">
-                      <div className="font-semibold text-lg text-indigo-700 text-center px-3">
-                        Ready to start your mock interview?
-                      </div>
-                      <AnimatedStartCallButton
-                        status="idle"
-                        onClick={() => {
-                          setCallStarted(true);
-                          setTimerRunning(true);
-                          setShowELWidget(true);
-                        }}
-                        disabled={isInitializing}
-                      />
-                      <div className="text-sm text-muted-foreground">
-                        When you start, you may use both <b>voice and text input</b> with the AI interviewer.
-                      </div>
-                    </div>
-                  )}
-                  {/* Show ElevenLabs agent inline after Start Call */}
-                  {callStarted && showELWidget && !callEnded && (
-                    <div className="flex flex-col w-full items-center animate-fade-in">
-                      <ElevenLabsConversation />
-                    </div>
-                  )}
-                  {/* Timer ended */}
-                  {callEnded && (
-                    <div className="text-center my-5 text-destructive font-semibold">
-                      Interview ended (Max time reached)
-                    </div>
-                  )}
+                  <InterviewWidget />
+                  {/* (No fake chat logic, all handled by widget) */}
                 </TabsContent>
 
                 {/* Info tab */}
                 <TabsContent value="info" className="space-y-4 px-4 pb-4 pt-2 data-[state=active]:flex-1">
                   <div>
                     <h3 className="font-semibold mb-1">Interview Type</h3>
-                    <Badge variant="outline">{config.type}</Badge>
+                    <Badge variant="outline">{fixedInfo.type}</Badge>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1">Position</h3>
-                    <p className="text-sm">{config.jobRole}</p>
+                    <p className="text-sm">{fixedInfo.jobRole}</p>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1">Difficulty</h3>
-                    <Badge variant="outline">{config.difficulty}</Badge>
+                    <Badge variant="outline">{fixedInfo.difficulty}</Badge>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1">Duration</h3>
-                    <p className="text-sm">{Math.round(config.duration)} minutes</p>
+                    <p className="text-sm">10 minutes</p>
                   </div>
                   <Alert>
                     <AlertDescription>
