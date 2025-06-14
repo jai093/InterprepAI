@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useConversation, Conversation, Message } from "@elevenlabs/react";
+import { useConversation } from "@elevenlabs/react";
 import "./InterviewWidget.css";
 
 // FILL IN WITH YOUR REAL ELEVENLABS AGENT ID AND API KEY/PROJECT KEY
@@ -17,18 +17,18 @@ const InterviewWidget: React.FC = () => {
     startSession,
     endSession,
     sendMessage,
-    messages,
+    messages = [],
     status: elStatus,
     isSpeaking,
     isConnected,
     isMicActive,
     setVolume,
-  }: Conversation = useConversation({
+  } = useConversation({
     agentId: AGENT_ID,
     // For private agent, set apiKey: PROJECT_KEY,
     onConnect: () => setStatus("ai"),
     onDisconnect: () => setStatus("idle"),
-    onMessage: (msg: Message) => {
+    onMessage: (msg: any) => {
       if (msg.role === "user") setStatus("user");
       else if (msg.role === "agent") setStatus("ai");
     },
@@ -43,7 +43,7 @@ const InterviewWidget: React.FC = () => {
     } catch (e) {
       setStatus("idle");
       setStarted(false);
-      alert("Could not start conversation: " + e?.toString());
+      alert("Could not start conversation: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -82,14 +82,21 @@ const InterviewWidget: React.FC = () => {
       {started && (
         <div className="chat-box">
           <div className="messages">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`msg msg-${msg.role === "user" ? "user" : "ai"}`}
-              >
-                <span>{msg.content}</span>
-              </div>
-            ))}
+            {Array.isArray(messages) && messages.length > 0
+              ? messages.map((msg: any, i: number) => (
+                  <div
+                    key={i}
+                    className={`msg msg-${msg.role === "user" ? "user" : "ai"}`}
+                  >
+                    <span>{msg.content}</span>
+                  </div>
+                ))
+              : (
+                <div className="msg msg-ai">
+                  <span>Say something or type below to begin the conversation!</span>
+                </div>
+              )
+            }
           </div>
           <form
             className="chat-input-row"
@@ -120,3 +127,4 @@ const InterviewWidget: React.FC = () => {
 };
 
 export default InterviewWidget;
+
