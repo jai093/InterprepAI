@@ -172,13 +172,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     });
   };
 
-  // Helper to get signed url from edge function
+  // Helper to get signed url from edge function -- updated to use the full Supabase Edge Functions URL
   const getSignedUrl = async (agentId: string): Promise<string> => {
-    const res = await fetch("/functions/v1/get-elevenlabs-signed-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId }),
-    });
+    const res = await fetch(
+      "https://mybjsygfhrzzknwalyov.functions.supabase.co/get-elevenlabs-signed-url",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId }),
+      }
+    );
     if (!res.ok) {
       throw new Error(`Failed to get signed url: ${await res.text()}`);
     }
