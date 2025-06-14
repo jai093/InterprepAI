@@ -65,21 +65,30 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       setStatus("error");
       setStarted(false);
       setIsConnecting(false);
+
       let errorMsg = "";
-      // Try to parse ElevenLabs-style error
-      if (
-        typeof window !== "undefined" &&
-        typeof window.CloseEvent !== "undefined" &&
-        error instanceof window.CloseEvent
-      ) {
-        errorMsg = `WebSocket closed - code: ${error.code}, reason: ${error.reason || "No reason"}, wasClean: ${error.wasClean}`;
-      } else if (error && typeof error === "object" && "code" in error && "reason" in error) {
-        errorMsg = `WebSocket closed - code: ${error.code}, reason: ${error.reason || "No reason"}, wasClean: ${error.wasClean}`;
-      } else if (error instanceof Error) {
-        errorMsg = error.message;
+
+      // Type-safe error detection
+      if (error && typeof error === "object") {
+        // Check if it's a WebSocket close event (duck-typing as we can't use instanceof directly)
+        if (
+          "code" in error && typeof (error as any).code === "number" &&
+          "reason" in error &&
+          "wasClean" in error
+        ) {
+          const e = error as { code?: number; reason?: string | null; wasClean?: boolean };
+          errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = JSON.stringify(error);
+        }
+      } else if (typeof error === "string") {
+        errorMsg = error;
       } else {
-        errorMsg = String(error);
+        errorMsg = "Unknown error occurred";
       }
+
       setErrorMsg(errorMsg);
       toast({
         title: "Interview session failed",
@@ -96,23 +105,28 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       await startSession();
       setStarted(true);
       setStatus("ai");
-    } catch (e: any) {
+    } catch (e) {
       setIsConnecting(false);
       setStatus("error");
       setStarted(false);
       let errorMsg = "";
-      if (
-        typeof window !== "undefined" &&
-        typeof window.CloseEvent !== "undefined" &&
-        e instanceof window.CloseEvent
-      ) {
-        errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-      } else if (e && typeof e === "object" && "code" in e && "reason" in e) {
-        errorMsg = `WebSocket closed - code: ${e.code}, reason: ${e.reason || "No reason"}, wasClean: ${e.wasClean}`;
-      } else if (e instanceof Error) {
-        errorMsg = e.message;
+      if (e && typeof e === "object") {
+        if (
+          "code" in e && typeof (e as any).code === "number" &&
+          "reason" in e &&
+          "wasClean" in e
+        ) {
+          const errObj = e as { code?: number; reason?: string | null; wasClean?: boolean };
+          errorMsg = `WebSocket closed - code: ${errObj.code}, reason: ${errObj.reason || "No reason"}, wasClean: ${errObj.wasClean}`;
+        } else if (e instanceof Error) {
+          errorMsg = e.message;
+        } else {
+          errorMsg = JSON.stringify(e);
+        }
+      } else if (typeof e === "string") {
+        errorMsg = e;
       } else {
-        errorMsg = String(e);
+        errorMsg = "Unknown error occurred";
       }
       setErrorMsg(errorMsg);
       toast({
