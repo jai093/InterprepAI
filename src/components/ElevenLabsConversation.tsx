@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, FileText, RefreshCw, AlertCircle, Volume2 } from "lucide-react";
+import { Mic, MicOff, FileText, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,23 +21,30 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [isConnecting, setIsConnecting] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
   const MAX_CONNECTION_ATTEMPTS = 3;
+  const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
   const conversation = useConversation({
     onConnect: () => {
       console.log('✅ Connected to ElevenLabs');
       setConversationStarted(true);
       setIsLoading(false);
+      setIsConnecting(false);
       setConnectionAttempts(0);
       
-      // Clear any pending timeout
+      // Clear any pending timeouts
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
       
       startTimer();
@@ -49,15 +56,29 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     },
     onDisconnect: () => {
       console.log('❌ Disconnected from ElevenLabs');
-      setConversationStarted(false);
-      setIsLoading(false);
       
-      // Clear timers on disconnect
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
+      // Only update state if we were actually connected
+      if (conversationStarted || isConnecting) {
+        setConversationStarted(false);
+        setIsLoading(false);
+        setIsConnecting(false);
+        
+        // Clear timers on disconnect  
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+        }
+        
+        // Show toast only if this wasn't an expected disconnect
+        if (conversationStarted) {
+          toast({
+            title: "Connection Lost",
+            description: "Disconnected from AI interviewer.",
+            variant: "destructive",
+          });
+        }
       }
     },
     onMessage: (message) => {
@@ -67,13 +88,17 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       console.error('❌ ElevenLabs error:', error);
       setIsLoading(false);
       setConversationStarted(false);
+      setIsConnecting(false);
       
-      // Clear timers on error
+      // Clear all timers on error
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
       
       toast({
@@ -122,9 +147,36 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const waitForSDKReady = () => {
+    return new Promise<void>((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 20; // 2 seconds total wait time
+      
+      const checkSDK = () => {
+        attempts++;
+        
+        // Check if conversation object has required methods
+        if (conversation && typeof conversation.startSession === 'function') {
+          resolve();
+          return;
+        }
+        
+        if (attempts >= maxAttempts) {
+          reject(new Error('SDK not ready after timeout'));
+          return;
+        }
+        
+        setTimeout(checkSDK, 100);
+      };
+      
+      checkSDK();
+    });
+  };
+
   const startConversation = async () => {
     // Prevent multiple connection attempts
-    if (isLoading || conversationStarted) {
+    if (isLoading || conversationStarted || isConnecting) {
+      console.log('Connection already in progress or active');
       return;
     }
 
@@ -140,35 +192,43 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
     try {
       setIsLoading(true);
+      setIsConnecting(true);
       setConnectionAttempts(prev => prev + 1);
 
       // Request microphone permissions first
       console.log('🎙️ Requesting microphone permissions...');
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Stop the stream immediately as we just needed permission
+      stream.getTracks().forEach(track => track.stop());
 
       console.log('🚀 Starting ElevenLabs Conversation...');
 
+      // Wait for SDK to be ready
+      await waitForSDKReady();
+
       const resumeAnalysis = analyzeResumeContent();
       
-      // Set a timeout for connection
+      // Set a connection timeout
       connectionTimeoutRef.current = setTimeout(() => {
-        if (isLoading) {
+        if (isConnecting || isLoading) {
           setIsLoading(false);
+          setIsConnecting(false);
           toast({
             title: "Connection Timeout",
             description: "Connection took too long. Please try again.",
             variant: "destructive",
           });
         }
-      }, 15000); // 15 second timeout
+      }, CONNECTION_TIMEOUT);
       
-      // Start the conversation with agent ID
+      // Start the conversation with agent ID and proper error handling
       await conversation.startSession({
         agentId: AGENT_ID,
         overrides: {
           agent: {
             prompt: {
-              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace. Keep your responses concise and focused.`
+              prompt: `You are a professional AI interviewer. ${resumeAnalysis} Ask relevant, engaging questions that help assess the candidate's qualifications. Keep responses conversational and encouraging. Always speak clearly at a moderate pace. Keep your responses concise and focused. Wait for the user to respond before asking the next question.`
             },
             firstMessage: profile?.resume_url 
               ? "Hello! Welcome to your interview. I've reviewed your background and I'm excited to learn more about your experience. Let's begin - could you tell me a bit about yourself?"
@@ -181,6 +241,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       console.error('❌ Error starting conversation:', error);
       setIsLoading(false);
       setConversationStarted(false);
+      setIsConnecting(false);
       
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
@@ -193,6 +254,8 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           errorMessage = "Microphone access denied. Please allow microphone permissions and try again.";
         } else if (error.message.includes('agent')) {
           errorMessage = "AI agent unavailable. Please try again later.";
+        } else if (error.message.includes('SDK not ready')) {
+          errorMessage = "Interview system not ready. Please wait a moment and try again.";
         }
       }
       
@@ -206,6 +269,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
 
   const endConversation = async () => {
     try {
+      // Clear all timers first
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -214,13 +278,18 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         clearTimeout(connectionTimeoutRef.current);
       }
       
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      
       // Only end session if we have an active conversation
-      if (conversationStarted) {
+      if (conversationStarted && conversation && typeof conversation.endSession === 'function') {
         await conversation.endSession();
       }
       
       setConversationStarted(false);
       setIsLoading(false);
+      setIsConnecting(false);
       
       // Generate feedback data
       const resumeAnalyzed = !!profile?.resume_url;
@@ -261,6 +330,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       // Force reset state even if ending fails
       setConversationStarted(false);
       setIsLoading(false);
+      setIsConnecting(false);
     }
   };
 
@@ -273,13 +343,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
       }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
   }, []);
 
   // Reset connection attempts when user navigates away or reloads
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (conversationStarted) {
+      if (conversationStarted && conversation && typeof conversation.endSession === 'function') {
         conversation.endSession().catch(console.error);
       }
     };
@@ -341,11 +414,11 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
                 <div className="flex flex-col items-center gap-2">
                   <Button 
                     onClick={startConversation} 
-                    disabled={isLoading || connectionAttempts >= MAX_CONNECTION_ATTEMPTS}
+                    disabled={isLoading || isConnecting || connectionAttempts >= MAX_CONNECTION_ATTEMPTS}
                     className="flex items-center gap-2"
                   >
                     <Mic className="h-4 w-4" />
-                    {isLoading ? "Connecting..." : "Start AI Interview (10 min)"}
+                    {isLoading || isConnecting ? "Connecting..." : "Start AI Interview (10 min)"}
                   </Button>
                   {connectionAttempts >= MAX_CONNECTION_ATTEMPTS && (
                     <Button 
@@ -379,19 +452,19 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               )}
             </div>
 
+            {(isConnecting || isLoading) && (
+              <Alert>
+                <AlertDescription>
+                  {isConnecting ? "Establishing connection to AI interviewer..." : "Connecting to AI interviewer..."} Please allow microphone access when prompted.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {conversationStarted && (
               <Alert>
                 <AlertDescription>
                   The AI interviewer is conducting a real-time voice interview. 
                   Speak clearly and naturally. The AI will respond with voice and ask follow-up questions.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {isLoading && (
-              <Alert>
-                <AlertDescription>
-                  Connecting to AI interviewer... Please allow microphone access when prompted.
                 </AlertDescription>
               </Alert>
             )}
