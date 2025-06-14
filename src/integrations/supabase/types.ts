@@ -54,54 +54,111 @@ export type Database = {
       interview_sessions: {
         Row: {
           body_analysis: Json | null
+          body_language: number | null
+          candidate_name: string | null
+          clarity: number | null
+          communication_style: number | null
+          confidence: number | null
+          confidence_score: string | null
           created_at: string
           date: string
           duration: string
+          email_address: string | null
+          example_usage: number | null
           facial_analysis: Json
           feedback: string | null
           id: string
+          interview_overall_score: string | null
+          interview_report_url: string | null
+          language_used: string | null
+          mobile_number: string | null
+          problem_solving: number | null
+          relevance: number | null
           response_analysis: Json | null
+          resume_url: string | null
           role: string
           score: number
+          structure: number | null
+          target_role: string | null
+          tone_language: number | null
           transcript: string | null
           type: string
           user_id: string
           video_url: string | null
           voice_analysis: Json
+          voice_modulation: number | null
         }
         Insert: {
           body_analysis?: Json | null
+          body_language?: number | null
+          candidate_name?: string | null
+          clarity?: number | null
+          communication_style?: number | null
+          confidence?: number | null
+          confidence_score?: string | null
           created_at?: string
           date?: string
           duration: string
+          email_address?: string | null
+          example_usage?: number | null
           facial_analysis?: Json
           feedback?: string | null
           id?: string
+          interview_overall_score?: string | null
+          interview_report_url?: string | null
+          language_used?: string | null
+          mobile_number?: string | null
+          problem_solving?: number | null
+          relevance?: number | null
           response_analysis?: Json | null
+          resume_url?: string | null
           role: string
           score: number
+          structure?: number | null
+          target_role?: string | null
+          tone_language?: number | null
           transcript?: string | null
           type: string
           user_id: string
           video_url?: string | null
           voice_analysis?: Json
+          voice_modulation?: number | null
         }
         Update: {
           body_analysis?: Json | null
+          body_language?: number | null
+          candidate_name?: string | null
+          clarity?: number | null
+          communication_style?: number | null
+          confidence?: number | null
+          confidence_score?: string | null
           created_at?: string
           date?: string
           duration?: string
+          email_address?: string | null
+          example_usage?: number | null
           facial_analysis?: Json
           feedback?: string | null
           id?: string
+          interview_overall_score?: string | null
+          interview_report_url?: string | null
+          language_used?: string | null
+          mobile_number?: string | null
+          problem_solving?: number | null
+          relevance?: number | null
           response_analysis?: Json | null
+          resume_url?: string | null
           role?: string
           score?: number
+          structure?: number | null
+          target_role?: string | null
+          tone_language?: number | null
           transcript?: string | null
           type?: string
           user_id?: string
           video_url?: string | null
           voice_analysis?: Json
+          voice_modulation?: number | null
         }
         Relationships: []
       }

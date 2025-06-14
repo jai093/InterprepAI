@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
@@ -98,11 +97,57 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
     );
   }
 
+  const handleDownloadReport = () => {
+    // Generate a simple PDF for demonstration purposes
+    // In real usage, you may use a library like jsPDF or html2pdf.js
+    const reportContent = `
+      Interview Feedback Report
+      
+      Candidate: ${interviewData.candidate_name || ""}
+      Target Role: ${interviewData.target_role || ""}
+      Score: ${interviewData.interview_overall_score || ""}
+      Date: ${interviewData.date || ""}
+      Duration: ${interviewData.duration || ""}
+
+      Evaluation:
+      - Voice Modulation: ${interviewData.voice_modulation || ""}
+      - Body Language: ${interviewData.body_language || ""}
+      - Problem Solving: ${interviewData.problem_solving || ""}
+      - Communication: ${interviewData.communication_style || ""}
+      - Examples: ${interviewData.example_usage || ""}
+      - Tone & Language: ${interviewData.tone_language || ""}
+      - Structure: ${interviewData.structure || ""}
+      - Confidence: ${interviewData.confidence || ""}
+      - Relevance: ${interviewData.relevance || ""}
+      - Clarity: ${interviewData.clarity || ""}
+      
+      Thank you!
+    `;
+    const blob = new Blob([reportContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `interview-feedback-${new Date().toISOString().split("T")[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="animate-fade-in">
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Interview Feedback Report</CardTitle>
+          <div className="flex flex-row justify-end items-center space-x-2 mt-2">
+            <button
+              type="button"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition text-sm"
+              onClick={handleDownloadReport}
+            >
+              Download Full Report
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row justify-between mb-6">

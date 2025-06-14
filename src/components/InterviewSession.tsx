@@ -44,6 +44,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [callStarted, setCallStarted] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
+  const [interviewComplete, setInterviewComplete] = useState(false);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
 
   // Only show EL widget after call started
   const [showELWidget, setShowELWidget] = useState(false);
@@ -102,6 +104,72 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     onEnd({ endedBy: "timer" });
   };
 
+  // End interview handler - saves to Supabase and triggers onEnd
+  const handleEndInterview = async () => {
+    setCallEnded(true);
+    setTimerRunning(false);
+    setCallStarted(false);
+    setShowELWidget(false);
+    setInterviewComplete(true);
+
+    // Simulate captured analysis (real implementation would fetch from agent/report in prod)
+    const resultAnalysis = {
+      voice_modulation: 80,
+      body_language: 70,
+      problem_solving: 85,
+      communication_style: 80,
+      example_usage: 75,
+      tone_language: 90,
+      structure: 80,
+      confidence: 80,
+      relevance: 88,
+      clarity: 93,
+      // ...more fields as desired (for demo)...
+    };
+
+    // Compose interview session payload
+    const payload = {
+      user_id: user?.id,
+      type: config.type,
+      role: config.jobRole,
+      duration: `${config.duration} min`,
+      date: new Date().toISOString(),
+      // Add all evaluation fields:
+      ...resultAnalysis,
+      // Demo static additions:
+      target_role: config.jobRole,
+      mobile_number: "",
+      candidate_name: user?.full_name || "",
+      email_address: user?.email || "",
+      language_used: "English",
+      confidence_score: "80",
+      resume_url: "",
+      interview_overall_score: "85",
+      video_url: null, // to be updated if recorded
+      interview_report_url: null, // to be updated after generating report PDF
+    };
+
+    // STORE IN SUPABASE
+    try {
+      // Save session to Supabase
+      const { error } = await import("@/integrations/supabase/client").then(({ supabase }) =>
+        supabase
+          .from("interview_sessions")
+          .insert([payload])
+      );
+      if (error) {
+        toast({ title: "Error saving interview", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Interview saved!", description: "Your session is saved. Analysis available below." });
+      }
+    } catch (err: any) {
+      toast({ title: "Error saving", description: err.message, variant: "destructive" });
+    }
+
+    // Pass analysis and video blob (if any) to feedback
+    onEnd({ ...payload, videoBlob });
+  };
+
   // Overwrite Interview info with fixed values
   const fixedInfo = {
     type: "behavioral",
@@ -139,7 +207,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                       muted
                       autoPlay
                       playsInline
-                      className={`w-full aspect-video rounded-t-lg object-cover border border-gray-200 shadow-lg transition-opacity duration-300 ${videoEnabled ? "opacity-100" : "opacity-0"}`}
+                      className={
+                        "w-full aspect-video rounded-t-lg object-cover border border-gray-200 shadow-lg transition-opacity duration-300 " +
+                        (videoEnabled ? "opacity-100" : "opacity-0")
+                      }
                     />
                     {!videoEnabled && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-900/60 rounded-t-lg">
@@ -182,7 +253,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 </TabsList>
                 {/* Interview tab: Launches custom ElevenLabs interview widget */}
                 <TabsContent value="interview" className="flex-1 flex flex-col">
-                  <InterviewWidget />
+                  <InterviewWidget
+                    onEndInterview={handleEndInterview}
+                    showCamera={false}
+                  />
                   {/* (No fake chat logic, all handled by widget) */}
                 </TabsContent>
 
