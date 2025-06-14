@@ -12,6 +12,7 @@ import ConnectionAttemptAlert from "./ConnectionAttemptAlert";
 import ConnectionStatus from "./ConnectionStatus";
 import LoadingAlert from "./LoadingAlert";
 import { useInterviewTimer } from "../hooks/useInterviewTimer";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ElevenLabsConversationProps {
   onInterviewComplete?: (data: any) => void;
