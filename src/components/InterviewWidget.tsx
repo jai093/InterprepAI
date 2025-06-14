@@ -88,7 +88,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           typeof Error !== "undefined" &&
           error !== null &&
           typeof error === "object" &&
-          error instanceof Error
+          (error as any) instanceof Error
         ) {
           errorMsg = (error as Error).message;
         } else {
@@ -142,7 +142,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           typeof Error !== "undefined" &&
           e !== null &&
           typeof e === "object" &&
-          e instanceof Error
+          (e as any) instanceof Error
         ) {
           errorMsg = (e as Error).message;
         } else {
