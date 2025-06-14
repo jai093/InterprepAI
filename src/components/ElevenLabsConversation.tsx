@@ -7,6 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useConversation } from "@elevenlabs/react";
+import ResumeStatusAlert from "./ResumeStatusAlert";
+import ConnectionAttemptAlert from "./ConnectionAttemptAlert";
+import ConnectionStatus from "./ConnectionStatus";
+import LoadingAlert from "./LoadingAlert";
+import { useInterviewTimer } from "../hooks/useInterviewTimer";
 
 interface ElevenLabsConversationProps {
   onInterviewComplete?: (data: any) => void;
@@ -17,11 +22,9 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const { profile } = useProfile();
   const { toast } = useToast();
   const [conversationStarted, setConversationStarted] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -29,6 +32,16 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const INTERVIEW_DURATION = 10 * 60; // 10 minutes in seconds
   const MAX_CONNECTION_ATTEMPTS = 3;
   const CONNECTION_TIMEOUT = 10000; // 10 seconds
+
+  // Timer hook
+  const {
+    elapsedTime,
+    startTimer,
+    resetTimer,
+    clearTimer,
+    formatTime,
+    setElapsedTime,
+  } = useInterviewTimer(INTERVIEW_DURATION, () => endConversation());
 
   const conversation = useConversation({
     onConnect: () => {
@@ -63,9 +76,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         setIsConnecting(false);
         
         // Clear timers on disconnect  
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
+        clearTimer();
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
         }
@@ -90,9 +101,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
       setIsConnecting(false);
       
       // Clear all timers on error
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      clearTimer();
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
       }
@@ -121,29 +130,6 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
     };
     
     return `Resume Analysis: Candidate ${resumeContext.fullName} has skills in ${resumeContext.skills}. Languages: ${resumeContext.languages}. Please conduct a comprehensive professional interview asking personalized questions based on this background and skills. Focus on their technical abilities, experience, and career goals related to their listed skills.`;
-  };
-
-  const startTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    
-    timerRef.current = setInterval(() => {
-      setElapsedTime((prev) => {
-        const newTime = prev + 1;
-        if (newTime >= INTERVIEW_DURATION) {
-          endConversation();
-          return INTERVIEW_DURATION;
-        }
-        return newTime;
-      });
-    }, 1000);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const waitForSDKReady = () => {
@@ -288,9 +274,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   const endConversation = async () => {
     try {
       // Clear all timers first
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      clearTimer();
       
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
@@ -355,9 +339,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      clearTimer();
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
       }
@@ -365,7 +347,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, []);
+  }, [clearTimer]);
 
   // Reset connection attempts when user navigates away or reloads
   useEffect(() => {
@@ -391,31 +373,12 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
           {/* Resume Status Section */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Resume Analysis Status</label>
-            {profile?.resume_url ? (
-              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-md">
-                <FileText className="h-4 w-4" />
-                <span>Resume found in profile - AI will ask personalized questions based on your background</span>
-              </div>
-            ) : (
-              <Alert>
-                <AlertDescription>
-                  No resume found in your profile. The AI will ask general interview questions. Upload your resume in the Profile section for personalized questions.
-                </AlertDescription>
-              </Alert>
-            )}
+            <ResumeStatusAlert resumeUrl={profile?.resume_url} />
           </div>
-
           {/* Connection Attempts Warning */}
           {connectionAttempts > 0 && !conversationStarted && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Connection attempt {connectionAttempts} of {MAX_CONNECTION_ATTEMPTS}. 
-                {connectionAttempts >= MAX_CONNECTION_ATTEMPTS ? " Please refresh the page to try again." : ""}
-              </AlertDescription>
-            </Alert>
+            <ConnectionAttemptAlert attempt={connectionAttempts} max={MAX_CONNECTION_ATTEMPTS} />
           )}
-
           {/* Interview Controls */}
           <div className="space-y-4">
             {conversationStarted && (
@@ -470,13 +433,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
               )}
             </div>
 
-            {(isConnecting || isLoading) && (
-              <Alert>
-                <AlertDescription>
-                  {isConnecting ? "Establishing connection to AI interviewer..." : "Connecting to AI interviewer..."} Please allow microphone access when prompted.
-                </AlertDescription>
-              </Alert>
-            )}
+            <LoadingAlert isConnecting={isConnecting} isLoading={isLoading} />
 
             {conversationStarted && (
               <Alert>
@@ -488,12 +445,7 @@ const ElevenLabsConversation: React.FC<ElevenLabsConversationProps> = ({ onInter
             )}
 
             {/* Connection Status */}
-            <div className="text-center">
-              <div className="text-sm text-gray-500">
-                Status: {conversation.status || 'disconnected'}
-                {connectionAttempts > 0 && ` (Attempt ${connectionAttempts})`}
-              </div>
-            </div>
+            <ConnectionStatus status={conversation.status} attempts={connectionAttempts} />
           </div>
         </CardContent>
       </Card>
