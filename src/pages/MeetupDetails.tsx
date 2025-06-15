@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { useMeetups } from "@/hooks/useMeetups";
 import { useMeetupAttendance } from "@/hooks/useMeetupAttendance";
 import { Skeleton } from "@/components/ui/skeleton";
 import Header from "@/components/Header";
+import GoogleMapsStaticEmbed from "@/components/meetups/GoogleMapsStaticEmbed";
 
 const MeetupDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -167,6 +167,15 @@ const MeetupDetails = () => {
                 Location
               </h3>
               <p className="text-gray-700">{meetup.location}</p>
+              {meetup.coordinates && meetup.coordinates.lat && meetup.coordinates.lng && (
+                <div className="mt-2">
+                  <GoogleMapsStaticEmbed
+                    lat={meetup.coordinates.lat}
+                    lng={meetup.coordinates.lng}
+                    address={meetup.location}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tags */}

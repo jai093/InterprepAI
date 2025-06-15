@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarIcon, MapPin, Search, Filter, Users } from "lucide-react";
+import { CalendarIcon, MapPin, Search, Filter, Users, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMeetups } from "@/hooks/useMeetups";
 import MeetupCard from "./meetups/MeetupCard";
@@ -197,13 +197,83 @@ const Meetups = () => {
               </TabsContent>
               
               <TabsContent value="past">
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <CalendarIcon className="h-12 w-12 text-gray-300 mb-4" />
-                    <p className="text-lg text-gray-500">Past events will appear here.</p>
-                    <p className="text-gray-400 mt-1">Check back later for event recordings and notes.</p>
-                  </CardContent>
-                </Card>
+                {/* List past events with their location and a small static map */}
+                {isLoading ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <CalendarIcon className="h-12 w-12 text-gray-300 mb-4" />
+                      <p className="text-lg text-gray-500">Loading past events...</p>
+                    </CardContent>
+                  </Card>
+                ) : (() => {
+                  // Get past meetups (date < today)
+                  const today = new Date();
+                  const pastMeetups = meetups.filter((meetup) => {
+                    // Dates are stored as strings YYYY-MM-DD
+                    // Handle timezone edge case by comparing date only
+                    return new Date(meetup.date) < new Date(today.toISOString().slice(0, 10));
+                  });
+
+                  if (pastMeetups.length === 0) {
+                    return (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                          <CalendarIcon className="h-12 w-12 text-gray-300 mb-4" />
+                          <p className="text-lg text-gray-500">No past events yet.</p>
+                          <p className="text-gray-400 mt-1">Check back later for event recordings and notes.</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-6">
+                      {pastMeetups.map((meetup) => (
+                        <Card key={meetup.id}>
+                          <CardHeader>
+                            <CardTitle className="text-lg">{meetup.title}</CardTitle>
+                            <CardDescription className="flex items-center gap-2 mt-1">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={meetup.avatar || ""} />
+                                <AvatarFallback className="text-xs">
+                                  {meetup.host.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{meetup.host}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{meetup.host_title}</span>
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600 mb-2">
+                              <div className="flex items-center gap-2">
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>{meetup.date}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>{meetup.time}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4" />
+                                <span className="truncate">{meetup.location}</span>
+                              </div>
+                            </div>
+                            {meetup.coordinates && meetup.coordinates.lat && meetup.coordinates.lng && (
+                              <div className="mt-2">
+                                <GoogleMapsStaticEmbed
+                                  lat={meetup.coordinates.lat}
+                                  lng={meetup.coordinates.lng}
+                                  address={meetup.location}
+                                />
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
           </div>
