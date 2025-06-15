@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -130,7 +129,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       <div className="flex flex-col w-full max-w-md min-w-[300px] mt-8 md:mt-0">
         <InterviewWidget
           interviewConfig={config}
-          onEndInterview={onEnd}
+          onEndInterview={() => onEnd && onEnd(undefined)}
           showCamera={false}
         />
         {/* Info tab can be appended here if needed */}
@@ -140,4 +139,3 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
 };
 
 export default InterviewSession;
-
