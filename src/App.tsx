@@ -10,6 +10,9 @@ import Meetups from "@/components/Meetups";
 import "./App.css";
 import HrDashboard from "./pages/HrDashboard";
 import CandidateInterview from "./pages/CandidateInterview";
+import InvitesPage from "./pages/hr/Invites";
+import HRSettingsPage from "./pages/hr/Settings";
+import HrAssessmentsPage from "./pages/hr/Assessments";
 
 function App() {
   return (
@@ -25,6 +28,9 @@ function App() {
       <Route path="/batch-calls" element={<BatchCalls />} />
       <Route path="/meetup/:id" element={<MeetupDetails />} />
       <Route path="/hr" element={<HrDashboard />} />
+      <Route path="/hr/invites" element={<InvitesPage />} />
+      <Route path="/hr/settings" element={<HRSettingsPage />} />
+      <Route path="/hr/assessments" element={<HrAssessmentsPage />} />
       <Route path="/candidate-interview/:candidateId" element={<CandidateInterview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

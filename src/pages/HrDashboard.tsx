@@ -21,9 +21,11 @@ export default function HrDashboard() {
       <main className="flex-1 flex flex-col p-8 md:p-12 overflow-y-auto ml-0 md:ml-0">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
-            HR Dashboard
+            InterprepAI HR Dashboard
           </h1>
-          <div className="text-gray-500 text-lg">View and manage your shortlisted/interviewed candidates</div>
+          <div className="text-gray-500 text-lg">
+            View and manage your shortlisted/interviewed candidates
+          </div>
         </div>
         <HrCandidateTable recruiterId={user.id} />
       </main>
