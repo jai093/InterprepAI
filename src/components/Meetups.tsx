@@ -16,8 +16,17 @@ import { MeetupSidebarCard } from "./meetups/MeetupSidebarCard";
 import GoogleMapsStaticEmbed from "@/components/meetups/GoogleMapsStaticEmbed";
 
 // Meetups component
+const categoryLabels = [
+  "Technical Interviews",
+  "Behavioral Questions",
+  "Case Studies",
+  "Mock Interviews",
+  "Resume Workshops"
+];
+
 const Meetups = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Add category state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { meetups, isLoading, filterMeetups } = useMeetups();
   const { user } = useAuth();
@@ -35,8 +44,19 @@ const Meetups = () => {
     }
   }, [searchFilterFromQuery]);
 
-  // Filter meetups based on search query
-  const filteredMeetups = filterMeetups(searchQuery);
+  // Category-based filter logic
+  const applyCategoryFilter = (meetupsArr: typeof meetups) => {
+    if (!selectedCategory) return meetupsArr;
+    // Find by tag, tags are lower and no guarantee for spacing, so fallback to contains
+    const normalizedCat = selectedCategory.toLowerCase();
+    return meetupsArr.filter(meetup =>
+      Array.isArray(meetup.tags) &&
+      meetup.tags.some(tag => tag.toLowerCase().includes(normalizedCat))
+    );
+  };
+
+  // Filter meetups based on search query and selected category
+  const filteredMeetups = applyCategoryFilter(filterMeetups(searchQuery));
   
   // User's created meetups
   const userMeetups = meetups.filter(meetup => 
@@ -117,6 +137,31 @@ const Meetups = () => {
               >
                 Create Meetup
               </Button>
+            </div>
+
+            {/* Category filtering chips (show at the top for mobile users as well) */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {categoryLabels.map(label => (
+                <Button
+                  key={label}
+                  variant={selectedCategory === label ? "default" : "outline"}
+                  size="sm"
+                  className={`rounded-full ${selectedCategory === label ? 'bg-primary text-white' : ''}`}
+                  onClick={() => setSelectedCategory(label)}
+                >
+                  {label}
+                </Button>
+              ))}
+              {selectedCategory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  Clear
+                </Button>
+              )}
             </div>
 
             {/* Meetup tabs */}
@@ -323,21 +368,27 @@ const Meetups = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    Technical Interviews
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    Behavioral Questions
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    Case Studies
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    Mock Interviews
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    Resume Workshops
-                  </Button>
+                  {categoryLabels.map(label => (
+                    <Button
+                      key={label}
+                      variant={selectedCategory === label ? "default" : "outline"}
+                      size="sm"
+                      className={`w-full justify-start ${selectedCategory === label ? 'bg-primary text-white' : ''}`}
+                      onClick={() => setSelectedCategory(label)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                  {selectedCategory && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setSelectedCategory(null)}
+                    >
+                      Clear
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
