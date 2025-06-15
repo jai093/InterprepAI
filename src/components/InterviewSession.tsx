@@ -1,11 +1,10 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Mic, Video, VideoOff, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import InterviewWidget from "./InterviewWidget";
-import "../components/InterviewWidget.css"; // Ensure styles are loaded
+import "../components/InterviewWidget.css";
 
 interface InterviewConfig {
   type: string;
@@ -60,38 +59,39 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-center items-start min-h-[70vh] w-full gap-6 py-10 px-2 bg-[#f9fafb]">
+    <div className="flex flex-col md:flex-row w-full gap-6 py-4 px-2 md:px-4 bg-[#f9fafb] min-h-[75vh] items-stretch">
       {/* Left: Responsive live video with mic/camera toggles */}
-      <div className="flex flex-1 flex-col items-center max-w-2xl w-full">
-        <Card className="w-full rounded-2xl shadow-lg">
-          <CardContent className="px-0 py-0">
-            <div className="relative flex flex-col items-center w-full">
-              <div className="w-full aspect-video bg-gray-200 rounded-t-2xl overflow-hidden shadow flex items-center justify-center">
+      <div className="flex flex-col items-center md:items-stretch w-full md:w-1/2 max-w-2xl mx-auto">
+        <Card className="w-full h-full rounded-2xl shadow-lg flex-1 flex flex-col">
+          <CardContent className="flex flex-col flex-1 px-0 py-0">
+            <div className="relative flex flex-col items-center w-full h-full">
+              <div className="w-full aspect-video bg-gray-200 rounded-t-2xl overflow-hidden shadow flex items-center justify-center transition-all">
                 <video
                   ref={videoRef}
                   autoPlay
                   muted={!audioEnabled}
                   playsInline
-                  className={`w-full h-full object-cover rounded-t-2xl transition-opacity
-                    ${videoEnabled ? "opacity-100" : "opacity-0"}
-                  `}
+                  className={`w-full h-full object-cover rounded-t-2xl transition-opacity ${
+                    videoEnabled ? "opacity-100" : "opacity-0"
+                  }`}
                   style={{
-                    minHeight: 240,
+                    minHeight: 180,
                     background: "#222",
                   }}
                 />
                 {!videoEnabled && (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 rounded-t-2xl">
-                    <VideoOff size={56} className="text-gray-400" />
+                    <VideoOff size={48} className="text-gray-400" />
                   </div>
                 )}
               </div>
-              <div className="flex justify-center gap-6 py-6">
+              <div className="flex justify-center gap-4 py-4 w-full">
                 <Button
                   size="icon"
                   variant="secondary"
                   onClick={toggleAudio}
-                  className="w-14 h-14"
+                  className="w-12 h-12"
+                  aria-label={audioEnabled ? "Mute Microphone" : "Unmute Microphone"}
                 >
                   {audioEnabled ? <Mic /> : <MicOff />}
                 </Button>
@@ -99,40 +99,23 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                   size="icon"
                   variant="secondary"
                   onClick={toggleVideo}
-                  className="w-14 h-14"
+                  className="w-12 h-12"
+                  aria-label={videoEnabled ? "Turn Off Camera" : "Turn On Camera"}
                 >
                   {videoEnabled ? <Video /> : <VideoOff />}
                 </Button>
               </div>
-              <button
-                className="bg-indigo-600 text-white rounded-full mt-2 mb-6 font-semibold text-lg flex items-center justify-center shadow-md transition hover:bg-indigo-700 animate-scale-in"
-                style={{
-                  width: 100,
-                  height: 100,
-                  fontSize: 20,
-                  borderRadius: "50%",
-                }}
-                onClick={() => {/* start interview - handled in parent */}}
-                disabled
-                type="button"
-                tabIndex={-1}
-                aria-disabled="true"
-              >
-                {/* This button is only for visual spacing; disable in actual interview */}
-                Start Interview
-              </button>
             </div>
           </CardContent>
         </Card>
       </div>
       {/* Right: Interview panel (AI Interview/Info/Active/End) */}
-      <div className="flex flex-col w-full max-w-md min-w-[300px] mt-8 md:mt-0">
+      <div className="flex flex-col w-full md:w-1/2 max-w-md min-w-[280px] mt-8 md:mt-0 mx-auto md:mx-0">
         <InterviewWidget
           interviewConfig={config}
           onEndInterview={() => onEnd && onEnd(undefined)}
           showCamera={false}
         />
-        {/* Info tab can be appended here if needed */}
       </div>
     </div>
   );
