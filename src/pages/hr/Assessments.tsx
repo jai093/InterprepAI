@@ -52,15 +52,15 @@ export default function HrAssessmentsPage() {
     async function fetchAssessments() {
       if (!user) return;
       setLoading(true);
-      // Get the data as any[]
       const { data, error } = await supabase
         .from("assessments")
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
       if (!error && Array.isArray(data)) {
-        // Normalize each row to explicit Assessment type (not using generics or type inference here)
-        setAssessments(data.map(normalizeAssessment));
+        // Explicitly type data as any[] right before mapping
+        const assessed: Assessment[] = (data as any[]).map(normalizeAssessment);
+        setAssessments(assessed);
       } else {
         setAssessments([]);
       }
