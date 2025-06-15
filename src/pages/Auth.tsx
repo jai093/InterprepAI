@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -16,6 +16,8 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [isHr, setIsHr] = useState(false); // New: HR toggle
+  const [company, setCompany] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -38,17 +40,14 @@ const Auth = () => {
   }, [location]);
 
   const handlePasswordReset = async (token) => {
-    // Handle password reset flow here
     toast({
       title: "Password Reset",
       description: "Please enter a new password",
     });
-    // Additional logic for password reset if needed
   };
 
   const handleSuccessfulAuth = async (accessToken, refreshToken) => {
     try {
-      // Set the session using the tokens
       const { data, error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken
@@ -78,7 +77,8 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        // Sign up user
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -93,7 +93,34 @@ const Auth = () => {
           title: "Account created successfully!",
           description: "Please check your email to verify your account.",
         });
+
+        // If user signed up as HR, create recruiter profile
+        if (isHr && data?.user) {
+          const newRecruiter = {
+            id: data.user.id,
+            name: fullName,
+            email: email,
+            company: company ? company : null,
+          };
+          // Insert into recruiters table
+          const { error: recruiterError } = await supabase
+            .from("recruiters")
+            .insert([newRecruiter]);
+          if (recruiterError) {
+            toast({
+              title: "HR profile error",
+              description: recruiterError.message,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "HR account created!",
+              description: "Your HR dashboard will be ready after verifying your email.",
+            });
+          }
+        }
       } else {
+        // Sign in
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -162,6 +189,33 @@ const Auth = () => {
                   required
                 />
               </div>
+              {isSignUp && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="isHr"
+                      type="checkbox"
+                      checked={isHr}
+                      onChange={() => setIsHr((v) => !v)}
+                      className="accent-interprepai-700 h-4 w-4"
+                    />
+                    <Label htmlFor="isHr" className="text-sm">
+                      Sign up as HR (Recruiter)
+                    </Label>
+                  </div>
+                  {isHr && (
+                    <div className="space-y-2 pt-2">
+                      <Label htmlFor="company">Company Name (optional)</Label>
+                      <Input
+                        id="company"
+                        placeholder="Acme Corp"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <Button
                 type="submit"
                 className="w-full bg-interprepai-700 hover:bg-interprepai-800"
