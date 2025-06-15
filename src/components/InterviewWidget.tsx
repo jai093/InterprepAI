@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { useProfile } from "@/hooks/useProfile";
 import "./InterviewWidget.css";
+import InterviewMessages from "./InterviewMessages";
+import InterviewCamera from "./InterviewCamera";
 
 interface InterviewWidgetProps {
   onEndInterview?: () => void;
