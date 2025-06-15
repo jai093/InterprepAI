@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -11,7 +12,7 @@ type Assessment = {
   id: string;
   title: string;
   created_at: string;
-  questions: any[];
+  questions: string[]; // fix type here: use string[] (or any[] if structure varies a lot)
   description: string;
 };
 
@@ -22,7 +23,7 @@ function getAssessmentLink(assessmentId: string, candidateId: string) {
 export default function HrAssessmentsPage() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [assessments, setAssessments] = useState<any[]>([]); // CHANGED: use `any[]` for fetched data to avoid TS2589 infinite recursion error
+  const [assessments, setAssessments] = useState<Assessment[]>([]); // FIX: Use Assessment[]
   const { user } = useAuth();
   const [candidateDialog, setCandidateDialog] = useState<{show: boolean, assessmentId?: string}>({show: false});
   const [candidateId, setCandidateId] = useState("");
@@ -39,7 +40,19 @@ export default function HrAssessmentsPage() {
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
-      if (!error && data) setAssessments(data as any[]);
+      if (!error && data) {
+        // Explicitly cast and fix the questions type
+        setAssessments(
+          data.map((a: any) => ({
+            ...a,
+            questions: Array.isArray(a.questions)
+              ? a.questions
+              : (typeof a.questions === "string"
+                  ? JSON.parse(a.questions)
+                  : []),
+          })) as Assessment[]
+        );
+      }
       setLoading(false);
     }
     fetchAssessments();
