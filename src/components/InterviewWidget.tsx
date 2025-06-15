@@ -43,26 +43,25 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     if (onEndInterview) onEndInterview();
   };
 
-  // Button animation styling (copied from previous code)
-  const AnimatedButton = () => (
-    <button
-      className="start-button"
-      onClick={() => setStarted(true)}
-      disabled={started}
-      style={started ? { pointerEvents: "none", opacity: 0.6 } : {}}
-    >
-      {!started ? "Start Interview" : "Interview in progress..."}
-    </button>
-  );
-
   return (
     <div className="interview-container flex flex-col items-center">
       <div className="flex flex-col items-center gap-4 w-full">
-        {!started && <AnimatedButton />}
 
-        {/* Show end button and widget when started */}
+        {/* Start interview button with animation */}
+        {!started && (
+          <button
+            className="start-button transition-all duration-300 animate-scale-in"
+            onClick={() => setStarted(true)}
+            disabled={started}
+            style={started ? { pointerEvents: "none", opacity: 0.6 } : {}}
+          >
+            Start Interview
+          </button>
+        )}
+
+        {/* When started, show end button, widget, and camera (if enabled) */}
         {started && (
-          <>
+          <div className="flex flex-col items-center w-full animate-fade-in">
             <button
               className="end-interview-btn mt-2 rounded bg-red-600 text-white px-6 py-2 hover:bg-red-700 transition"
               onClick={handleEnd}
@@ -70,8 +69,8 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
             >
               End Interview
             </button>
-            <div className="mt-4 w-full flex flex-col items-center">
-              {/* Embed the official ElevenLabs widget */}
+            {/* Embedded official ElevenLabs widget */}
+            <div className="mt-4 w-full max-w-[520px] flex flex-col items-center">
               <elevenlabs-convai
                 agent-id={AGENT_ID}
                 terms-content={`
@@ -83,25 +82,24 @@ By clicking "Agree", and each time I interact with this AI agent, I consent to t
                 style={{ maxWidth: 520, width: "100%" }}
               ></elevenlabs-convai>
             </div>
-          </>
-        )}
-
-        {/* Live camera preview if desired */}
-        {started && showCamera && (
-          <div className="mt-2 mb-2 w-full flex justify-center">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-[280px] h-[160px] rounded-lg border shadow bg-black object-cover"
-            />
+            {/* Camera only if enabled */}
+            {showCamera && (
+              <div className="mt-2 mb-2 w-full flex justify-center">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-[280px] h-[160px] rounded-lg border shadow bg-black object-cover"
+                />
+              </div>
+            )}
           </div>
         )}
+        
       </div>
     </div>
   );
 };
 
 export default InterviewWidget;
-
