@@ -126,12 +126,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     };
   };
 
-  // Handler for ending the interview (user or AI)
-  const handleEndInterview = () => {
-    // GENERATE FEEDBACK ANALYSIS AND SEND TO onEnd
+  // --- Centralized function to end interview and trigger feedback report ---
+  const endInterviewWithFeedback = () => {
     const feedback = generateMockFeedback();
-    onEnd(feedback); // This will trigger navigation to feedback report in parent
-    // Stop local stream to release camera/mic
+    onEnd(feedback);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -149,7 +147,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
                 <video
                   ref={videoRef}
                   autoPlay
-                  muted={true} // Always keep video muted to avoid echo!
+                  muted={true} // Always muted to prevent echo!
                   playsInline
                   className={`w-full h-full object-cover rounded-t-2xl transition-opacity ${
                     videoEnabled ? "opacity-100" : "opacity-0"
@@ -193,7 +191,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       <div className="flex flex-col w-full md:w-1/2 max-w-md min-w-[280px] mt-8 md:mt-0 mx-auto md:mx-0">
         <InterviewWidget
           interviewConfig={config}
-          onEndInterview={handleEndInterview}
+          onEndInterview={endInterviewWithFeedback}
           showCamera={false}
         />
       </div>
