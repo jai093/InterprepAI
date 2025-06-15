@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React from "react";
 import AssessmentStepper from "./AssessmentStepper";
+import { DialogTitle } from "@/components/ui/dialog";
 
 export default function NewAssessmentDialog({ onClose }: { onClose: () => void }) {
-  // We'll handle navigation inside stepper and call onClose at the end
   return (
     <div className="p-6">
+      <DialogTitle>Create New Assessment</DialogTitle>
       <AssessmentStepper onDone={onClose} />
     </div>
   );

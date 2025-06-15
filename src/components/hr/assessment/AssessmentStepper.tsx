@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import StepRoleDetails from "./steps/StepRoleDetails";
 import StepAssessmentType from "./steps/StepAssessmentType";
@@ -5,6 +6,8 @@ import StepSkills from "./steps/StepSkills";
 import StepQuestions from "./steps/StepQuestions";
 import StepInterviewer from "./steps/StepInterviewer";
 import StepComplete from "./steps/StepComplete";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const stepNames = [
@@ -36,30 +39,30 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
     accent: "Neutral"
   });
 
+  const { user } = useAuth();
+
   // Step handlers (each can update relevant data)
   function setField<K extends keyof NewAssessment>(key: K, value: NewAssessment[K]) {
     setAssessment((old) => ({ ...old, [key]: value }));
   }
 
-  // Simulate AI generating questions
+  // Call the correct Supabase edge function endpoint for Gemini
   async function handleGenerateQuestions(skills: string[]) {
     const role = assessment.title || "Software Engineer";
     const language = assessment.language || "English";
     const level = assessment.level || "Mid";
+    const EDGE_FUNCTION_URL = "https://mybjsygfhrzzknwalyov.supabase.co/functions/v1/generate-gemini-questions";
     try {
-      const res = await fetch(
-        `${window.location.origin}/functions/v1/generate-gemini-questions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role,
-            language,
-            skills,
-            level,
-          }),
-        }
-      );
+      const res = await fetch(EDGE_FUNCTION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          language,
+          skills,
+          level,
+        }),
+      });
       const data = await res.json();
       if (Array.isArray(data.questions) && data.questions.length > 0) {
         return data.questions;
@@ -74,16 +77,17 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
 
   // Save to Supabase (would use recruiter context/user)
   async function saveAssessment() {
+    if (!user) return;
     const body = {
       title: assessment.title!,
       description: `Role: ${assessment.level}`,
       questions: assessment.questions!,
-      // TODO: recruiter_id (from context), for now fake uuid
-      recruiter_id: "", // will be filled by backend, or add as prop in integration
+      recruiter_id: user.id,
     };
-    // Insert assessment into Supabase (integration in future step)
-    // On success...
-    setStep(5);
+    // Insert assessment into Supabase
+    const { error } = await supabase.from("assessments").insert([body]);
+    if (!error) setStep(5);
+    // You may want to handle error UI/toast here for production
   }
 
   // Steps content
