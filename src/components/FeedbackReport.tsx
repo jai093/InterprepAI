@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
@@ -8,6 +9,9 @@ import RecordingsTab from "./feedback/RecordingsTab";
 import TranscriptTab from "./feedback/TranscriptTab";
 import ReportFooter from "./feedback/ReportFooter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export interface FeedbackReportProps {
   interviewData: any;
@@ -46,12 +50,36 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [wasSaved, setWasSaved] = useState<boolean>(false);
+  const [noData, setNoData] = useState<boolean>(false);
+
+  const { user } = useAuth();
 
   // Create safe interview data with default values
   const safeInterviewData = createSafeInterviewData(interviewData);
 
+  // Effect for analysis fallback/no data detection
   useEffect(() => {
-    // Create URL from blobs if available
+    if (
+      !interviewData ||
+      Object.keys(interviewData).length === 0 ||
+      (
+        EVALUATION_CRITERIA_MAP.every(c => 
+          typeof interviewData[c.key] === "undefined" ||
+          (typeof interviewData[c.key] === "number" && interviewData[c.key] === 0)
+        )
+      )
+    ) {
+      setNoData(true);
+    } else {
+      setNoData(false);
+    }
+  }, [interviewData]);
+
+  // Setup video/audio
+  useEffect(() => {
     const setupMedia = async () => {
       try {
         if (interviewData.videoURL) {
@@ -62,23 +90,19 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
         } else if (interviewData.recordingUrl) {
           setVideoUrl(interviewData.recordingUrl);
         }
-
         if (interviewData.audioURL) {
           setAudioUrl(interviewData.audioURL);
         } else if (interviewData.audioBlob) {
           const url = URL.createObjectURL(interviewData.audioBlob);
           setAudioUrl(url);
         }
-
         setTimeout(() => setLoading(false), 500);
       } catch (error) {
         console.error("Error setting up media:", error);
         setLoading(false);
       }
     };
-
     setupMedia();
-
     return () => {
       if (videoUrl && !interviewData.videoURL && !interviewData.recordingUrl) {
         URL.revokeObjectURL(videoUrl);
@@ -89,6 +113,60 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
     };
     // eslint-disable-next-line
   }, [interviewData]);
+
+  // Automatic save to Supabase when loaded with new result (once)
+  useEffect(() => {
+    // Only save if not already saved, and actual data is present
+    if (user && !wasSaved && !loading && !noData && interviewData && interviewData.date && interviewData.duration) {
+      setSaving(true);
+      (async () => {
+        // avoid duplicate saves by checking for similar date
+        const { data: existing, error: checkErr } = await supabase
+          .from("interview_sessions")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("date", interviewData.date);
+        if (existing && existing.length > 0) {
+          setWasSaved(true);
+          setSaving(false);
+          return;
+        }
+        // save the feedback/report to Supabase
+        const { error } = await supabase.from("interview_sessions").insert([{
+          user_id: user.id,
+          date: interviewData.date,
+          type: interviewData.type || interviewData.target_role || "Interview",
+          role: interviewData.target_role || "",
+          score: interviewData.interview_overall_score || 0,
+          duration: interviewData.duration || "10 min",
+          feedback: interviewData.strengths
+            ? JSON.stringify({
+                strengths: interviewData.strengths,
+                improvements: interviewData.improvements ?? [],
+                recommendations: interviewData.recommendations ?? [],
+              })
+            : "",
+          voice_analysis: interviewData.voiceAnalysis ? interviewData.voiceAnalysis : {},
+          facial_analysis: interviewData.facialAnalysis ? interviewData.facialAnalysis : {},
+          body_analysis: interviewData.bodyAnalysis ? interviewData.bodyAnalysis : {},
+          response_analysis: interviewData.responsesAnalysis ? interviewData.responsesAnalysis : {},
+          transcript: interviewData.transcripts
+            ? JSON.stringify(interviewData.transcripts)
+            : "",
+          video_url: interviewData.videoURL || null,
+        }]);
+        if (error) {
+          setSaveError(
+            "Failed to save interview report to database: " + error.message
+          );
+          setSaving(false);
+        } else {
+          setWasSaved(true);
+          setSaving(false);
+        }
+      })();
+    }
+  }, [user, interviewData, wasSaved, noData, loading]);
 
   if (loading) {
     return (
@@ -111,7 +189,6 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
                 </div>
               </div>
             </div>
-
             <div className="space-y-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-64 w-full" />
@@ -122,9 +199,43 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
     );
   }
 
+  // NO DATA fallback
+  if (noData) {
+    return (
+      <div className="animate-fade-in">
+        <Card>
+          <CardHeader>
+            <CardTitle>Interview Feedback Report</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="py-10 text-center">
+              <div className="text-3xl mb-4">😕</div>
+              <p className="text-lg font-semibold mb-2">
+                No analysis data was returned for this interview.
+              </p>
+              <p className="text-gray-600 mb-4">
+                This usually happens if the interview was too short or there was an API issue.<br />
+                Please try to complete at least 2-3 questions and keep speaking for a few minutes next time.
+              </p>
+              <div className="flex justify-center">
+                {onRestart && (
+                  <button
+                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                    onClick={onRestart}
+                  >
+                    Start New Interview
+                  </button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Utility to get value or fallback from interview data
   const getFieldValue = (fieldKey: string) => {
-    // Provide robust fallback for missing/undefined values
     return typeof interviewData[fieldKey] !== "undefined" && interviewData[fieldKey] !== null
       ? interviewData[fieldKey] : "--";
   };
@@ -153,22 +264,17 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
   );
 
   const handleDownloadReport = () => {
-    // Report includes all criteria and extracted data fields
     let reportContent = `Interview Feedback Report\n\n`;
-
     DATA_FIELDS_MAP.forEach(item => {
       if (getFieldValue(item.key))
         reportContent += `${item.label}: ${getFieldValue(item.key)}\n`;
     });
-
     reportContent += `\nEvaluation:\n`;
     EVALUATION_CRITERIA_MAP.forEach(crit => {
       if (typeof interviewData[crit.key] !== "undefined")
         reportContent += `- ${crit.label}: ${interviewData[crit.key]}\n`;
     });
-
     reportContent += `\nThank you!\n`;
-
     const blob = new Blob([reportContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -185,6 +291,12 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Interview Feedback Report</CardTitle>
+          {saving && (
+            <div className="text-sm text-blue-600 py-1">Saving interview report...</div>
+          )}
+          {saveError && (
+            <div className="text-sm text-red-600 py-1">{saveError}</div>
+          )}
           <div className="flex flex-row justify-end items-center space-x-2 mt-2">
             <button
               type="button"
@@ -197,37 +309,31 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
         </CardHeader>
         <CardContent>
           {renderDataFields()}
-
           {renderCriteria()}
-
           <Tabs defaultValue="analysis" className="mb-6 mt-6">
             <TabsList className="mb-4">
               <TabsTrigger value="analysis">Performance Analysis</TabsTrigger>
               <TabsTrigger value="recordings">Recordings</TabsTrigger>
               <TabsTrigger value="transcript">Transcript</TabsTrigger>
             </TabsList>
-            
             <TabsContent value="analysis">
               <PerformanceAnalysisTab safeInterviewData={safeInterviewData} />
             </TabsContent>
-            
             <TabsContent value="recordings">
               <RecordingsTab videoUrl={videoUrl} audioUrl={audioUrl} />
             </TabsContent>
-            
             <TabsContent value="transcript">
               <TranscriptTab safeInterviewData={safeInterviewData} />
             </TabsContent>
           </Tabs>
         </CardContent>
-        
         <ReportFooter 
-          safeInterviewData={safeInterviewData} 
-          videoUrl={videoUrl} 
-          audioUrl={audioUrl} 
+          safeInterviewData={safeInterviewData}
+          videoUrl={videoUrl}
+          audioUrl={audioUrl}
           onSave={onSave}
           onRestart={onRestart}
-          isSaving={isSaving}
+          isSaving={isSaving || saving}
         />
       </Card>
     </div>
@@ -235,3 +341,4 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
 };
 
 export default FeedbackReport;
+
