@@ -136,6 +136,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const fetchRealFeedback = async (sid: string) => {
     setLoading(true);
     try {
+      // Always use the actual sessionId to get real scores – not mock!
       const res = await fetch("/functions/v1/fetch-elevenlabs-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -145,10 +146,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         }),
       });
       const data = await res.json();
-      if (data.analysis) {
+      // The actual ElevenLabs analysis now includes real scores & detailed analysis!
+      if (data.analysis && Object.keys(data.analysis).length > 0) {
         onEnd(data.analysis);
       } else {
-        // Fallback: Show error and demo
         onEnd({ error: data.error || "No analysis" });
       }
     } catch (e) {
