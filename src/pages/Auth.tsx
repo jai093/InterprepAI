@@ -120,12 +120,25 @@ const Auth = () => {
         }
       } else {
         // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        navigate("/dashboard");
+
+        // Check if user is HR after login and redirect appropriately
+        // Query recruiter table for current user
+        const { data: recruiterData } = await supabase
+          .from("recruiters")
+          .select("id")
+          .eq("id", data?.user.id)
+          .single();
+
+        if (recruiterData) {
+          navigate("/hr");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error: any) {
       toast({
