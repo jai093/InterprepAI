@@ -1,6 +1,5 @@
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
 
 interface InterviewPrestartProps {
   config: {
@@ -34,35 +33,37 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
         setLoading(false);
       })
       .catch(() => setLoading(false));
-
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center w-full h-full gap-6">
-      {/* Left: Camera Preview */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl">
-        <div className="w-full max-w-lg aspect-video bg-gray-200 rounded-xl shadow border flex items-center justify-center relative overflow-hidden">
+    <div className="flex flex-col min-h-[80vh] items-center justify-center py-8 w-full bg-[#f9fafb]">
+      <div className="w-full flex flex-col items-center max-w-xl gap-6 px-2">
+        <div className="relative w-full aspect-video bg-gray-200 rounded-2xl border overflow-hidden shadow-lg flex items-center justify-center">
           {loading ? (
-            <div className="text-gray-500">Loading camera...</div>
+            <div className="text-gray-500 font-medium">Loading camera…</div>
           ) : (
             <video
               ref={videoRef}
               autoPlay
               muted
               playsInline
-              className="w-full h-full object-cover rounded-xl"
+              className="w-full h-full object-cover rounded-2xl"
+              style={{
+                minHeight: 180,
+                background: "#222",
+              }}
             />
           )}
         </div>
         <button
-          className="start-button mt-7 animate-scale-in"
+          className="bg-indigo-600 text-white rounded-full mt-6 font-semibold text-xl flex items-center justify-center shadow-lg transition hover:bg-indigo-700 animate-scale-in"
           style={{
-            width: 120,
-            height: 120,
-            fontSize: 20,
+            width: 110,
+            height: 110,
+            fontSize: 22,
             borderRadius: "50%",
           }}
           onClick={onStart}
@@ -70,38 +71,31 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
         >
           Start Interview
         </button>
-      </div>
-      {/* Right: Interview Info */}
-      <div className="w-full max-w-md flex flex-col bg-white rounded-xl shadow-lg px-6 py-8 border min-h-[340px] mt-6 md:mt-0">
-        <div className="flex items-center mb-4 gap-2">
+        <div className="bg-white px-6 py-4 rounded-xl shadow-md mt-8 w-full max-w-md text-center">
+          <h2 className="font-bold text-lg mb-2">Interview Setup</h2>
+          <div>
+            <span className="font-medium">Position:</span> {config.jobRole}
+          </div>
+          <div>
+            <span className="font-medium">Type:</span> {config.type}
+          </div>
+          <div>
+            <span className="font-medium">Difficulty:</span> {config.difficulty}
+          </div>
+          <div className="text-xs text-gray-500 mt-3">
+            Ensure your camera and background are ready before you begin.
+            <br />
+            You will enter the interview after pressing the button.
+          </div>
           {onBack && (
             <button
+              className="absolute left-2 top-2 text-indigo-700 hover:text-indigo-900"
               onClick={onBack}
-              className="rounded-full p-2 hover:bg-gray-100 transition"
-              aria-label="Back"
               type="button"
             >
-              <ArrowLeft size={22} />
+              ← Back
             </button>
           )}
-          <h2 className="font-bold text-2xl">Get Ready</h2>
-        </div>
-        <div className="mb-3">
-          <p>
-            <span className="font-semibold">Position:</span> {config.jobRole}
-          </p>
-          <p>
-            <span className="font-semibold">Type:</span> {config.type}
-          </p>
-          <p>
-            <span className="font-semibold">Difficulty:</span> {config.difficulty}
-          </p>
-        </div>
-        <div className="text-gray-600 text-sm mb-2">
-          Ensure your camera and background are ready before you begin.
-        </div>
-        <div className="text-xs text-gray-400">
-          You’ll enter the real interview after pressing the button.
         </div>
       </div>
     </div>
@@ -109,3 +103,4 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
 };
 
 export default InterviewPrestart;
+
