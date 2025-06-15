@@ -47,37 +47,53 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
 
   // STRONGLY prefer using supabase.functions.invoke for edge functions
   async function handleGenerateQuestions(skills: string[]) {
+    // Validate and sanitize arguments
     const role = assessment.title || "Software Engineer";
     const language = assessment.language || "English";
     const level = assessment.level || "Mid";
+    const skillsArray = Array.isArray(skills) ? skills.filter(Boolean) : [];
+    // Add a console log for debugging
+    console.log("Generating Gemini questions with:", { role, language, skills: skillsArray, level });
+
+    // Quick fail - no skills or role/title specified
+    if (!role || !language || !level || !skillsArray.length) {
+      toast({
+        variant: "destructive",
+        title: "Missing information",
+        description: "Role, language, level, and at least one skill must be specified before generating questions.",
+      });
+      return skillsArray.map((s) => `Tell us about your experience with ${s}.`);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("generate-gemini-questions", {
         body: {
           role,
           language,
-          skills,
+          skills: skillsArray,
           level,
         }
       });
       if (error) {
         toast({
           variant: "destructive",
-          title: "AI question generation failed",
-          description: error.message || "Falling back to generic questions.",
+          title: "AI question generation failed (Gemini)",
+          description: `${error.message || "Falling back to generic questions."}\nSent payload: ` +
+            JSON.stringify({ role, language, skills: skillsArray, level }),
         });
-        // Log error details for diagnostics
-        console.log("Gemini error object from supabase.functions.invoke:", error);
-        return skills.map((s) => `Tell us about your experience with ${s}.`);
+        console.error("Gemini error object from supabase.functions.invoke:", error, { role, language, skills: skillsArray, level });
+        return skillsArray.map((s) => `Tell us about your experience with ${s}.`);
       }
       if (data?.error) {
         toast({
           variant: "destructive",
           title: "Gemini function error",
-          description: data.error,
+          description: `${data.error}\nSent payload: ` +
+            JSON.stringify({ role, language, skills: skillsArray, level }),
         });
         // Log error diagnostic
-        console.log("Gemini response data.error:", data.error);
-        return skills.map((s) => `Tell us about your experience with ${s}.`);
+        console.error("Gemini response data.error:", data.error, { role, language, skills: skillsArray, level });
+        return skillsArray.map((s) => `Tell us about your experience with ${s}.`);
       }
       if (data && Array.isArray(data.questions) && data.questions.length > 0) {
         return data.questions;
@@ -88,7 +104,7 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
         title: "Gemini returned no questions",
         description: "Fallback to generic skill questions.",
       });
-      return skills.map((s) => `Tell us about your experience with ${s}.`);
+      return skillsArray.map((s) => `Tell us about your experience with ${s}.`);
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -96,8 +112,8 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
         description: "Unable to generate questions. Using fallback.",
       });
       // Log JS error diagnostic
-      console.error("Gemini JS exception:", err);
-      return skills.map((s) => `Tell us about your experience with ${s}.`);
+      console.error("Gemini JS exception:", err, { role, language, skills: skillsArray, level });
+      return skillsArray.map((s) => `Tell us about your experience with ${s}.`);
     }
   }
 

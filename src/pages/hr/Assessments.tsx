@@ -22,7 +22,7 @@ function getAssessmentLink(assessmentId: string, candidateId: string) {
 export default function HrAssessmentsPage() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [assessments, setAssessments] = useState<any[]>([]); // CHANGED: use `any[]` for fetched data to avoid TS2589 infinite recursion error
   const { user } = useAuth();
   const [candidateDialog, setCandidateDialog] = useState<{show: boolean, assessmentId?: string}>({show: false});
   const [candidateId, setCandidateId] = useState("");
@@ -39,7 +39,7 @@ export default function HrAssessmentsPage() {
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
-      if (!error && data) setAssessments(data as Assessment[]);
+      if (!error && data) setAssessments(data as any[]);
       setLoading(false);
     }
     fetchAssessments();
