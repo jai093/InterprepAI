@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/Header";
 import InterviewSetup, { InterviewConfig } from "@/components/InterviewSetup";
@@ -36,7 +35,7 @@ const InterviewSimulation = () => {
   // Proceed from prestart to live interview
   const handleBeginInterview = () => setStep("interview");
 
-  // Conclude interview
+  // Updated: get blobs from feedback and pass to FeedbackReport
   const handleComplete = (report: any) => {
     setFeedback(report);
     setStep("feedback");
@@ -52,10 +51,7 @@ const InterviewSimulation = () => {
     <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center">
       <Header />
       <main className="w-full flex-1 flex flex-col items-center justify-center px-2 py-4 md:px-6 md:py-10">
-        {/* Step: Setup */}
         {step === "setup" && <InterviewSetup onStart={handleStart} />}
-
-        {/* Step: Prestart preview w/ camera and circular button */}
         {step === "prestart" && config && (
           <InterviewPrestart
             config={config}
@@ -63,13 +59,9 @@ const InterviewSimulation = () => {
             onBack={() => setStep("setup")}
           />
         )}
-
-        {/* Step: Interview */}
         {step === "interview" && config && (
           <InterviewSession config={config} onEnd={handleComplete} />
         )}
-
-        {/* Step: Feedback */}
         {step === "feedback" && feedback && (
           <FeedbackReport
             interviewData={feedback}
@@ -82,4 +74,3 @@ const InterviewSimulation = () => {
 };
 
 export default InterviewSimulation;
-

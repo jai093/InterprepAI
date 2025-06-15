@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import InterviewPreviewPanel from "./InterviewPreviewPanel";
 import InterviewWidget from "./InterviewWidget";
 import "../components/InterviewWidget.css";
+import { useInterviewRecorder } from "@/hooks/useInterviewRecorder";
 
 interface InterviewConfig {
   type: string;
@@ -25,6 +26,10 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // NEW: Interview recording hook
+  const recorder = useInterviewRecorder();
+
+  // --- Setup user media & recording ---
   useEffect(() => {
     let localStream: MediaStream | null = null;
     navigator.mediaDevices
@@ -35,11 +40,16 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         }
         streamRef.current = stream;
         localStream = stream;
+        // Start recording immediately
+        recorder.start(stream);
       })
       .catch(() => {});
     return () => {
+      recorder.stop();
       if (localStream) localStream.getTracks().forEach((t) => t.stop());
+      recorder.clear();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Toggle handlers
@@ -148,22 +158,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const data = await res.json();
       // The actual ElevenLabs analysis now includes real scores & detailed analysis!
       if (data.analysis && Object.keys(data.analysis).length > 0) {
+        // Attach blobs to analysis
+        data.analysis.videoBlob = recorder.videoBlob;
+        data.analysis.audioBlob = recorder.audioBlob;
         onEnd(data.analysis);
       } else {
-        onEnd({ error: data.error || "No analysis" });
+        const fallback = { error: data.error || "No analysis", videoBlob: recorder.videoBlob, audioBlob: recorder.audioBlob };
+        onEnd(fallback);
       }
     } catch (e) {
-      onEnd({ error: "Failed to fetch analysis: " + (e as any)?.message });
+      onEnd({ error: "Failed to fetch analysis: " + (e as any)?.message, videoBlob: recorder.videoBlob, audioBlob: recorder.audioBlob });
     } finally {
       setLoading(false);
+      recorder.stop();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      recorder.clear();
     }
   };
 
   const endInterviewWithFeedback = () => {
+    recorder.stop();
     if (sessionId) {
       fetchRealFeedback(sessionId);
     } else {
@@ -173,6 +190,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      recorder.clear();
     }
   };
 
