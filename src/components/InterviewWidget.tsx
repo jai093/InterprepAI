@@ -12,6 +12,7 @@ interface InterviewWidgetProps {
     duration: number;
     difficulty: string;
   };
+  onSessionStart?: (sessionId: string) => void;
 }
 
 // Use the agent id provided by the user
@@ -20,13 +21,17 @@ const AGENT_ID = "agent_01jxs5kf50fg6t0p79hky1knfb";
 const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   onEndInterview,
   showCamera = true,
-  interviewConfig
+  interviewConfig,
+  onSessionStart
 }) => {
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Array<{id: string, type: 'user' | 'ai', text: string, timestamp: Date}>>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const { profile } = useProfile();
+
+  // Save session/conv id for analytics
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   // Generate custom prompt based on interview config and profile
   const generateCustomPrompt = () => {
@@ -59,6 +64,11 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         text: `Hello! I'm ready to begin your ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position. Let's start!`,
         timestamp: new Date()
       }]);
+      // Inform parent of session id if available
+      if (conversation && conversation.conversationId && onSessionStart) {
+        setConversationId(conversation.conversationId);
+        onSessionStart(conversation.conversationId);
+      }
     },
     onDisconnect: () => {
       console.log("Interview conversation disconnected");

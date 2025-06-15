@@ -23,6 +23,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   const streamRef = useRef<MediaStream | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let localStream: MediaStream | null = null;
@@ -55,6 +57,11 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !a));
       return !a;
     });
+  };
+
+  // Pass ElevenLabs conversation/sessionId when starting
+  const onInterviewStarted = (id?: string) => {
+    if (id) setSessionId(id);
   };
 
   // Helper to generate mock feedback for demo purposes
@@ -126,13 +133,46 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     };
   };
 
-  // --- Centralized function to end interview and trigger feedback report ---
+  // NEW: Fetch ElevenLabs evaluation from Edge Function
+  const fetchRealFeedback = async (sid: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/functions/v1/fetch-elevenlabs-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sid,
+          agentId: "agent_01jxs5kf50fg6t0p79hky1knfb",
+        }),
+      });
+      const data = await res.json();
+      if (data.analysis) {
+        onEnd(data.analysis);
+      } else {
+        // Fallback: Show error and demo
+        onEnd({ error: data.error || "No analysis" });
+      }
+    } catch (e) {
+      onEnd({ error: "Failed to fetch analysis: " + (e as any)?.message });
+    } finally {
+      setLoading(false);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    }
+  };
+
   const endInterviewWithFeedback = () => {
-    const feedback = generateMockFeedback();
-    onEnd(feedback);
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+    if (sessionId) {
+      fetchRealFeedback(sessionId);
+    } else {
+      // fallback for safety
+      onEnd(generateMockFeedback());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     }
   };
 
@@ -193,7 +233,16 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           interviewConfig={config}
           onEndInterview={endInterviewWithFeedback}
           showCamera={false}
+          onSessionStart={onInterviewStarted}
         />
+        {loading && (
+          <div className="mt-6 px-4 py-6 bg-white rounded-xl shadow text-center text-gray-700 border border-indigo-200">
+            <div className="mb-3">Analyzing your interview responses...</div>
+            <div className="flex justify-center">
+              <span className="w-8 h-8 border-4 border-t-indigo-600 border-indigo-200 rounded-full animate-spin"></span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
