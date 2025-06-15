@@ -16,14 +16,40 @@ export interface FeedbackReportProps {
   isSaving?: boolean;
 }
 
+const DATA_FIELDS_MAP = [
+  { key: 'candidate_name', label: 'Candidate Name' },
+  { key: 'target_role', label: 'Target Role' },
+  { key: 'mobile_number', label: 'Mobile Number' },
+  { key: 'confidence_score', label: 'Confidence Score' },
+  { key: 'resume_url', label: 'Resume URL' },
+  { key: 'interview_overall_score', label: 'Overall AI Interview Score' },
+  { key: 'language_used', label: 'Language Used' },
+  { key: 'email_address', label: 'Email Address' },
+  { key: 'date', label: 'Date' },
+  { key: 'duration', label: 'Duration' }
+];
+
+const EVALUATION_CRITERIA_MAP = [
+  { key: 'voice_modulation', label: 'Voice Modulation', description: 'Variation in voice (tone, pitch, pace) conveying confidence and engagement.' },
+  { key: 'body_language', label: 'Body Language & Expressions', description: 'Facial expressions, eye contact, and gestures from webcam analysis.' },
+  { key: 'problem_solving', label: 'Problem Solving Ability', description: 'Approach to scenario-based or logical questions.' },
+  { key: 'communication_style', label: 'Communication Style', description: 'Interactivity and engagement in conversation.' },
+  { key: 'example_usage', label: 'Example Usage', description: 'Inclusion of examples, stories, or data to support answers.' },
+  { key: 'tone_language', label: 'Tone and Language', description: 'Professional and workplace-appropriate tone.' },
+  { key: 'structure', label: 'Structure', description: 'Logical structure in answering (e.g., STAR method).' },
+  { key: 'confidence', label: 'Confidence', description: 'Delivery and tone of being self-assured.' },
+  { key: 'relevance', label: 'Relevance', description: 'How directly the answer addresses the question.' },
+  { key: 'clarity', label: 'Clarity', description: 'Clear articulation of responses.' }
+];
+
 const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: FeedbackReportProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  
+
   // Create safe interview data with default values
   const safeInterviewData = createSafeInterviewData(interviewData);
-  
+
   useEffect(() => {
     // Create URL from blobs if available
     const setupMedia = async () => {
@@ -36,7 +62,7 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
         } else if (interviewData.recordingUrl) {
           setVideoUrl(interviewData.recordingUrl);
         }
-        
+
         if (interviewData.audioURL) {
           setAudioUrl(interviewData.audioURL);
         } else if (interviewData.audioBlob) {
@@ -44,7 +70,6 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
           setAudioUrl(url);
         }
 
-        // Simulate loading for smoother UI transition
         setTimeout(() => setLoading(false), 500);
       } catch (error) {
         console.error("Error setting up media:", error);
@@ -53,8 +78,7 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
     };
 
     setupMedia();
-    
-    // Clean up URL objects on unmount
+
     return () => {
       if (videoUrl && !interviewData.videoURL && !interviewData.recordingUrl) {
         URL.revokeObjectURL(videoUrl);
@@ -63,6 +87,7 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
         URL.revokeObjectURL(audioUrl);
       }
     };
+    // eslint-disable-next-line
   }, [interviewData]);
 
   if (loading) {
@@ -97,32 +122,52 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
     );
   }
 
-  const handleDownloadReport = () => {
-    // Generate a simple PDF for demonstration purposes
-    // In real usage, you may use a library like jsPDF or html2pdf.js
-    const reportContent = `
-      Interview Feedback Report
-      
-      Candidate: ${interviewData.candidate_name || ""}
-      Target Role: ${interviewData.target_role || ""}
-      Score: ${interviewData.interview_overall_score || ""}
-      Date: ${interviewData.date || ""}
-      Duration: ${interviewData.duration || ""}
+  // Utility to get value or fallback from interview data
+  const getFieldValue = (fieldKey: string) => {
+    return interviewData[fieldKey] ?? ""; // fallback to empty string if not present
+  };
 
-      Evaluation:
-      - Voice Modulation: ${interviewData.voice_modulation || ""}
-      - Body Language: ${interviewData.body_language || ""}
-      - Problem Solving: ${interviewData.problem_solving || ""}
-      - Communication: ${interviewData.communication_style || ""}
-      - Examples: ${interviewData.example_usage || ""}
-      - Tone & Language: ${interviewData.tone_language || ""}
-      - Structure: ${interviewData.structure || ""}
-      - Confidence: ${interviewData.confidence || ""}
-      - Relevance: ${interviewData.relevance || ""}
-      - Clarity: ${interviewData.clarity || ""}
-      
-      Thank you!
-    `;
+  const renderDataFields = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 mb-5">
+      {DATA_FIELDS_MAP.filter(item => getFieldValue(item.key)).map(item => (
+        <div key={item.key}>
+          <span className="text-sm font-semibold mr-1">{item.label}:</span>
+          <span className="text-sm">{getFieldValue(item.key)}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderCriteria = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {EVALUATION_CRITERIA_MAP.filter(crit => typeof interviewData[crit.key] !== "undefined")
+        .map(crit => (
+        <div key={crit.key} className="bg-gray-50 rounded-xl border p-4 flex flex-col">
+          <span className="font-semibold text-base mb-1">{crit.label}</span>
+          <span className="text-2xl font-mono text-indigo-700">{interviewData[crit.key] ?? "--"}%</span>
+          <span className="text-xs text-gray-500 mt-1">{crit.description}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const handleDownloadReport = () => {
+    // Report includes all criteria and extracted data fields
+    let reportContent = `Interview Feedback Report\n\n`;
+
+    DATA_FIELDS_MAP.forEach(item => {
+      if (getFieldValue(item.key))
+        reportContent += `${item.label}: ${getFieldValue(item.key)}\n`;
+    });
+
+    reportContent += `\nEvaluation:\n`;
+    EVALUATION_CRITERIA_MAP.forEach(crit => {
+      if (typeof interviewData[crit.key] !== "undefined")
+        reportContent += `- ${crit.label}: ${interviewData[crit.key]}\n`;
+    });
+
+    reportContent += `\nThank you!\n`;
+
     const blob = new Blob([reportContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -150,28 +195,11 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row justify-between mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Date: {safeInterviewData.date}</p>
-              <p className="text-sm text-gray-500">Duration: {safeInterviewData.duration}</p>
-            </div>
-            <div className="mt-4 md:mt-0 flex items-center">
-              <div className="w-20 h-20 rounded-full border-4 border-interprepai-500 flex items-center justify-center mr-4">
-                <span className="text-2xl font-bold text-interprepai-700">{safeInterviewData.overallScore}%</span>
-              </div>
-              <div>
-                <p className="font-medium">Overall Score</p>
-                <p className="text-sm text-gray-500">
-                  {safeInterviewData.overallScore > 80 ? "Excellent" : 
-                   safeInterviewData.overallScore > 70 ? "Very Good" : 
-                   safeInterviewData.overallScore > 60 ? "Good" : 
-                   safeInterviewData.overallScore > 50 ? "Average" : "Needs Improvement"}
-                </p>
-              </div>
-            </div>
-          </div>
+          {renderDataFields()}
 
-          <Tabs defaultValue="analysis" className="mb-6">
+          {renderCriteria()}
+
+          <Tabs defaultValue="analysis" className="mb-6 mt-6">
             <TabsList className="mb-4">
               <TabsTrigger value="analysis">Performance Analysis</TabsTrigger>
               <TabsTrigger value="recordings">Recordings</TabsTrigger>
