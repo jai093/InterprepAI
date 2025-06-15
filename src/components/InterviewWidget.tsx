@@ -21,17 +21,19 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Add the ElevenLabs embed script to the DOM (on mount)
+  // Only load script if necessary, when user starts interview
   useEffect(() => {
-    // Check if already present
-    if (!document.querySelector(`script[src="${ELEVENLABS_WIDGET_URL}"]`)) {
-      const script = document.createElement("script");
-      script.src = ELEVENLABS_WIDGET_URL;
-      script.async = true;
-      script.type = "text/javascript";
-      document.body.appendChild(script);
+    if (started) {
+      // Only add once
+      if (!document.querySelector(`script[src="${ELEVENLABS_WIDGET_URL}"]`)) {
+        const script = document.createElement("script");
+        script.src = ELEVENLABS_WIDGET_URL;
+        script.async = true;
+        script.type = "text/javascript";
+        document.body.appendChild(script);
+      }
     }
-  }, []);
+  }, [started]);
 
   // Camera setup only if showCamera is true and interview started
   useEffect(() => {
@@ -62,8 +64,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   return (
     <div className="interview-container flex flex-col items-center">
       <div className="flex flex-col items-center gap-4 w-full">
-
-        {/* Start interview button with animation */}
+        {/* Button, fade out on click */}
         {!started && (
           <button
             className="start-button transition-all duration-300 animate-scale-in"
@@ -75,29 +76,30 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           </button>
         )}
 
-        {/* When started, show end button, ElevenLabs widget, and camera (if enabled) */}
+        {/* Embedded widget replaces button (not a popup) */}
         {started && (
-          <div className="flex flex-col items-center w-full animate-fade-in">
+          <div className="interview-widget-box flex flex-col items-center w-full animate-fade-in rounded-2xl bg-[#f2f2f5] shadow-lg px-4 py-5 relative" style={{minWidth: "340px", maxWidth: "400px"}}>
+            {/* Custom End button above the widget (optional UX) */}
             <button
-              className="end-interview-btn mt-2 rounded bg-red-600 text-white px-6 py-2 hover:bg-red-700 transition"
+              className="absolute top-2 right-4 rounded text-sm bg-red-600 text-white px-4 py-1 hover:bg-red-700 transition z-10"
               onClick={handleEnd}
               type="button"
             >
-              End Interview
+              End
             </button>
-            {/* Your ElevenLabs widget */}
-            <div className="mt-4 w-full max-w-[520px] flex flex-col items-center">
+            {/* ElevenLabs widget embedded in-place, NOT as a popup */}
+            <div className="w-full flex flex-col items-center">
               <elevenlabs-convai agent-id={AGENT_ID}></elevenlabs-convai>
             </div>
-            {/* Camera only if enabled */}
+            {/* Camera only if enabled, below the widget */}
             {showCamera && (
-              <div className="mt-2 mb-2 w-full flex justify-center">
+              <div className="mt-4 w-full flex justify-center">
                 <video
                   ref={videoRef}
                   autoPlay
                   muted
                   playsInline
-                  className="w-[280px] h-[160px] rounded-lg border shadow bg-black object-cover"
+                  className="w-[220px] h-[125px] rounded-lg border shadow bg-black object-cover"
                 />
               </div>
             )}
