@@ -1,4 +1,3 @@
-
 import { Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -9,6 +8,8 @@ import MeetupDetails from "@/pages/MeetupDetails";
 import NotFound from "@/pages/NotFound";
 import Meetups from "@/components/Meetups";
 import "./App.css";
+import HrDashboard from "./pages/HrDashboard";
+import CandidateInterview from "./pages/CandidateInterview";
 
 function App() {
   return (
@@ -23,6 +24,8 @@ function App() {
       <Route path="/meetups" element={<Meetups />} />
       <Route path="/batch-calls" element={<BatchCalls />} />
       <Route path="/meetup/:id" element={<MeetupDetails />} />
+      <Route path="/hr" element={<HrDashboard />} />
+      <Route path="/candidate-interview/:candidateId" element={<CandidateInterview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
