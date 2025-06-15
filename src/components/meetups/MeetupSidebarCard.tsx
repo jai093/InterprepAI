@@ -10,7 +10,7 @@ interface MeetupSidebarCardProps {
 export function MeetupSidebarCard({ meetup }: MeetupSidebarCardProps) {
   return (
     <Link 
-      to={`/meetups?selected=${meetup.id}`} 
+      to={`/meetup/${meetup.id}`} 
       className="block p-2 rounded-md border border-border hover:bg-accent transition-colors"
     >
       <h4 className="font-medium text-xs line-clamp-1">{meetup.title}</h4>

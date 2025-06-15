@@ -76,7 +76,8 @@ const MeetupCard = ({ meetup, isOwnedByUser = false }: MeetupCardProps) => {
   };
 
   const handleCardClick = () => {
-    navigate(`/meetups/${meetup.id}`);
+    // Fix: route to /meetup/:id (NOT /meetups/:id)
+    navigate(`/meetup/${meetup.id}`);
   };
 
   return (
