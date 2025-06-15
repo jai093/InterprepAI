@@ -57,9 +57,11 @@ export default function HrAssessmentsPage() {
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
+
       if (!error && Array.isArray(data)) {
-        // Explicitly type data as any[] right before mapping
-        const assessed: Assessment[] = (data as any[]).map(normalizeAssessment);
+        // Explicitly cast data as any[] before mapping to avoid deep type inference
+        const rawData: any[] = data as any[];
+        const assessed: Assessment[] = rawData.map(normalizeAssessment);
         setAssessments(assessed);
       } else {
         setAssessments([]);
