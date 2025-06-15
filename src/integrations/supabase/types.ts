@@ -9,6 +9,138 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      assessment_invites: {
+        Row: {
+          assessment_id: string
+          candidate_id: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          link: string | null
+          recruiter_id: string
+          status: string | null
+        }
+        Insert: {
+          assessment_id: string
+          candidate_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          recruiter_id: string
+          status?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          candidate_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          recruiter_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_invites_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_invites_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_invites_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_submissions: {
+        Row: {
+          candidate_id: string
+          completed_at: string | null
+          feedback: string | null
+          id: string
+          invite_id: string
+          responses: Json
+        }
+        Insert: {
+          candidate_id: string
+          completed_at?: string | null
+          feedback?: string | null
+          id?: string
+          invite_id: string
+          responses: Json
+        }
+        Update: {
+          candidate_id?: string
+          completed_at?: string | null
+          feedback?: string | null
+          id?: string
+          invite_id?: string
+          responses?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_submissions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_submissions_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessments: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          questions: Json
+          recruiter_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          questions: Json
+          recruiter_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          questions?: Json
+          recruiter_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_call_sessions: {
         Row: {
           audio_urls: string[]
