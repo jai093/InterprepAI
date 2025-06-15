@@ -13,6 +13,7 @@ import CreateMeetupDialog from "./meetups/CreateMeetupDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import { MeetupSidebarCard } from "./meetups/MeetupSidebarCard";
+import GoogleMapsStaticEmbed from "@/components/meetups/GoogleMapsStaticEmbed";
 
 // Meetups component
 const Meetups = () => {
