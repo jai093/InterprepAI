@@ -1,11 +1,18 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useConversation } from "@elevenlabs/react";
+import { useProfile } from "@/hooks/useProfile";
 import "./InterviewWidget.css";
 
 interface InterviewWidgetProps {
   onEndInterview?: () => void;
   showCamera?: boolean;
+  interviewConfig?: {
+    type: string;
+    jobRole: string;
+    duration: number;
+    difficulty: string;
+  };
 }
 
 // Use the agent id provided by the user
@@ -14,20 +21,43 @@ const AGENT_ID = "agent_01jxs5kf50fg6t0p79hky1knfb";
 const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   onEndInterview,
   showCamera = true,
+  interviewConfig
 }) => {
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Array<{id: string, type: 'user' | 'ai', text: string, timestamp: Date}>>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const { profile } = useProfile();
 
-  // Initialize ElevenLabs conversation
+  // Generate custom prompt based on interview config and profile
+  const generateCustomPrompt = () => {
+    let prompt = `You are an AI interviewer conducting a ${interviewConfig?.difficulty || 'medium'} level ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position.`;
+    
+    if (interviewConfig?.type === 'roleSpecific') {
+      prompt += ` Focus specifically on skills and experiences relevant to ${interviewConfig.jobRole}. Ask questions that assess the candidate's expertise in this role.`;
+    }
+    
+    if (profile?.skills) {
+      prompt += ` The candidate has mentioned these skills: ${profile.skills}. Ask relevant questions about these skills.`;
+    }
+    
+    if (profile?.resume_url) {
+      prompt += ` The candidate has uploaded a resume. Ask questions that relate to their background and the role requirements.`;
+    }
+    
+    prompt += ` Keep questions conversational, professional, and appropriate for the difficulty level. Wait for the candidate to respond before asking the next question.`;
+    
+    return prompt;
+  };
+
+  // Initialize ElevenLabs conversation with custom prompt
   const conversation = useConversation({
     onConnect: () => {
       console.log("Interview conversation connected");
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'ai',
-        text: 'Connected! I\'m ready to begin the interview.',
+        text: `Hello! I'm ready to begin your ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position. Let's start!`,
         timestamp: new Date()
       }]);
     },
@@ -58,9 +88,9 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     }
   });
 
-  // Camera setup only if showCamera is true and interview started
+  // Camera setup - always show when component mounts
   useEffect(() => {
-    if (started && showCamera) {
+    if (showCamera) {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(stream => {
           if (videoRef.current) {
@@ -76,17 +106,27 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
         streamRef.current = null;
       }
     };
-  }, [started, showCamera]);
+  }, [showCamera]);
 
-  // Start interview: begin conversation directly
+  // Start interview: begin conversation directly with custom prompt
   const handleStart = async () => {
     try {
       setStarted(true);
-      // Start the conversation with the agent
+      const customPrompt = generateCustomPrompt();
+      
+      // Start the conversation with the agent and custom prompt
       await conversation.startSession({ 
-        agentId: AGENT_ID 
+        agentId: AGENT_ID,
+        overrides: {
+          agent: {
+            prompt: {
+              prompt: customPrompt
+            },
+            firstMessage: `Hello! I'm ready to begin your ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position. Let's start with an introduction - tell me about yourself.`
+          }
+        }
       });
-      console.log("Interview conversation started");
+      console.log("Interview conversation started with custom prompt");
     } catch (error) {
       console.error("Failed to start interview:", error);
       setStarted(false);
@@ -110,6 +150,28 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   return (
     <div className="interview-container flex flex-col items-center">
       <div className="flex flex-col items-center gap-4 w-full">
+        {/* Live webcam feed above start button */}
+        {showCamera && !started && (
+          <div className="webcam-preview-container animate-fade-in">
+            <div className="text-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Interview Preview</h3>
+              <p className="text-sm text-gray-600">Check your camera and audio before starting</p>
+            </div>
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-80 h-60 rounded-xl border-2 border-gray-200 shadow-lg bg-black object-cover"
+              />
+              <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
+                ● LIVE
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Button, fade out on click */}
         {!started && (
           <button
@@ -132,6 +194,9 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-gray-800">
                     {conversation.status === 'connected' ? 'Interview Active' : 'Connecting...'}
+                  </span>
+                  <span className="text-xs text-gray-600">
+                    {interviewConfig?.jobRole || 'Software Engineer'} - {interviewConfig?.type || 'Behavioral'}
                   </span>
                   {conversation.isSpeaking && (
                     <span className="text-xs text-purple-600 font-medium">

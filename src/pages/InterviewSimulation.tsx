@@ -1,9 +1,11 @@
+
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import InterviewSetup, { InterviewConfig } from "@/components/InterviewSetup";
 import InterviewSession from "@/components/InterviewSession";
 import FeedbackReport from "@/components/FeedbackReport";
+import InterviewWidget from "@/components/InterviewWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,12 +29,13 @@ const InterviewSimulation = () => {
 
   // Handler: Begin interview with config
   const handleStart = (interviewConfig: InterviewConfig) => {
-    setConfig({
+    const fullConfig = {
       type: interviewConfig.type,
       jobRole: interviewConfig.jobRole,
       duration: 20, // Default duration
       difficulty: interviewConfig.difficultyLevel || "medium",
-    });
+    };
+    setConfig(fullConfig);
     setStep("interview");
   };
 
@@ -40,6 +43,12 @@ const InterviewSimulation = () => {
   const handleComplete = (report: any) => {
     setFeedback(report);
     setStep("feedback");
+  };
+
+  // Handler: End interview widget and return to setup
+  const handleEndInterview = () => {
+    setStep("setup");
+    setConfig(null);
   };
 
   return (
@@ -50,8 +59,24 @@ const InterviewSimulation = () => {
         {step === "setup" && (
           <>
             <InterviewSetup onStart={handleStart} />
-            {/* AI Interviewer (Custom Widget launcher) */}
-            {/* The button and custom widget are removed */}
+            
+            {/* AI Interviewer Widget - Show after setup for voice interview */}
+            <div className="mt-8 w-full max-w-4xl">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">AI Voice Interview</h2>
+                <p className="text-gray-600">Ready to start your voice interview? Your camera and settings look good!</p>
+              </div>
+              <InterviewWidget 
+                onEndInterview={handleEndInterview}
+                showCamera={true}
+                interviewConfig={config || {
+                  type: "behavioral",
+                  jobRole: "Software Engineer", 
+                  duration: 20,
+                  difficulty: "medium"
+                }}
+              />
+            </div>
           </>
         )}
 

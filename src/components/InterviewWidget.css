@@ -6,6 +6,11 @@
   margin-top: 32px;
 }
 
+/* Webcam preview above start button */
+.webcam-preview-container {
+  margin-bottom: 20px;
+}
+
 .start-button {
   width: 140px;
   height: 140px;
