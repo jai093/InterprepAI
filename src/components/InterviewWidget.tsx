@@ -7,7 +7,11 @@ interface InterviewWidgetProps {
   showCamera?: boolean;
 }
 
-const AGENT_ID = "YflyhSHD0Yqq3poIbnan";
+// Use the agent id provided by the user
+const AGENT_ID = "agent_01jxs5kf50fg6t0p79hky1knfb";
+
+// Convenience to only load the ElevenLabs widget script once
+const ELEVENLABS_WIDGET_URL = "https://unpkg.com/@elevenlabs/convai-widget-embed";
 
 const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   onEndInterview,
@@ -17,7 +21,19 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Camera setup
+  // Add the ElevenLabs embed script to the DOM (on mount)
+  useEffect(() => {
+    // Check if already present
+    if (!document.querySelector(`script[src="${ELEVENLABS_WIDGET_URL}"]`)) {
+      const script = document.createElement("script");
+      script.src = ELEVENLABS_WIDGET_URL;
+      script.async = true;
+      script.type = "text/javascript";
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // Camera setup only if showCamera is true and interview started
   useEffect(() => {
     if (started && showCamera) {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -59,7 +75,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
           </button>
         )}
 
-        {/* When started, show end button, widget, and camera (if enabled) */}
+        {/* When started, show end button, ElevenLabs widget, and camera (if enabled) */}
         {started && (
           <div className="flex flex-col items-center w-full animate-fade-in">
             <button
@@ -69,18 +85,9 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
             >
               End Interview
             </button>
-            {/* Embedded official ElevenLabs widget */}
+            {/* Your ElevenLabs widget */}
             <div className="mt-4 w-full max-w-[520px] flex flex-col items-center">
-              <elevenlabs-convai
-                agent-id={AGENT_ID}
-                terms-content={`
-#### Terms and Conditions
-
-By clicking "Agree", and each time I interact with this AI agent, I consent to the recording, storage, and analysis of my conversations by InterPrepAI and its third-party providers including ElevenLabs and OpenAI. If you do not wish to have your conversations recorded, please do not use this service.
-`}
-                local-storage-key="terms_accepted"
-                style={{ maxWidth: 520, width: "100%" }}
-              ></elevenlabs-convai>
+              <elevenlabs-convai agent-id={AGENT_ID}></elevenlabs-convai>
             </div>
             {/* Camera only if enabled */}
             {showCamera && (
@@ -96,10 +103,10 @@ By clicking "Agree", and each time I interact with this AI agent, I consent to t
             )}
           </div>
         )}
-        
       </div>
     </div>
   );
 };
 
 export default InterviewWidget;
+
