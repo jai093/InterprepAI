@@ -8,6 +8,7 @@ import StepInterviewer from "./steps/StepInterviewer";
 import StepComplete from "./steps/StepComplete";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const stepNames = [
@@ -41,41 +42,47 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
 
   const { user } = useAuth();
 
-  // Step handlers (each can update relevant data)
   function setField<K extends keyof NewAssessment>(key: K, value: NewAssessment[K]) {
     setAssessment((old) => ({ ...old, [key]: value }));
   }
 
-  // Call the correct Supabase edge function endpoint for Gemini
+  // STRONGLY prefer using supabase.functions.invoke for edge functions
   async function handleGenerateQuestions(skills: string[]) {
     const role = assessment.title || "Software Engineer";
     const language = assessment.language || "English";
     const level = assessment.level || "Mid";
-    const EDGE_FUNCTION_URL = "https://mybjsygfhrzzknwalyov.supabase.co/functions/v1/generate-gemini-questions";
     try {
-      const res = await fetch(EDGE_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("generate-gemini-questions", {
+        body: {
           role,
           language,
           skills,
           level,
-        }),
+        }
       });
-      const data = await res.json();
-      if (Array.isArray(data.questions) && data.questions.length > 0) {
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "AI question generation failed",
+          description: "Falling back to generic questions.",
+        });
+        return skills.map((s) => `Tell us about your experience with ${s}.`);
+      }
+      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
         return data.questions;
       }
-      // fallback: still return skills[]-based as before if no data
+      // fallback if Gemini returns no usable questions
       return skills.map((s) => `Tell us about your experience with ${s}.`);
     } catch (err) {
-      // fallback logic in case of failure
+      toast({
+        variant: "destructive",
+        title: "Gemini API Error",
+        description: "Unable to generate questions. Using fallback.",
+      });
       return skills.map((s) => `Tell us about your experience with ${s}.`);
     }
   }
 
-  // Save to Supabase (would use recruiter context/user)
   async function saveAssessment() {
     if (!user) return;
     const body = {
@@ -84,13 +91,11 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
       questions: assessment.questions!,
       recruiter_id: user.id,
     };
-    // Insert assessment into Supabase
     const { error } = await supabase.from("assessments").insert([body]);
     if (!error) setStep(5);
     // You may want to handle error UI/toast here for production
   }
 
-  // Steps content
   const steps = [
     <StepRoleDetails key="role"
       value={assessment}
@@ -148,3 +153,4 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
+
