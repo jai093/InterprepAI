@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +22,17 @@ const Meetups = () => {
   const { user } = useAuth();
   const location = useLocation();
   
-  // Get selected meetup ID from URL query params
+  // Get selected meetup ID and search term from URL query params
   const searchParams = new URLSearchParams(location.search);
   const selectedMeetupId = searchParams.get('selected');
+  const searchFilterFromQuery = searchParams.get('search') || "";
+
+  // Prepopulate search box on mount if search query param exists
+  useEffect(() => {
+    if (searchFilterFromQuery) {
+      setSearchQuery(searchFilterFromQuery);
+    }
+  }, [searchFilterFromQuery]);
 
   // Filter meetups based on search query
   const filteredMeetups = filterMeetups(searchQuery);
@@ -227,8 +234,11 @@ const Meetups = () => {
                     <p className="text-sm mt-3 text-gray-600">
                       Host of {featuredHost.meetupCount} {featuredHost.meetupCount === 1 ? 'meetup' : 'meetups'}
                     </p>
-                    <Button variant="outline" size="sm" className="mt-4">
-                      View Meetups
+                    {/* Make this button link to /meetups?search=host */}
+                    <Button asChild variant="outline" size="sm" className="mt-4">
+                      <a href={`/meetups?search=${encodeURIComponent(featuredHost.name)}`}>
+                        View Meetups
+                      </a>
                     </Button>
                   </>
                 )}
