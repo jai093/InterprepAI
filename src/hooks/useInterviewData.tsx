@@ -174,6 +174,14 @@ export const useInterviewData = () => {
     return tips.slice(0, 5);
   };
 
+  // Add auto-shortlist effect here
+  // (Require optional import to not break code if hook not present in all contexts)
+  try {
+    // Dynamically import the auto shortlist logic if present
+    // This avoids infinite loop if not wrapped in provider
+    require("./useAutoShortlist").useAutoShortlist?.();
+  } catch {}
+
   return {
     interviews: interviews || [],
     isLoading,

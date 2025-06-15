@@ -51,6 +51,92 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_invites: {
+        Row: {
+          created_at: string | null
+          id: string
+          interview_date: string | null
+          invite_link: string | null
+          recruiter_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interview_date?: string | null
+          invite_link?: string | null
+          recruiter_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interview_date?: string | null
+          invite_link?: string | null
+          recruiter_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_invites_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_invites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_results: {
+        Row: {
+          ai_feedback: string | null
+          audio_url: string | null
+          created_at: string | null
+          id: string
+          invite_id: string
+          score: number | null
+          transcript: string | null
+          video_url: string | null
+        }
+        Insert: {
+          ai_feedback?: string | null
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          invite_id: string
+          score?: number | null
+          transcript?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          ai_feedback?: string | null
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          invite_id?: string
+          score?: number | null
+          transcript?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_results_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "interview_invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_sessions: {
         Row: {
           body_analysis: Json | null
@@ -286,6 +372,75 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      recruiters: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      shortlistings: {
+        Row: {
+          created_at: string | null
+          feedback: string | null
+          id: string
+          recruiter_id: string
+          status: string | null
+          user_id: string
+          user_score: number
+        }
+        Insert: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          recruiter_id: string
+          status?: string | null
+          user_id: string
+          user_score: number
+        }
+        Update: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          recruiter_id?: string
+          status?: string | null
+          user_id?: string
+          user_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortlistings_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shortlistings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
