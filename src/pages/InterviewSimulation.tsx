@@ -1,14 +1,18 @@
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import InterviewSetup, { InterviewConfig } from "@/components/InterviewSetup";
+import InterviewPrestart from "@/components/InterviewPrestart";
 import InterviewSession from "@/components/InterviewSession";
 import FeedbackReport from "@/components/FeedbackReport";
 import InterviewWidget from "@/components/InterviewWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+
+// Added "prestart" step!
+type Step = "setup" | "prestart" | "interview" | "feedback";
 
 interface FullInterviewConfig {
   type: string;
@@ -22,8 +26,8 @@ const InterviewSimulation = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Step management
-  const [step, setStep] = useState<"setup" | "interview" | "feedback">("setup");
+  // Step management -- now includes 'prestart'!
+  const [step, setStep] = useState<Step>("setup");
   const [config, setConfig] = useState<FullInterviewConfig | null>(null);
   const [feedback, setFeedback] = useState<any>(null);
 
@@ -36,8 +40,11 @@ const InterviewSimulation = () => {
       difficulty: interviewConfig.difficultyLevel || "medium",
     };
     setConfig(fullConfig);
-    setStep("interview");
+    setStep("prestart"); // go to preview step (not to interview directly!)
   };
+
+  // --- NEW: proceed to interview after circular button ---
+  const handleBeginInterview = () => setStep("interview");
 
   // Handler: Conclude interview
   const handleComplete = (report: any) => {
@@ -59,25 +66,16 @@ const InterviewSimulation = () => {
         {step === "setup" && (
           <>
             <InterviewSetup onStart={handleStart} />
-            
-            {/* AI Interviewer Widget - Show after setup for voice interview */}
-            <div className="mt-8 w-full max-w-4xl">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">AI Voice Interview</h2>
-                <p className="text-gray-600">Ready to start your voice interview? Your camera and settings look good!</p>
-              </div>
-              <InterviewWidget 
-                onEndInterview={handleEndInterview}
-                showCamera={true}
-                interviewConfig={config || {
-                  type: "behavioral",
-                  jobRole: "Software Engineer", 
-                  duration: 20,
-                  difficulty: "medium"
-                }}
-              />
-            </div>
           </>
+        )}
+
+        {/* Step: Prestart preview with circular button */}
+        {step === "prestart" && config && (
+          <InterviewPrestart
+            config={config}
+            onStart={handleBeginInterview}
+            onBack={() => setStep("setup")}
+          />
         )}
 
         {/* Step: Interview */}
