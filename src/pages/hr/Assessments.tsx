@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Link as LinkIcon } from "lucide-react";
+import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,9 +15,8 @@ type Assessment = {
   description: string;
 };
 
-function getAssessmentLink(id: string) {
-  // You can adjust this URL to match the candidate's interview page route if needed
-  return `${window.location.origin}/candidate-interview/${id}`;
+function getAssessmentLink(assessmentId: string, candidateId: string) {
+  return `${window.location.origin}/candidate-interview/${candidateId}?a=${assessmentId}`;
 }
 
 export default function HrAssessmentsPage() {
@@ -26,6 +24,11 @@ export default function HrAssessmentsPage() {
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const { user } = useAuth();
+  const [candidateDialog, setCandidateDialog] = useState<{show: boolean, assessmentId?: string}>({show: false});
+  const [candidateId, setCandidateId] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     async function fetchAssessments() {
@@ -42,14 +45,34 @@ export default function HrAssessmentsPage() {
     fetchAssessments();
   }, [user, open]);
 
-  const handleCopyLink = (id: string) => {
-    const url = getAssessmentLink(id);
+  const handleCopyLink = (assessmentId: string, candidateId: string) => {
+    const url = getAssessmentLink(assessmentId, candidateId);
     navigator.clipboard.writeText(url);
     toast({
       title: "Assessment link copied!",
       description: url,
     });
   };
+
+  async function resolveCandidateId(email: string) {
+    setResolving(true);
+    setCandidateResolvedId(null);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    setResolving(false);
+    if (error || !data) {
+      toast({
+        variant: "destructive",
+        title: "No user found with this email.",
+        description: "Double-check user exists and email is correct.",
+      });
+      return;
+    }
+    setCandidateResolvedId(data.id);
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -77,16 +100,17 @@ export default function HrAssessmentsPage() {
                     <div className="text-lg font-semibold text-indigo-900">{a.title}</div>
                     <div className="text-xs text-gray-400">{new Date(a.created_at).toLocaleString()}</div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button
+                      size="sm"
                       variant="outline"
                       className="flex gap-1"
-                      onClick={() => handleCopyLink(a.id)}
+                      onClick={() => setCandidateDialog({show: true, assessmentId: a.id})}
+                      title="Share to candidate"
                     >
-                      <LinkIcon className="w-4 h-4" />
-                      Copy Link
+                      <UserIcon className="w-4 h-4" />
+                      Share to Candidate
                     </Button>
-                    {/* In future: add "Invite" button or "View Submissions" here */}
                   </div>
                 </li>
               ))}
@@ -97,6 +121,54 @@ export default function HrAssessmentsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg w-full p-0">
           <NewAssessmentDialog onClose={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Candidate Link Share Dialog */}
+      <Dialog open={candidateDialog.show} onOpenChange={(v) => setCandidateDialog({show: v})}>
+        <DialogContent className="max-w-md w-full flex flex-col gap-1">
+          <div className="mb-2 font-semibold text-lg flex items-center gap-2"><UserIcon className="w-5 h-5" /> Share Assessment Link</div>
+          <div className="text-gray-500 mb-2">
+            Enter the candidate's email address (registered) to generate a unique interview link. 
+          </div>
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!candidateEmail) return;
+              await resolveCandidateId(candidateEmail);
+            }}
+          >
+            <input
+              type="email"
+              className="border p-2 rounded"
+              value={candidateEmail}
+              onChange={e => { setCandidateEmail(e.target.value); setCandidateResolvedId(null); }}
+              placeholder="candidate@email.com"
+              required
+            />
+            <Button type="submit" disabled={resolving} size="sm" className="self-start">{resolving ? "Searching..." : "Find Candidate"}</Button>
+          </form>
+          {candidateResolvedId && candidateDialog.assessmentId && (
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="text-green-700 text-sm mb-1">User found. Share this link:</div>
+              <div className="flex gap-2 items-center">
+                <input
+                  readOnly
+                  className="w-full border border-gray-200 rounded px-2 py-1 bg-gray-50 text-xs"
+                  value={getAssessmentLink(candidateDialog.assessmentId, candidateResolvedId)}
+                />
+                <Button
+                  size="icon"
+                  variant="default"
+                  onClick={() => handleCopyLink(candidateDialog.assessmentId!, candidateResolvedId)}
+                  title="Copy assessment link"
+                >
+                  <CopyIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

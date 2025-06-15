@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import StepRoleDetails from "./steps/StepRoleDetails";
 import StepAssessmentType from "./steps/StepAssessmentType";
@@ -64,21 +63,40 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
         toast({
           variant: "destructive",
           title: "AI question generation failed",
-          description: "Falling back to generic questions.",
+          description: error.message || "Falling back to generic questions.",
         });
+        // Log error details for diagnostics
+        console.log("Gemini error object from supabase.functions.invoke:", error);
+        return skills.map((s) => `Tell us about your experience with ${s}.`);
+      }
+      if (data?.error) {
+        toast({
+          variant: "destructive",
+          title: "Gemini function error",
+          description: data.error,
+        });
+        // Log error diagnostic
+        console.log("Gemini response data.error:", data.error);
         return skills.map((s) => `Tell us about your experience with ${s}.`);
       }
       if (data && Array.isArray(data.questions) && data.questions.length > 0) {
         return data.questions;
       }
       // fallback if Gemini returns no usable questions
+      toast({
+        variant: "destructive",
+        title: "Gemini returned no questions",
+        description: "Fallback to generic skill questions.",
+      });
       return skills.map((s) => `Tell us about your experience with ${s}.`);
-    } catch (err) {
+    } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Gemini API Error",
         description: "Unable to generate questions. Using fallback.",
       });
+      // Log JS error diagnostic
+      console.error("Gemini JS exception:", err);
       return skills.map((s) => `Tell us about your experience with ${s}.`);
     }
   }
@@ -153,4 +171,3 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
-
