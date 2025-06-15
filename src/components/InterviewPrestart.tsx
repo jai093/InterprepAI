@@ -1,7 +1,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface InterviewPrestartProps {
   config: {
@@ -17,7 +16,7 @@ interface InterviewPrestartProps {
 const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
   config,
   onStart,
-  onBack
+  onBack,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
@@ -25,8 +24,9 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
   useEffect(() => {
     let stream: MediaStream | null = null;
     setLoading(true);
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      .then(s => {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: false })
+      .then((s) => {
         stream = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
@@ -36,14 +36,44 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
       .catch(() => setLoading(false));
 
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
   return (
-    <div className="flex flex-col items-center w-full">
-      <div className="max-w-lg w-full bg-white rounded-xl shadow-lg p-6 mb-8 border">
-        <div className="flex mb-5 items-center gap-2">
+    <div className="flex flex-col md:flex-row items-center justify-center w-full h-full gap-6">
+      {/* Left: Camera Preview */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl">
+        <div className="w-full max-w-lg aspect-video bg-gray-200 rounded-xl shadow border flex items-center justify-center relative overflow-hidden">
+          {loading ? (
+            <div className="text-gray-500">Loading camera...</div>
+          ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover rounded-xl"
+            />
+          )}
+        </div>
+        <button
+          className="start-button mt-7 animate-scale-in"
+          style={{
+            width: 120,
+            height: 120,
+            fontSize: 20,
+            borderRadius: "50%",
+          }}
+          onClick={onStart}
+          type="button"
+        >
+          Start Interview
+        </button>
+      </div>
+      {/* Right: Interview Info */}
+      <div className="w-full max-w-md flex flex-col bg-white rounded-xl shadow-lg px-6 py-8 border min-h-[340px] mt-6 md:mt-0">
+        <div className="flex items-center mb-4 gap-2">
           {onBack && (
             <button
               onClick={onBack}
@@ -54,42 +84,24 @@ const InterviewPrestart: React.FC<InterviewPrestartProps> = ({
               <ArrowLeft size={22} />
             </button>
           )}
-          <div>
-            <h2 className="font-bold text-xl">Get Ready for Your Interview</h2>
-            <p className="text-gray-600 text-sm">
-              Position: <span className="font-medium">{config.jobRole}</span>{" "}
-              &middot; Type: <span className="capitalize">{config.type}</span>{" "}
-              &middot; Difficulty: <span className="capitalize">{config.difficulty}</span>
-            </p>
-          </div>
+          <h2 className="font-bold text-2xl">Get Ready</h2>
         </div>
-        {/* Video Preview */}
-        <div className="flex flex-col items-center">
-          <div className="relative w-72 h-56 bg-gray-100 rounded-lg flex items-center justify-center mb-6 border">
-            {loading ? (
-              <div className="text-gray-500">Loading preview...</div>
-            ) : (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover rounded-lg"
-              />
-            )}
-          </div>
-          <div className="mb-6 text-center text-gray-500 text-sm">
-            <p>Check your camera and background,<br />then press when you are ready.</p>
-          </div>
-          {/* Circular Start Interview Button */}
-          <button
-            className="start-button transition-all duration-300 animate-scale-in mb-2"
-            style={{ width: 100, height: 100, fontSize: 18, borderRadius: "50%" }}
-            onClick={onStart}
-            type="button"
-          >
-            Start Interview
-          </button>
+        <div className="mb-3">
+          <p>
+            <span className="font-semibold">Position:</span> {config.jobRole}
+          </p>
+          <p>
+            <span className="font-semibold">Type:</span> {config.type}
+          </p>
+          <p>
+            <span className="font-semibold">Difficulty:</span> {config.difficulty}
+          </p>
+        </div>
+        <div className="text-gray-600 text-sm mb-2">
+          Ensure your camera and background are ready before you begin.
+        </div>
+        <div className="text-xs text-gray-400">
+          You’ll enter the real interview after pressing the button.
         </div>
       </div>
     </div>

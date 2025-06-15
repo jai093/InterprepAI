@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -61,7 +60,7 @@ const InterviewSimulation = () => {
   return (
     <div className="min-h-screen bg-[#f9fafb] flex flex-col items-center">
       <Header />
-      <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <main className="w-full flex-1 flex flex-col items-center justify-center px-2 py-4 md:px-6 md:py-10">
         {/* Step: Setup */}
         {step === "setup" && (
           <>
@@ -69,26 +68,31 @@ const InterviewSimulation = () => {
           </>
         )}
 
-        {/* Step: Prestart preview with circular button */}
+        {/* Step: Prestart preview -- camera and start! */}
         {step === "prestart" && config && (
-          <InterviewPrestart
-            config={config}
-            onStart={handleBeginInterview}
-            onBack={() => setStep("setup")}
-          />
+          <div className="flex flex-col md:flex-row w-full items-center justify-center md:justify-between gap-6 max-w-6xl">
+            <InterviewPrestart
+              config={config}
+              onStart={handleBeginInterview}
+              onBack={() => setStep("setup")}
+            />
+          </div>
         )}
 
-        {/* Step: Interview */}
+        {/* Step: Interview - the actual session */}
         {step === "interview" && config && (
-          <InterviewSession config={config} onEnd={handleComplete} />
+          <div className="flex flex-col md:flex-row w-full items-center justify-center md:justify-between gap-6 max-w-6xl">
+            <InterviewWidget
+              interviewConfig={config}
+              onEndInterview={handleEndInterview}
+              showCamera={true}
+            />
+          </div>
         )}
 
-        {/* Step: Feedback */}
+        {/* Feedback, unchanged */}
         {step === "feedback" && feedback && (
-          <FeedbackReport
-            interviewData={feedback}
-            onRestart={() => setStep("setup")}
-          />
+          <FeedbackReport interviewData={feedback} onRestart={() => setStep("setup")} />
         )}
       </main>
     </div>
