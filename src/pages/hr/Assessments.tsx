@@ -23,13 +23,32 @@ function getAssessmentLink(assessmentId: string, candidateId: string) {
 export default function HrAssessmentsPage() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [assessments, setAssessments] = useState<Assessment[]>([]); // FIX: Use Assessment[]
+  // Change to any[] while fetching, will cast later
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   const { user } = useAuth();
   const [candidateDialog, setCandidateDialog] = useState<{show: boolean, assessmentId?: string}>({show: false});
   const [candidateId, setCandidateId] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+
+  // Normalize function to guarantee Assessment typing
+  function normalizeAssessment(raw: any): Assessment {
+    return {
+      id: raw.id,
+      title: raw.title,
+      created_at: raw.created_at,
+      description: raw.description,
+      questions:
+        Array.isArray(raw.questions)
+          ? raw.questions
+          : typeof raw.questions === "string"
+            ? (() => {
+                try { return JSON.parse(raw.questions); } catch { return []; }
+              })()
+            : [],
+    };
+  }
 
   useEffect(() => {
     async function fetchAssessments() {
@@ -40,18 +59,10 @@ export default function HrAssessmentsPage() {
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
-      if (!error && data) {
-        // Explicitly cast and fix the questions type
-        setAssessments(
-          data.map((a: any) => ({
-            ...a,
-            questions: Array.isArray(a.questions)
-              ? a.questions
-              : (typeof a.questions === "string"
-                  ? JSON.parse(a.questions)
-                  : []),
-          })) as Assessment[]
-        );
+      if (!error && Array.isArray(data)) {
+        setAssessments(data.map(normalizeAssessment));
+      } else {
+        setAssessments([]);
       }
       setLoading(false);
     }
