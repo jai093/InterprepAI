@@ -37,18 +37,18 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     },
     onMessage: (message) => {
       console.log("Conversation message:", message);
-      if (message.type === 'user_transcript' && message.text) {
+      if (message.source === 'user' && message.message) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           type: 'user',
-          text: message.text,
+          text: message.message,
           timestamp: new Date()
         }]);
-      } else if (message.type === 'agent_response' && message.text) {
+      } else if (message.source === 'ai' && message.message) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           type: 'ai',
-          text: message.text,
+          text: message.message,
           timestamp: new Date()
         }]);
       }
