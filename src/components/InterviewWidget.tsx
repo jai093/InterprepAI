@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { useProfile } from "@/hooks/useProfile";
@@ -28,6 +27,10 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const { profile } = useProfile();
+
+  // ---- ADD preview state ----
+  // 1. When in interview step, the widget starts in preview mode (before starting the actual conversation)
+  const [previewMode, setPreviewMode] = useState(true);
 
   // Generate custom prompt based on interview config and profile
   const generateCustomPrompt = () => {
@@ -88,7 +91,7 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     }
   });
 
-  // Camera setup - always show when component mounts
+  // Camera setup (showCamera applies to both preview & interview) - keep as-is
   useEffect(() => {
     if (showCamera) {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -107,6 +110,13 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       }
     };
   }, [showCamera]);
+
+  // ---- REWRITE: Start interview to dismiss preview first, then start session ----
+  const handleBeginPreviewStart = () => {
+    setPreviewMode(false);
+    // Start interview voice session after dismissing preview UI
+    handleStart();
+  };
 
   // Start interview: begin conversation directly with custom prompt
   const handleStart = async () => {
@@ -147,44 +157,54 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
     }
   };
 
+  // --- MAIN RETURN ---
   return (
     <div className="interview-container flex flex-col items-center">
       <div className="flex flex-col items-center gap-4 w-full">
-        {/* Live webcam feed above start button */}
-        {showCamera && !started && (
-          <div className="webcam-preview-container animate-fade-in">
-            <div className="text-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Interview Preview</h3>
-              <p className="text-sm text-gray-600">Check your camera and audio before starting</p>
-            </div>
-            <div className="relative">
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-80 h-60 rounded-xl border-2 border-gray-200 shadow-lg bg-black object-cover"
-              />
-              <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
-                ● LIVE
+        {/* If not started (previewMode), show PREVIEW UI */}
+        {!started && previewMode && (
+          <div className="w-full max-w-md flex flex-col items-center animate-fade-in">
+            <div className="webcam-preview-container mb-6">
+              <div className="text-center mb-2">
+                <h3 className="text-lg font-semibold text-gray-800">Interview Preview</h3>
+                <p className="text-sm text-gray-600">
+                  This is how you'll appear in the interview. Adjust your camera as needed.
+                </p>
+              </div>
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-80 h-60 rounded-xl border-2 border-gray-200 shadow-lg bg-black object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
+                  ● LIVE
+                </div>
               </div>
             </div>
+            {/* Big circular Start Interview button (like screenshot) */}
+            <button
+              className="start-button transition-all duration-300 animate-scale-in mb-4"
+              onClick={handleBeginPreviewStart}
+              type="button"
+            >
+              Start Interview
+            </button>
+            <p className="text-gray-500 text-sm text-center mb-2">
+              Press when you are ready – your interview will begin immediately!
+            </p>
           </div>
         )}
 
-        {/* Button, fade out on click */}
-        {!started && (
-          <button
-            className="start-button transition-all duration-300 animate-scale-in"
-            onClick={handleStart}
-            disabled={started}
-            style={started ? { pointerEvents: "none", opacity: 0.6 } : {}}
-          >
-            Start Interview
-          </button>
+        {/* If not started and NOT in preview mode (should NOT appear in this flow!) */}
+        {!started && !previewMode && (
+          // Prevent showing any other button/preview (edge protection, can leave blank or loading)
+          <div/>
         )}
 
-        {/* Live Voice Chat UI */}
+        {/* Once started, show the existing Interview (live session/chat UI) */}
         {started && (
           <div className="interview-session-box flex flex-col w-full animate-fade-in rounded-2xl bg-white shadow-lg border relative" style={{minWidth: "400px", maxWidth: "600px", height: "500px"}}>
             {/* Header with status and end button */}
