@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import StepRoleDetails from "./steps/StepRoleDetails";
 import StepAssessmentType from "./steps/StepAssessmentType";
@@ -44,8 +43,33 @@ export default function AssessmentStepper({ onDone }: { onDone: () => void }) {
 
   // Simulate AI generating questions
   async function handleGenerateQuestions(skills: string[]) {
-    // For now: placeholder logic, later could route to backend
-    return skills.map((s, i) => `Tell us about your experience with ${s}.`);
+    const role = assessment.title || "Software Engineer";
+    const language = assessment.language || "English";
+    const level = assessment.level || "Mid";
+    try {
+      const res = await fetch(
+        `${window.location.origin}/functions/v1/generate-gemini-questions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role,
+            language,
+            skills,
+            level,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (Array.isArray(data.questions) && data.questions.length > 0) {
+        return data.questions;
+      }
+      // fallback: still return skills[]-based as before if no data
+      return skills.map((s) => `Tell us about your experience with ${s}.`);
+    } catch (err) {
+      // fallback logic in case of failure
+      return skills.map((s) => `Tell us about your experience with ${s}.`);
+    }
   }
 
   // Save to Supabase (would use recruiter context/user)
