@@ -58,17 +58,16 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   const conversation = useConversation({
     onConnect: () => {
       console.log("Interview conversation connected");
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        type: 'ai',
-        text: `Hello! I'm ready to begin your ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position. Let's start!`,
-        timestamp: new Date()
-      }]);
-      // Inform parent of session id if available
-      if (conversation && conversation.conversationId && onSessionStart) {
-        setConversationId(conversation.conversationId);
-        onSessionStart(conversation.conversationId);
-      }
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: "ai",
+          text: `Hello! I'm ready to begin your ${interviewConfig?.type || "behavioral"} interview for the ${interviewConfig?.jobRole || "Software Engineer"} position. Let's start!`,
+          timestamp: new Date()
+        }
+      ]);
+      // Inform parent of session id if available (don't set here; do in handleStart)
     },
     onDisconnect: () => {
       console.log("Interview conversation disconnected");
@@ -130,18 +129,22 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
       setStarted(true);
       const customPrompt = generateCustomPrompt();
       // Start the conversation with the agent and custom prompt
-      await conversation.startSession({ 
+      const newConversationId = await conversation.startSession({
         agentId: AGENT_ID,
         overrides: {
           agent: {
             prompt: {
               prompt: customPrompt
             },
-            firstMessage: `Hello! I'm ready to begin your ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position. Let's start with an introduction - tell me about yourself.`
+            firstMessage: `Hello! I'm ready to begin your ${interviewConfig?.type || "behavioral"} interview for the ${interviewConfig?.jobRole || "Software Engineer"} position. Let's start with an introduction - tell me about yourself.`
           }
         }
       });
-      console.log("Interview conversation started with custom prompt");
+      if (newConversationId && typeof newConversationId === "string") {
+        setConversationId(newConversationId);
+        if (onSessionStart) onSessionStart(newConversationId);
+      }
+      console.log("Interview conversation started with custom prompt and id:", newConversationId);
     } catch (error) {
       console.error("Failed to start interview:", error);
       setStarted(false);
