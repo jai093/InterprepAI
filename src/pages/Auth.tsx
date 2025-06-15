@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -165,6 +164,7 @@ const Auth = () => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
+                    autoComplete="name"
                   />
                 </div>
               )}
@@ -177,6 +177,7 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
@@ -187,6 +188,7 @@ const Auth = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
                 />
               </div>
               {isSignUp && (
@@ -211,6 +213,7 @@ const Auth = () => {
                         placeholder="Acme Corp"
                         value={company}
                         onChange={(e) => setCompany(e.target.value)}
+                        autoComplete="organization"
                       />
                     </div>
                   )}
