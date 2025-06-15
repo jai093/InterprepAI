@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -32,21 +31,20 @@ export default function HrAssessmentsPage() {
   const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
 
-  // Normalize function to guarantee Assessment typing
+  // Normalizes Supabase result to the Assessment type
   function normalizeAssessment(raw: any): Assessment {
     return {
       id: raw.id,
       title: raw.title,
       created_at: raw.created_at,
       description: raw.description,
-      questions:
-        Array.isArray(raw.questions)
-          ? raw.questions
-          : typeof raw.questions === "string"
-            ? (() => {
-                try { return JSON.parse(raw.questions); } catch { return []; }
-              })()
-            : [],
+      questions: Array.isArray(raw.questions)
+        ? raw.questions
+        : typeof raw.questions === "string"
+          ? (() => {
+              try { return JSON.parse(raw.questions); } catch { return []; }
+            })()
+          : [],
     };
   }
 
@@ -54,12 +52,14 @@ export default function HrAssessmentsPage() {
     async function fetchAssessments() {
       if (!user) return;
       setLoading(true);
+      // Get the data as any[]
       const { data, error } = await supabase
         .from("assessments")
         .select("*")
         .eq("recruiter_id", user.id)
         .order("created_at", { ascending: false });
       if (!error && Array.isArray(data)) {
+        // Normalize each row to explicit Assessment type (not using generics or type inference here)
         setAssessments(data.map(normalizeAssessment));
       } else {
         setAssessments([]);
