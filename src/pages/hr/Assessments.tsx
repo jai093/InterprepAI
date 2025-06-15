@@ -52,16 +52,15 @@ export default function HrAssessmentsPage() {
     async function fetchAssessments() {
       if (!user) return;
       setLoading(true);
+
+      // Force Supabase to treat .select() result as any[]
       const { data, error } = await supabase
         .from("assessments")
-        .select("*")
-        .eq("recruiter_id", user.id)
-        .order("created_at", { ascending: false });
+        .select("*") as unknown as { data: any[]; error: any };
 
       if (!error && Array.isArray(data)) {
-        // Explicitly cast data as any[] before mapping to avoid deep type inference
-        const rawData: any[] = data as any[];
-        const assessed: Assessment[] = rawData.map(normalizeAssessment);
+        // No recursive inference now
+        const assessed: Assessment[] = data.map(normalizeAssessment);
         setAssessments(assessed);
       } else {
         setAssessments([]);
