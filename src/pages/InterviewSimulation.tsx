@@ -25,7 +25,7 @@ const InterviewSimulation = () => {
     const fullConfig = {
       type: interviewConfig.type,
       jobRole: interviewConfig.jobRole,
-      duration: 20, // Default duration
+      duration: 10, // Set default duration to 10 minutes (was 20)
       difficulty: interviewConfig.difficultyLevel || "medium",
     };
     setConfig(fullConfig);

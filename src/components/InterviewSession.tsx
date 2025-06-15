@@ -73,6 +73,9 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
     if (id) setSessionId(id);
   };
 
+  // Overwrite config.duration everywhere with 10 minutes for legacy safety
+  const activeDuration = 10;
+
   // Helper to generate mock feedback for demo purposes
   const generateMockFeedback = () => {
     return {
@@ -86,7 +89,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       language_used: "English",
       email_address: "demo@example.com",
       date: new Date().toLocaleString(),
-      duration: `${config.duration} min`,
+      duration: `${activeDuration} min`,
 
       // Evaluation criteria (0-100 scale)
       voice_modulation: 79,

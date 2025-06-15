@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Profile } from "@/components/Profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,8 +27,17 @@ const Dashboard = () => {
     averageScore, 
     lastInterviewDate,
     skillScores,
-    aiTips
+    aiTips,
+    refetch // <- make sure we keep refetch from useInterviewData()
   } = useInterviewData();
+
+  // NEW: Refetch when returning from simulation or after an interview
+  // (simplest way: use window focus)
+  useEffect(() => {
+    const onFocus = () => refetch();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refetch]);
 
   // Format interview data for chart
   const chartData = interviews.slice(0).reverse().map(interview => ({

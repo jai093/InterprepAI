@@ -124,12 +124,14 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
 
   // Utility to get value or fallback from interview data
   const getFieldValue = (fieldKey: string) => {
-    return interviewData[fieldKey] ?? ""; // fallback to empty string if not present
+    // Provide robust fallback for missing/undefined values
+    return typeof interviewData[fieldKey] !== "undefined" && interviewData[fieldKey] !== null
+      ? interviewData[fieldKey] : "--";
   };
 
   const renderDataFields = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 mb-5">
-      {DATA_FIELDS_MAP.filter(item => getFieldValue(item.key)).map(item => (
+      {DATA_FIELDS_MAP.map(item => (
         <div key={item.key}>
           <span className="text-sm font-semibold mr-1">{item.label}:</span>
           <span className="text-sm">{getFieldValue(item.key)}</span>
@@ -140,11 +142,10 @@ const FeedbackReport = ({ interviewData, onSave, onRestart, isSaving }: Feedback
 
   const renderCriteria = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {EVALUATION_CRITERIA_MAP.filter(crit => typeof interviewData[crit.key] !== "undefined")
-        .map(crit => (
+      {EVALUATION_CRITERIA_MAP.map(crit => (
         <div key={crit.key} className="bg-gray-50 rounded-xl border p-4 flex flex-col">
           <span className="font-semibold text-base mb-1">{crit.label}</span>
-          <span className="text-2xl font-mono text-indigo-700">{interviewData[crit.key] ?? "--"}%</span>
+          <span className="text-2xl font-mono text-indigo-700">{getFieldValue(crit.key)}%</span>
           <span className="text-xs text-gray-500 mt-1">{crit.description}</span>
         </div>
       ))}
