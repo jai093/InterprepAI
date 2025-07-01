@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -30,16 +29,22 @@ export default function HrAssessmentsPage() {
   const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
 
-  // Simplified normalizeAssessment function to avoid TypeScript complexity
-  function normalizeAssessment(raw: any): Assessment {
+  // Simplified normalizeAssessment function with explicit typing
+  function normalizeAssessment(raw: {
+    id: string;
+    title: string;
+    created_at: string;
+    description: string | null;
+    questions: any;
+  }): Assessment {
     let questions: string[] = [];
     
     if (Array.isArray(raw.questions)) {
-      questions = raw.questions;
+      questions = raw.questions as string[];
     } else if (typeof raw.questions === "string") {
       try {
         const parsed = JSON.parse(raw.questions);
-        questions = Array.isArray(parsed) ? parsed : [];
+        questions = Array.isArray(parsed) ? parsed as string[] : [];
       } catch {
         questions = [];
       }
@@ -49,7 +54,7 @@ export default function HrAssessmentsPage() {
       id: raw.id,
       title: raw.title,
       created_at: raw.created_at,
-      description: raw.description,
+      description: raw.description || "",
       questions: questions,
     };
   }
@@ -67,7 +72,20 @@ export default function HrAssessmentsPage() {
         if (error) throw error;
 
         if (data && Array.isArray(data)) {
-          const normalizedAssessments = data.map((item: any) => normalizeAssessment(item));
+          // Explicitly type the raw data and process it
+          const rawAssessments = data as Array<{
+            id: string;
+            title: string;
+            created_at: string;
+            description: string | null;
+            questions: any;
+          }>;
+          
+          const normalizedAssessments: Assessment[] = [];
+          for (const item of rawAssessments) {
+            normalizedAssessments.push(normalizeAssessment(item));
+          }
+          
           setAssessments(normalizedAssessments);
         } else {
           setAssessments([]);
