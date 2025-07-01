@@ -30,20 +30,27 @@ export default function HrAssessmentsPage() {
   const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
 
-  // Normalizes Supabase result to the Assessment type
+  // Simplified normalizeAssessment function to avoid TypeScript complexity
   function normalizeAssessment(raw: any): Assessment {
+    let questions: string[] = [];
+    
+    if (Array.isArray(raw.questions)) {
+      questions = raw.questions;
+    } else if (typeof raw.questions === "string") {
+      try {
+        const parsed = JSON.parse(raw.questions);
+        questions = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        questions = [];
+      }
+    }
+
     return {
       id: raw.id,
       title: raw.title,
       created_at: raw.created_at,
       description: raw.description,
-      questions: Array.isArray(raw.questions)
-        ? raw.questions
-        : typeof raw.questions === "string"
-          ? (() => {
-              try { return JSON.parse(raw.questions); } catch { return []; }
-            })()
-          : [],
+      questions: questions,
     };
   }
 
