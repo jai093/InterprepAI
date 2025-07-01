@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -5,7 +6,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/use-toast";
 
 type Assessment = {
   id: string;
@@ -18,6 +18,26 @@ type Assessment = {
 function getAssessmentLink(assessmentId: string, candidateId: string) {
   return `${window.location.origin}/candidate-interview/${candidateId}?a=${assessmentId}`;
 }
+
+// Simple toast function to avoid type complexity
+const showToast = (title: string, description?: string, variant?: 'default' | 'destructive') => {
+  // Simple console log for now to avoid type issues
+  console.log(`Toast: ${title}`, description);
+  
+  // You can implement a simple toast UI here if needed
+  const toastElement = document.createElement('div');
+  toastElement.className = `fixed top-4 right-4 p-4 rounded shadow-lg z-50 ${
+    variant === 'destructive' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+  }`;
+  toastElement.textContent = `${title}${description ? `: ${description}` : ''}`;
+  document.body.appendChild(toastElement);
+  
+  setTimeout(() => {
+    if (document.body.contains(toastElement)) {
+      document.body.removeChild(toastElement);
+    }
+  }, 3000);
+};
 
 export default function HrAssessmentsPage() {
   const [open, setOpen] = useState(false);
@@ -87,10 +107,7 @@ export default function HrAssessmentsPage() {
   const handleCopyLink = (assessmentId: string, candidateId: string) => {
     const url = getAssessmentLink(assessmentId, candidateId);
     navigator.clipboard.writeText(url);
-    toast({
-      title: "Assessment link copied!",
-      description: url,
-    });
+    showToast("Assessment link copied!", url);
   };
 
   async function resolveCandidateId(email: string) {
@@ -107,22 +124,14 @@ export default function HrAssessmentsPage() {
       if (error) throw error;
       
       if (!data) {
-        toast({
-          variant: "destructive",
-          title: "No user found with this email.",
-          description: "Double-check user exists and email is correct.",
-        });
+        showToast("No user found with this email.", "Double-check user exists and email is correct.", "destructive");
         return;
       }
       
       setCandidateResolvedId(data.id);
     } catch (error) {
       console.error("Error resolving candidate:", error);
-      toast({
-        variant: "destructive",
-        title: "Error finding candidate",
-        description: "Please try again.",
-      });
+      showToast("Error finding candidate", "Please try again.", "destructive");
     } finally {
       setResolving(false);
     }
