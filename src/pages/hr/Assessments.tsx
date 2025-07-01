@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -91,7 +90,7 @@ export default function HrAssessmentsPage() {
         if (error) throw error;
 
         if (data && Array.isArray(data)) {
-          const normalizedAssessments = data.map(item => normalizeAssessment(item));
+          const normalizedAssessments = (data as any[]).map((item: any) => normalizeAssessment(item));
           setAssessments(normalizedAssessments);
         } else {
           setAssessments([]);
@@ -131,7 +130,7 @@ export default function HrAssessmentsPage() {
         return;
       }
       
-      setCandidateResolvedId(response.data.id);
+      setCandidateResolvedId(response.data.id as string);
     } catch (error) {
       console.error("Error resolving candidate:", error);
       showToast("Error finding candidate", "Please try again.", "destructive");
@@ -160,7 +159,7 @@ export default function HrAssessmentsPage() {
         ) : (
           <div className="w-full">
             <ul className="space-y-4">
-              {assessments.map((a) => (
+              {(assessments as Assessment[]).map((a: Assessment) => (
                 <li key={a.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0">
                   <div>
                     <div className="text-lg font-semibold text-indigo-900">{a.title}</div>
@@ -240,4 +239,3 @@ export default function HrAssessmentsPage() {
     </div>
   );
 }
-
