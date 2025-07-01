@@ -6,7 +6,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/use-toast";
 
 type Assessment = {
   id: string;
@@ -14,6 +13,12 @@ type Assessment = {
   created_at: string;
   questions: string[];
   description: string;
+};
+
+// Simple toast wrapper to avoid deep type instantiation
+const showToast = (options: { title: string; description?: string; variant?: "default" | "destructive" }) => {
+  const { toast } = require("@/components/ui/use-toast");
+  toast(options);
 };
 
 function getAssessmentLink(assessmentId: string, candidateId: string) {
@@ -31,23 +36,21 @@ export default function HrAssessmentsPage() {
   const [resolving, setResolving] = useState(false);
 
   // Simplified normalizeAssessment function with explicit typing
-  function normalizeAssessment(raw: {
-    id: string;
-    title: string;
-    created_at: string;
-    description: string | null;
-    questions: any;
-  }): Assessment {
+  function normalizeAssessment(raw: any): Assessment {
     let questions: string[] = [];
     
-    if (Array.isArray(raw.questions)) {
-      questions = raw.questions as string[];
-    } else if (typeof raw.questions === "string") {
-      try {
-        const parsed = JSON.parse(raw.questions);
-        questions = Array.isArray(parsed) ? parsed as string[] : [];
-      } catch {
-        questions = [];
+    if (raw.questions) {
+      if (Array.isArray(raw.questions)) {
+        questions = raw.questions;
+      } else if (typeof raw.questions === "string") {
+        try {
+          const parsed = JSON.parse(raw.questions);
+          if (Array.isArray(parsed)) {
+            questions = parsed;
+          }
+        } catch {
+          // ignore parsing errors
+        }
       }
     }
 
@@ -73,20 +76,7 @@ export default function HrAssessmentsPage() {
         if (error) throw error;
 
         if (data && Array.isArray(data)) {
-          // Explicitly type the raw data and process it
-          const rawAssessments = data as Array<{
-            id: string;
-            title: string;
-            created_at: string;
-            description: string | null;
-            questions: any;
-          }>;
-          
-          const normalizedAssessments: Assessment[] = [];
-          for (const item of rawAssessments) {
-            normalizedAssessments.push(normalizeAssessment(item));
-          }
-          
+          const normalizedAssessments = data.map(item => normalizeAssessment(item));
           setAssessments(normalizedAssessments);
         } else {
           setAssessments([]);
@@ -103,10 +93,9 @@ export default function HrAssessmentsPage() {
   const handleCopyLink = (assessmentId: string, candidateId: string) => {
     const url = getAssessmentLink(assessmentId, candidateId);
     navigator.clipboard.writeText(url);
-    // Simplified toast call to avoid type inference issues
-    toast({
+    showToast({
       title: "Assessment link copied!",
-      description: String(url),
+      description: url,
     });
   };
 
@@ -124,9 +113,8 @@ export default function HrAssessmentsPage() {
       if (error) throw error;
       
       if (!data) {
-        // Simplified toast call
-        toast({
-          variant: "destructive" as const,
+        showToast({
+          variant: "destructive",
           title: "No user found with this email.",
           description: "Double-check user exists and email is correct.",
         });
@@ -136,9 +124,8 @@ export default function HrAssessmentsPage() {
       setCandidateResolvedId(data.id);
     } catch (error) {
       console.error("Error resolving candidate:", error);
-      // Simplified toast call
-      toast({
-        variant: "destructive" as const,
+      showToast({
+        variant: "destructive",
         title: "Error finding candidate",
         description: "Please try again.",
       });
