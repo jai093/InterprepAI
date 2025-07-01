@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 type Assessment = {
   id: string;
@@ -13,12 +14,6 @@ type Assessment = {
   created_at: string;
   questions: string[];
   description: string;
-};
-
-// Simple toast wrapper to avoid deep type instantiation
-const showToast = (options: { title: string; description?: string; variant?: "default" | "destructive" }) => {
-  const { toast } = require("@/components/ui/use-toast");
-  toast(options);
 };
 
 function getAssessmentLink(assessmentId: string, candidateId: string) {
@@ -93,7 +88,7 @@ export default function HrAssessmentsPage() {
   const handleCopyLink = (assessmentId: string, candidateId: string) => {
     const url = getAssessmentLink(assessmentId, candidateId);
     navigator.clipboard.writeText(url);
-    showToast({
+    toast({
       title: "Assessment link copied!",
       description: url,
     });
@@ -113,7 +108,7 @@ export default function HrAssessmentsPage() {
       if (error) throw error;
       
       if (!data) {
-        showToast({
+        toast({
           variant: "destructive",
           title: "No user found with this email.",
           description: "Double-check user exists and email is correct.",
@@ -124,7 +119,7 @@ export default function HrAssessmentsPage() {
       setCandidateResolvedId(data.id);
     } catch (error) {
       console.error("Error resolving candidate:", error);
-      showToast({
+      toast({
         variant: "destructive",
         title: "Error finding candidate",
         description: "Please try again.",
