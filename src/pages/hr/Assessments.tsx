@@ -115,22 +115,25 @@ export default function HrAssessmentsPage() {
     setCandidateResolvedId(null);
     
     try {
-      const response = await supabase
+      // Simplified query to avoid deep type inference
+      const query = await supabase
         .from("profiles")
         .select("id")
         .eq("email", email)
         .maybeSingle();
         
-      if (response.error) {
-        throw response.error;
+      if (query.error) {
+        throw query.error;
       }
       
-      if (!response.data) {
+      if (!query.data) {
         showToast("No user found with this email.", "Double-check user exists and email is correct.", "destructive");
         return;
       }
       
-      setCandidateResolvedId(response.data.id as string);
+      // Explicit type casting to avoid deep inference
+      const userId = query.data.id;
+      setCandidateResolvedId(String(userId));
     } catch (error) {
       console.error("Error resolving candidate:", error);
       showToast("Error finding candidate", "Please try again.", "destructive");
