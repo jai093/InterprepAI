@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -102,9 +103,10 @@ export default function HrAssessmentsPage() {
   const handleCopyLink = (assessmentId: string, candidateId: string) => {
     const url = getAssessmentLink(assessmentId, candidateId);
     navigator.clipboard.writeText(url);
+    // Simplified toast call to avoid type inference issues
     toast({
       title: "Assessment link copied!",
-      description: url,
+      description: String(url),
     });
   };
 
@@ -122,8 +124,9 @@ export default function HrAssessmentsPage() {
       if (error) throw error;
       
       if (!data) {
+        // Simplified toast call
         toast({
-          variant: "destructive",
+          variant: "destructive" as const,
           title: "No user found with this email.",
           description: "Double-check user exists and email is correct.",
         });
@@ -133,8 +136,9 @@ export default function HrAssessmentsPage() {
       setCandidateResolvedId(data.id);
     } catch (error) {
       console.error("Error resolving candidate:", error);
+      // Simplified toast call
       toast({
-        variant: "destructive",
+        variant: "destructive" as const,
         title: "Error finding candidate",
         description: "Please try again.",
       });
