@@ -1,44 +1,62 @@
 
-// Updated branding and added "Assessments" to nav, fixed URLs
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Mail, 
+  Settings, 
+  FileText,
+  User
+} from "lucide-react";
 
-import { Briefcase, Users, Settings, FileText } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-
-const navItems = [
-  { label: "Candidates", icon: Users, to: "/hr" },
-  { label: "Assessments", icon: FileText, to: "/hr/assessments" },
-  { label: "Invites", icon: Briefcase, to: "/hr/invites" },
-  { label: "Settings", icon: Settings, to: "/hr/settings" },
+const navigation = [
+  { name: "Dashboard", href: "/hr", icon: LayoutDashboard },
+  { name: "Assessments", href: "/hr/assessments", icon: FileText },
+  { name: "Invites", href: "/hr/invites", icon: Mail },
+  { name: "Profile", href: "/hr/profile", icon: User },
+  { name: "Settings", href: "/hr/settings", icon: Settings },
 ];
 
 export function HrSidebar() {
   const location = useLocation();
+
   return (
-    <aside className="bg-gradient-to-b from-indigo-900 to-indigo-800 text-white w-56 min-h-screen flex-shrink-0 hidden md:flex flex-col shadow-xl">
-      <div className="p-6 text-2xl font-black tracking-tight mb-8">
-        <span className="text-white">InterprepAI </span>
-        <span className="text-indigo-300">HR</span>
+    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+      <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 overflow-y-auto">
+        <div className="flex items-center flex-shrink-0 px-4">
+          <h2 className="text-xl font-bold text-indigo-900">InterprepAI HR</h2>
+        </div>
+        <div className="mt-8 flex-grow flex flex-col">
+          <nav className="flex-1 px-2 pb-4 space-y-1">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    isActive
+                      ? "bg-indigo-100 text-indigo-900"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    "group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      isActive ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500",
+                      "mr-3 flex-shrink-0 h-5 w-5"
+                    )}
+                    aria-hidden="true"
+                  />
+                  {item.name}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
       </div>
-      <nav className="flex flex-col gap-2">
-        {navItems.map(({ label, icon: Icon, to }) => (
-          <Link
-            key={label}
-            to={to}
-            className={`flex items-center gap-3 px-6 py-2 text-lg rounded-l-full transition font-medium ${
-              location.pathname === to
-                ? "bg-indigo-700 shadow"
-                : "hover:bg-indigo-600/60"
-            }`}
-          >
-            <Icon className="w-5 h-5" />
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <div className="flex-grow" />
-      <div className="p-4 text-sm text-indigo-300">
-        <span>&copy; 2025 InterprepAI HR</span>
-      </div>
-    </aside>
+    </div>
   );
 }

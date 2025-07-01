@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -11,7 +12,7 @@ type Assessment = {
   id: string;
   title: string;
   created_at: string;
-  questions: string[]; // fix type here: use string[] (or any[] if structure varies a lot)
+  questions: string[];
   description: string;
 };
 
@@ -22,11 +23,9 @@ function getAssessmentLink(assessmentId: string, candidateId: string) {
 export default function HrAssessmentsPage() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Change to any[] while fetching, will cast later
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const { user } = useAuth();
   const [candidateDialog, setCandidateDialog] = useState<{show: boolean, assessmentId?: string}>({show: false});
-  const [candidateId, setCandidateId] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidateResolvedId, setCandidateResolvedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
@@ -53,16 +52,21 @@ export default function HrAssessmentsPage() {
       if (!user) return;
       setLoading(true);
 
-      // Force Supabase to treat .select() result as any[]
-      const { data, error } = await supabase
-        .from("assessments")
-        .select("*") as unknown as { data: any[]; error: any };
+      try {
+        const { data, error } = await supabase
+          .from("assessments")
+          .select("*");
 
-      if (!error && Array.isArray(data)) {
-        // No recursive inference now
-        const assessed: Assessment[] = data.map(normalizeAssessment);
-        setAssessments(assessed);
-      } else {
+        if (error) throw error;
+
+        if (data && Array.isArray(data)) {
+          const normalizedAssessments = data.map((item: any) => normalizeAssessment(item));
+          setAssessments(normalizedAssessments);
+        } else {
+          setAssessments([]);
+        }
+      } catch (error) {
+        console.error("Error fetching assessments:", error);
         setAssessments([]);
       }
       setLoading(false);
@@ -82,21 +86,36 @@ export default function HrAssessmentsPage() {
   async function resolveCandidateId(email: string) {
     setResolving(true);
     setCandidateResolvedId(null);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    setResolving(false);
-    if (error || !data) {
+    
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+        
+      if (error) throw error;
+      
+      if (!data) {
+        toast({
+          variant: "destructive",
+          title: "No user found with this email.",
+          description: "Double-check user exists and email is correct.",
+        });
+        return;
+      }
+      
+      setCandidateResolvedId(data.id);
+    } catch (error) {
+      console.error("Error resolving candidate:", error);
       toast({
         variant: "destructive",
-        title: "No user found with this email.",
-        description: "Double-check user exists and email is correct.",
+        title: "Error finding candidate",
+        description: "Please try again.",
       });
-      return;
+    } finally {
+      setResolving(false);
     }
-    setCandidateResolvedId(data.id);
   }
 
   return (

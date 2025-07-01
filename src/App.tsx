@@ -1,3 +1,4 @@
+
 import { Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -13,6 +14,7 @@ import CandidateInterview from "./pages/CandidateInterview";
 import InvitesPage from "./pages/hr/Invites";
 import HRSettingsPage from "./pages/hr/Settings";
 import HrAssessmentsPage from "./pages/hr/Assessments";
+import HrProfilePage from "./pages/hr/Profile";
 
 function App() {
   return (
@@ -31,6 +33,7 @@ function App() {
       <Route path="/hr/invites" element={<InvitesPage />} />
       <Route path="/hr/settings" element={<HRSettingsPage />} />
       <Route path="/hr/assessments" element={<HrAssessmentsPage />} />
+      <Route path="/hr/profile" element={<HrProfilePage />} />
       <Route path="/candidate-interview/:candidateId" element={<CandidateInterview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
