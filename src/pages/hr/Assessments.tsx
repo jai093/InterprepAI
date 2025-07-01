@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -115,20 +116,22 @@ export default function HrAssessmentsPage() {
     setCandidateResolvedId(null);
     
     try {
-      const { data, error } = await supabase
+      const response = await supabase
         .from("profiles")
         .select("id")
         .eq("email", email)
         .maybeSingle();
         
-      if (error) throw error;
+      if (response.error) {
+        throw response.error;
+      }
       
-      if (!data) {
+      if (!response.data) {
         showToast("No user found with this email.", "Double-check user exists and email is correct.", "destructive");
         return;
       }
       
-      setCandidateResolvedId(data.id);
+      setCandidateResolvedId(response.data.id);
     } catch (error) {
       console.error("Error resolving candidate:", error);
       showToast("Error finding candidate", "Please try again.", "destructive");
@@ -237,3 +240,4 @@ export default function HrAssessmentsPage() {
     </div>
   );
 }
+
