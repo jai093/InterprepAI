@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
@@ -6,7 +5,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 type Assessment = {
   id: string;
