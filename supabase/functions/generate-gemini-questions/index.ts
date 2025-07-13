@@ -17,16 +17,35 @@ serve(async (req: Request) => {
 
   try {
     const { role, language, skills, level } = await req.json();
+    
+    console.log("Received request:", { role, language, skills, level });
 
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    // Create unique questions by including timestamp and random seed
+    const timestamp = Date.now();
+    const randomSeed = Math.floor(Math.random() * 1000);
+    
     const prompt = `
-      You are an HR assistant. I am preparing an interview for a candidate. Please generate 5 concise, high-quality and non-repetitive technical interview questions in ${language} for the role "${role}" (${level}), focusing on the following skills: ${skills.join(", ")}.
-      DO NOT preface your response, just return a plain numbered array (no explanations).
-      Example output: 
-      1. ...
-      2. ...
-      3. ...
-      4. ...
-      5. ...
+      You are an expert HR interviewer. Generate 5 UNIQUE, DIVERSE, and CHALLENGING technical interview questions in ${language} for a "${role}" position at ${level} level, focusing on these skills: ${skills.join(", ")}.
+      
+      IMPORTANT: Make each question DIFFERENT from typical interview questions. Be creative and test real-world problem-solving.
+      
+      Requirements:
+      - Each question should test a different aspect of the skills
+      - Include scenario-based questions, not just definitions
+      - Make questions progressive from basic to advanced
+      - Avoid generic "tell me about" questions
+      - Current timestamp: ${timestamp}, seed: ${randomSeed}
+      
+      Return ONLY the numbered questions, no other text:
+      1. [question]
+      2. [question]
+      3. [question]
+      4. [question]
+      5. [question]
     `;
 
     // Gemini API call (text-only model, suitable for interview Qs)
@@ -37,12 +56,30 @@ serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [
-          { role: "user", parts: [{ text: prompt }] }
-        ]
+          { 
+            role: "user", 
+            parts: [{ text: prompt }] 
+          }
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        }
       }),
     });
 
+    console.log("Gemini response status:", geminiResponse.status);
+    
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error("Gemini API error:", errorText);
+      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
+    }
+
     const raw = await geminiResponse.json();
+    console.log("Gemini raw response:", JSON.stringify(raw, null, 2));
     let text = "";
 
     // Extract the actual response text
@@ -64,8 +101,12 @@ serve(async (req: Request) => {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    console.error("Error in generate-gemini-questions:", error);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: "Check edge function logs for more information"
+    }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
