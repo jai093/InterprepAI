@@ -111,15 +111,37 @@ export default function InvitesPage() {
     }
 
     try {
-      // First, find the candidate profile by email
-      let { data: candidateData, error: candidateError } = await supabase
+      // First, check if current user is a recruiter
+      const { data: recruiterData, error: recruiterError } = await supabase
+        .from("recruiters")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (recruiterError || !recruiterData) {
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "Only recruiters can send assessment invites",
+        });
+        return;
+      }
+
+      // Find the candidate profile by email
+      const { data: candidateData, error: candidateError } = await supabase
         .from("profiles")
         .select("id, email, full_name")
         .eq("email", candidateEmail)
-        .single();
+        .maybeSingle();
 
-      if (candidateError && candidateError.code !== 'PGRST116') {
-        throw candidateError;
+      if (candidateError) {
+        console.error("Candidate search error:", candidateError);
+        toast({
+          variant: "destructive",
+          title: "Search Error",
+          description: "Failed to search for candidate profile",
+        });
+        return;
       }
 
       if (!candidateData) {
@@ -145,7 +167,15 @@ export default function InvitesPage() {
           status: "sent"
         });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error("Invite creation error:", inviteError);
+        toast({
+          variant: "destructive",
+          title: "Failed to create invite",
+          description: inviteError.message || "Could not create assessment invitation",
+        });
+        return;
+      }
 
       toast({
         title: "Invite Sent",
