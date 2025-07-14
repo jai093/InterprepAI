@@ -73,25 +73,26 @@ export function HrCandidateTable({ recruiterId }: { recruiterId: string }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Shortlisted Candidates</h2>
+    <div className="bg-white rounded-xl shadow p-4 md:p-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+        <h2 className="text-lg md:text-xl font-bold">Shortlisted Candidates</h2>
         <span className="text-xs text-gray-500">{candidates.length} found</span>
       </div>
       {loading ? (
         <div className="text-center text-gray-400 py-10">Loading...</div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Resume</TableHead>
-              <TableHead>Invite</TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[150px]">Name</TableHead>
+                <TableHead className="min-w-[200px]">Email</TableHead>
+                <TableHead className="min-w-[80px]">Score</TableHead>
+                <TableHead className="min-w-[100px]">Status</TableHead>
+                <TableHead className="min-w-[100px]">Resume</TableHead>
+                <TableHead className="min-w-[100px]">Invite</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {candidates.length === 0 ? (
               <TableRow>
@@ -105,19 +106,19 @@ export function HrCandidateTable({ recruiterId }: { recruiterId: string }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {candidate.avatar_url ? (
-                        <img src={candidate.avatar_url} alt="" className="w-9 h-9 rounded-full border" />
+                        <img src={candidate.avatar_url} alt="" className="w-8 h-8 md:w-9 md:h-9 rounded-full border flex-shrink-0" />
                       ) : (
-                        <span className="inline-block w-9 h-9 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center text-lg font-bold">
+                        <span className="inline-block w-8 h-8 md:w-9 md:h-9 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center text-sm md:text-lg font-bold flex-shrink-0">
                           {(candidate.full_name || candidate.email || "?")[0]}
                         </span>
                       )}
-                      <span>{candidate.full_name || "Candidate"}</span>
+                      <span className="truncate text-sm md:text-base">{candidate.full_name || "Candidate"}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{candidate.email}</TableCell>
-                  <TableCell>{candidate.score ?? "-"}</TableCell>
+                  <TableCell className="text-sm md:text-base truncate max-w-[200px]">{candidate.email}</TableCell>
+                  <TableCell className="text-sm md:text-base">{candidate.score ?? "-"}</TableCell>
                   <TableCell>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
                       candidate.status === "invited"
                         ? "bg-indigo-100 text-indigo-800"
                         : candidate.status === "completed"
@@ -129,23 +130,24 @@ export function HrCandidateTable({ recruiterId }: { recruiterId: string }) {
                   </TableCell>
                   <TableCell>
                     {candidate.resume_url ? (
-                      <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 flex items-center gap-1">
-                        <Download className="w-4 h-4" /> Resume
+                      <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 flex items-center gap-1 text-sm">
+                        <Download className="w-4 h-4" /> <span className="hidden md:inline">Resume</span>
                       </a>
                     ) : (
                       "-"
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button className="bg-indigo-700 hover:bg-indigo-800 text-xs py-1 px-3" onClick={() => sendInvite(candidate.id)}>
-                      <Mail className="w-4 h-4 mr-1" /> Invite
+                    <Button className="bg-indigo-700 hover:bg-indigo-800 text-xs py-1 px-2 md:px-3" onClick={() => sendInvite(candidate.id)}>
+                      <Mail className="w-4 h-4 md:mr-1" /> <span className="hidden md:inline">Invite</span>
                     </Button>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       )}
     </div>
   );

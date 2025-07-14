@@ -18,16 +18,18 @@ export default function HrDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <HrSidebar />
-      <main className="flex-1 flex flex-col p-8 md:p-12 overflow-y-auto ml-0 md:ml-0">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
+      <main className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 overflow-y-auto md:ml-64">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
             InterprepAI HR Dashboard
           </h1>
-          <div className="text-gray-500 text-lg">
+          <div className="text-gray-500 text-sm md:text-base lg:text-lg">
             View and manage your shortlisted/interviewed candidates
           </div>
         </div>
-        <HrCandidateTable recruiterId={user.id} />
+        <div className="overflow-x-auto">
+          <HrCandidateTable recruiterId={user.id} />
+        </div>
       </main>
     </div>
   );

@@ -23,10 +23,10 @@ export function HrSidebar() {
   const location = useLocation();
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+    <div className="md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-10">
       <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 overflow-y-auto">
         <div className="flex items-center flex-shrink-0 px-4">
-          <h2 className="text-xl font-bold text-indigo-900">InterprepAI HR</h2>
+          <h2 className="text-lg md:text-xl font-bold text-indigo-900">InterprepAI HR</h2>
         </div>
         <div className="mt-8 flex-grow flex flex-col">
           <nav className="flex-1 px-2 pb-4 space-y-1">
@@ -50,7 +50,7 @@ export function HrSidebar() {
                     )}
                     aria-hidden="true"
                   />
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
                 </NavLink>
               );
             })}
