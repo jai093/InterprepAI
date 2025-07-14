@@ -111,11 +111,11 @@ export default function InvitesPage() {
     }
 
     try {
-      // First, find or create the candidate profile
+      // First, find the candidate profile by email
       let { data: candidateData, error: candidateError } = await supabase
         .from("profiles")
-        .select("id")
-        .eq("id", candidateEmail)
+        .select("id, email, full_name")
+        .eq("email", candidateEmail)
         .single();
 
       if (candidateError && candidateError.code !== 'PGRST116') {
@@ -123,12 +123,10 @@ export default function InvitesPage() {
       }
 
       if (!candidateData) {
-        // For now, we'll use email as a placeholder ID
-        // In a real app, you'd want to create a proper invitation system
         toast({
           variant: "destructive",
-          title: "Candidate Not Found",
-          description: "The candidate must have an account on the platform first",
+          title: "No user found with this email!",
+          description: "Double-check user exists and email is correct.",
         });
         return;
       }
