@@ -1,6 +1,8 @@
 
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import FeatureCard from "@/components/FeatureCard";
@@ -8,6 +10,25 @@ import CallToAction from "@/components/CallToAction";
 import Footer from "@/components/Footer";
 
 const Index = () => {
+  const { user, isHR, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to their appropriate dashboard
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (isHR) {
+        navigate("/hr");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, isHR, isLoading, navigate]);
+
+  // Don't render the landing page if user is authenticated
+  if (!isLoading && user) {
+    return null;
+  }
+
   // Icons for feature cards
   const VideoIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">

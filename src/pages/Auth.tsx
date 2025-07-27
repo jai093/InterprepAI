@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -20,6 +21,18 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, isHR: userIsHR, checkUserRole } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !isLoading) {
+      if (userIsHR) {
+        navigate("/hr");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, userIsHR, navigate, isLoading]);
   
   // Check for verification token in the URL
   useEffect(() => {
@@ -59,7 +72,19 @@ const Auth = () => {
         description: "You are now signed in.",
       });
       
-      navigate('/dashboard');
+      // Check user role and redirect appropriately
+      await checkUserRole();
+      const { data: recruiterData } = await supabase
+        .from("recruiters")
+        .select("id")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      
+      if (recruiterData) {
+        navigate('/hr');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error("Error setting session:", error);
       toast({
@@ -95,26 +120,37 @@ const Auth = () => {
 
         // If user signed up as HR, create recruiter profile
         if (isHr && data?.user) {
-          const newRecruiter = {
-            id: data.user.id,
-            name: fullName,
-            email: email,
-            company: company ? company : null,
-          };
-          // Insert into recruiters table
-          const { error: recruiterError } = await supabase
-            .from("recruiters")
-            .insert([newRecruiter]);
-          if (recruiterError) {
+          try {
+            const newRecruiter = {
+              id: data.user.id,
+              name: fullName,
+              email: email,
+              company: company || null,
+            };
+            
+            const { error: recruiterError } = await supabase
+              .from("recruiters")
+              .insert([newRecruiter]);
+              
+            if (recruiterError) {
+              console.error("Recruiter creation error:", recruiterError);
+              toast({
+                title: "HR profile error",
+                description: recruiterError.message,
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "HR account created!",
+                description: "Your HR dashboard will be ready after verifying your email.",
+              });
+            }
+          } catch (error) {
+            console.error("Error creating HR profile:", error);
             toast({
-              title: "HR profile error",
-              description: recruiterError.message,
+              title: "HR profile error", 
+              description: "Failed to create HR profile. Please contact support.",
               variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "HR account created!",
-              description: "Your HR dashboard will be ready after verifying your email.",
             });
           }
         }
@@ -127,16 +163,30 @@ const Auth = () => {
         if (error) throw error;
 
         // Check if user is HR after login and redirect appropriately
-        // Query recruiter table for current user
-        const { data: recruiterData } = await supabase
-          .from("recruiters")
-          .select("id")
-          .eq("id", data?.user.id)
-          .single();
+        try {
+          await checkUserRole();
+          const { data: recruiterData } = await supabase
+            .from("recruiters")
+            .select("id")
+            .eq("id", data?.user.id)
+            .maybeSingle();
 
-        if (recruiterData) {
-          navigate("/hr");
-        } else {
+          if (recruiterData) {
+            toast({
+              title: "Welcome back!",
+              description: "Redirecting to HR dashboard...",
+            });
+            navigate("/hr");
+          } else {
+            toast({
+              title: "Welcome back!",
+              description: "Redirecting to your dashboard...",
+            });
+            navigate("/dashboard");
+          }
+        } catch (error) {
+          console.error("Error checking user role:", error);
+          // Default to regular dashboard if role check fails
           navigate("/dashboard");
         }
       }

@@ -15,26 +15,87 @@ import InvitesPage from "./pages/hr/Invites";
 import HRSettingsPage from "./pages/hr/Settings";
 import HrAssessmentsPage from "./pages/hr/Assessments";
 import HrProfilePage from "./pages/hr/Profile";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/interview" element={<InterviewSimulation />} />
-      <Route path="/simulation" element={<InterviewSimulation />} />
-      <Route path="/start-practice" element={<InterviewSimulation />} />
-      <Route path="/practice" element={<InterviewSimulation />} />
-      <Route path="/meetups" element={<Meetups />} />
-      <Route path="/batch-calls" element={<BatchCalls />} />
-      <Route path="/meetup/:id" element={<MeetupDetails />} />
-      <Route path="/hr" element={<HrDashboard />} />
-      <Route path="/hr/invites" element={<InvitesPage />} />
-      <Route path="/hr/settings" element={<HRSettingsPage />} />
-      <Route path="/hr/assessments" element={<HrAssessmentsPage />} />
-      <Route path="/hr/profile" element={<HrProfilePage />} />
-      <Route path="/candidate-interview/:candidateId" element={<CandidateInterview />} />
+      
+      {/* Candidate Routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute requireCandidate={true}>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/interview" element={
+        <ProtectedRoute requireCandidate={true}>
+          <InterviewSimulation />
+        </ProtectedRoute>
+      } />
+      <Route path="/simulation" element={
+        <ProtectedRoute requireCandidate={true}>
+          <InterviewSimulation />
+        </ProtectedRoute>
+      } />
+      <Route path="/start-practice" element={
+        <ProtectedRoute requireCandidate={true}>
+          <InterviewSimulation />
+        </ProtectedRoute>
+      } />
+      <Route path="/practice" element={
+        <ProtectedRoute requireCandidate={true}>
+          <InterviewSimulation />
+        </ProtectedRoute>
+      } />
+      <Route path="/meetups" element={
+        <ProtectedRoute>
+          <Meetups />
+        </ProtectedRoute>
+      } />
+      <Route path="/batch-calls" element={
+        <ProtectedRoute>
+          <BatchCalls />
+        </ProtectedRoute>
+      } />
+      <Route path="/meetup/:id" element={
+        <ProtectedRoute>
+          <MeetupDetails />
+        </ProtectedRoute>
+      } />
+      
+      {/* HR Routes */}
+      <Route path="/hr" element={
+        <ProtectedRoute requireHR={true}>
+          <HrDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/hr/invites" element={
+        <ProtectedRoute requireHR={true}>
+          <InvitesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/hr/settings" element={
+        <ProtectedRoute requireHR={true}>
+          <HRSettingsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/hr/assessments" element={
+        <ProtectedRoute requireHR={true}>
+          <HrAssessmentsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/hr/profile" element={
+        <ProtectedRoute requireHR={true}>
+          <HrProfilePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/candidate-interview/:candidateId" element={
+        <ProtectedRoute>
+          <CandidateInterview />
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
