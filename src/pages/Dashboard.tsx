@@ -93,22 +93,22 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-8">Dashboard</h1>
+    <div className="container mx-auto py-4 px-4 sm:py-8 min-h-screen">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8">Dashboard</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-8">
-            <TabsList className="grid grid-cols-3 mb-6">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="progress">Progress</TabsTrigger>
-              <TabsTrigger value="tips">AI Tips</TabsTrigger>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+        <div className="lg:col-span-2">
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-4 sm:mb-8">
+            <TabsList className="grid grid-cols-3 mb-4 sm:mb-6 w-full">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="progress" className="text-xs sm:text-sm">Progress</TabsTrigger>
+              <TabsTrigger value="tips" className="text-xs sm:text-sm">AI Tips</TabsTrigger>
             </TabsList>
             
             {renderContent()}
 
             <TabsContent value="overview" className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center">

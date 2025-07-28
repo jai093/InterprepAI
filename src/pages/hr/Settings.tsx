@@ -225,13 +225,13 @@ export default function HRSettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-gray-600">Manage your HR profile and platform preferences</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Settings</h1>
+        <p className="text-sm sm:text-base text-gray-600">Manage your HR profile and platform preferences</p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Profile Information */}
         <Card>
           <CardHeader>
@@ -241,7 +241,7 @@ export default function HRSettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Full Name</Label>
                 <Input

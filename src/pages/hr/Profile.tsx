@@ -17,7 +17,7 @@ export default function HrProfilePage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <HrSidebar />
-      <main className="flex-1 flex flex-col p-8 md:p-12 overflow-y-auto ml-0 md:ml-0">
+      <main className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 overflow-y-auto lg:ml-64">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
             HR Profile

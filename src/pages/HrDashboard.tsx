@@ -18,7 +18,7 @@ export default function HrDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <HrSidebar />
-      <main className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 overflow-y-auto md:ml-64">
+      <main className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 overflow-y-auto lg:ml-64">
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
             InterprepAI HR Dashboard

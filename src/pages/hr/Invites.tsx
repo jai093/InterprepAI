@@ -127,11 +127,11 @@ export default function InvitesPage() {
         return;
       }
 
-      // Find the candidate profile by email
+      // Find the candidate profile by email - check if profile exists with this email
       const { data: candidateData, error: candidateError } = await supabase
         .from("profiles")
         .select("id, email, full_name")
-        .eq("email", candidateEmail)
+        .eq("email", candidateEmail.trim().toLowerCase())
         .maybeSingle();
 
       if (candidateError) {
@@ -147,8 +147,8 @@ export default function InvitesPage() {
       if (!candidateData) {
         toast({
           variant: "destructive",
-          title: "No user found with this email!",
-          description: "Double-check user exists and email is correct.",
+          title: "Candidate Not Found",
+          description: "No registered candidate found with this email. Please ask them to sign up first as a candidate.",
         });
         return;
       }
@@ -219,11 +219,11 @@ export default function InvitesPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Interview Invites</h1>
-          <p className="text-gray-600">Manage assessment invitations sent to candidates</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Interview Invites</h1>
+          <p className="text-sm sm:text-base text-gray-600">Manage assessment invitations sent to candidates</p>
         </div>
         <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
           <DialogTrigger asChild>

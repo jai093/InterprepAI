@@ -24,7 +24,7 @@ export function HrSidebar() {
   const location = useLocation();
 
   return (
-    <div className="md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-10">
+    <div className="flex md:w-64 flex-col fixed inset-y-0 z-10 transform transition-transform duration-300 ease-in-out lg:translate-x-0">
       <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 overflow-y-auto">
         <div className="flex items-center flex-shrink-0 px-4">
           <h2 className="text-lg md:text-xl font-bold text-indigo-900">InterprepAI HR</h2>

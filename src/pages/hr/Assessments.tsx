@@ -138,11 +138,11 @@ export default function HrAssessmentsPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Assessments</h1>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold">Assessments</h1>
         <Button
-          className="bg-indigo-700 hover:bg-indigo-800 text-white flex items-center gap-2 px-4 py-2"
+          className="bg-indigo-700 hover:bg-indigo-800 text-white flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base w-full sm:w-auto"
           onClick={() => setOpen(true)}
         >
           <Plus className="w-4 h-4" />
