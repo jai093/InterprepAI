@@ -12,10 +12,6 @@ export default function StepAssessmentType({ value, onNext, onBack }:
           <span className="font-bold text-lg">AI Assisted (recommended)</span><br />
           <span className="text-xs text-indigo-100">Auto-generate competency-based questions</span>
         </Button>
-        <Button className="w-full py-5 opacity-60 cursor-not-allowed" disabled>
-          <span className="font-bold text-lg">Customized Question Set</span><br />
-          <span className="text-xs">Coming soon</span>
-        </Button>
       </div>
       <div className="flex justify-between">
         <Button variant="ghost" onClick={onBack}>Back</Button>

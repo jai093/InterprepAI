@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
 
-const LANGUAGE_OPTIONS = ["English", "Hindi", "Spanish", "French"];
+const LANGUAGE_OPTIONS = ["English"];
 const ACCENT_OPTIONS = ["Neutral", "Indian", "American", "British"];
 
 export default function StepInterviewer({ value, onNext, onBack }: {

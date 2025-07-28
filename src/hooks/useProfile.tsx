@@ -30,7 +30,7 @@ export const useProfile = () => {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         toast({
@@ -54,7 +54,7 @@ export const useProfile = () => {
         .update(updates)
         .eq('id', user.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

@@ -128,6 +128,89 @@ export default function HRSettingsPage() {
     });
   };
 
+  const exportData = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch all relevant data for the recruiter
+      const [assessmentsData, invitesData, profileData] = await Promise.all([
+        supabase.from("assessments").select("*").eq("recruiter_id", user.id),
+        supabase.from("assessment_invites").select("*, assessments(*), profiles(full_name, email)").eq("recruiter_id", user.id),
+        supabase.from("recruiters").select("*").eq("id", user.id).single()
+      ]);
+
+      const exportData = {
+        profile: profileData.data,
+        assessments: assessmentsData.data || [],
+        invites: invitesData.data || [],
+        exportDate: new Date().toISOString()
+      };
+
+      // Convert to CSV format
+      const csvContent = [
+        ["Type", "Data"],
+        ["Profile", JSON.stringify(exportData.profile)],
+        ["Total Assessments", exportData.assessments.length.toString()],
+        ["Total Invites", exportData.invites.length.toString()],
+        ["Export Date", exportData.exportDate]
+      ].map(row => row.join(",")).join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hr-data-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Data Exported",
+        description: "Your data has been exported to CSV file",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "Failed to export data",
+      });
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!user) return;
+    
+    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // Delete all related data first
+      await Promise.all([
+        supabase.from("assessment_invites").delete().eq("recruiter_id", user.id),
+        supabase.from("assessments").delete().eq("recruiter_id", user.id),
+        supabase.from("recruiters").delete().eq("id", user.id)
+      ]);
+
+      // Sign out and redirect
+      await supabase.auth.signOut();
+      window.location.href = "/";
+      
+      toast({
+        title: "Account Deleted",
+        description: "Your account and all data have been permanently deleted",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: "Failed to delete account",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -300,10 +383,10 @@ export default function HRSettingsPage() {
             </div>
             <Separator className="my-4" />
             <div className="space-y-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={exportData}>
                 Export Data
               </Button>
-              <Button variant="outline" size="sm" className="ml-2">
+              <Button variant="destructive" size="sm" className="ml-2" onClick={deleteAccount}>
                 Delete Account
               </Button>
             </div>
