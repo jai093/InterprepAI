@@ -80,7 +80,7 @@ export const Profile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ensure we save the email as well
+    // Ensure we save the email as well - always update email from auth
     updateProfile.mutate({
       full_name: fullName,
       phone_number: phoneNumber,

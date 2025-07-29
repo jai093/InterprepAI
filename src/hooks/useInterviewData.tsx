@@ -40,6 +40,17 @@ export interface InterviewSession {
   transcript?: string;
   feedback?: string;
   video_url?: string;
+  // Database fields for skill calculations
+  voice_modulation?: number;
+  body_language?: number;
+  problem_solving?: number;
+  communication_style?: number;
+  example_usage?: number;
+  tone_language?: number;
+  structure?: number;
+  confidence?: number;
+  relevance?: number;
+  clarity?: number;
 }
 
 export const useInterviewData = () => {
@@ -116,13 +127,19 @@ export const useInterviewData = () => {
       bodyLanguage: 0
     };
 
-    // Calculate average scores across all interviews
+    // Calculate average scores using actual database columns for more accurate data
+    const avgCommunication = interviews.reduce((sum, i) => sum + (i.communication_style || 0), 0) / interviews.length;
+    const avgTechnical = interviews.reduce((sum, i) => sum + (i.clarity || 0), 0) / interviews.length;
+    const avgProblemSolving = interviews.reduce((sum, i) => sum + (i.problem_solving || 0), 0) / interviews.length;
+    const avgConfidence = interviews.reduce((sum, i) => sum + (i.confidence || 0), 0) / interviews.length;
+    const avgBodyLanguage = interviews.reduce((sum, i) => sum + (i.body_language || 0), 0) / interviews.length;
+    
     return {
-      communication: calculateAverageSkill('voice_analysis', 'clarity'),
-      technicalKnowledge: calculateAverageSkill('voice_analysis', 'tone'),
-      problemSolving: calculateAverageSkill('voice_analysis', 'pace'),
-      confidence: calculateAverageSkill('voice_analysis', 'confidence'),
-      bodyLanguage: calculateAverageSkill('body_analysis', 'posture')
+      communication: Math.round(avgCommunication) || 0,
+      technicalKnowledge: Math.round(avgTechnical) || 0,
+      problemSolving: Math.round(avgProblemSolving) || 0,
+      confidence: Math.round(avgConfidence) || 0,
+      bodyLanguage: Math.round(avgBodyLanguage) || 0
     };
   };
 
@@ -130,6 +147,14 @@ export const useInterviewData = () => {
     if (!interviews || interviews.length === 0) return 0;
     
     const total = interviews.reduce((sum, interview) => {
+      // Try to get from the specific columns first, then from analysis objects
+      if (analysisType === 'voice_analysis' && metric === 'clarity' && typeof interview.clarity === 'number') {
+        return sum + interview.clarity;
+      }
+      if (analysisType === 'voice_analysis' && metric === 'confidence' && typeof interview.confidence === 'number') {
+        return sum + interview.confidence;
+      }
+      
       const analysis = interview[analysisType] as any;
       return sum + (analysis && analysis[metric] ? analysis[metric] : 0);
     }, 0);

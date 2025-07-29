@@ -131,7 +131,7 @@ export default function InvitesPage() {
       const { data: candidateData, error: candidateError } = await supabase
         .from("profiles")
         .select("id, email, full_name")
-        .eq("email", candidateEmail.trim().toLowerCase())
+        .ilike("email", `%${candidateEmail.trim().toLowerCase()}%`)
         .maybeSingle();
 
       if (candidateError) {

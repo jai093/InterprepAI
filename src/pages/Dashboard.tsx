@@ -145,19 +145,19 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent className="p-3 sm:p-6">
                     <div className="space-y-2 sm:space-y-3">
-                      {Object.entries(skillScores).map(([skill, value]) => (
-                        <div key={skill} className="space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-xs sm:text-sm capitalize">{skill.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <span className="text-xs sm:text-sm font-medium">{value}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
-                            <div 
-                              className="h-1.5 sm:h-2 rounded-full bg-interprepai-600" 
-                              style={{ width: `${value}%` }}
-                            ></div>
-                          </div>
-                        </div>
+                       {Object.entries(skillScores).map(([skill, value]) => (
+                         <div key={skill} className="space-y-1">
+                           <div className="flex justify-between">
+                             <span className="text-xs sm:text-sm capitalize">{skill.replace(/([A-Z])/g, ' $1').trim()}</span>
+                             <span className="text-xs sm:text-sm font-medium">{value || 0}%</span>
+                           </div>
+                           <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
+                             <div 
+                               className="h-1.5 sm:h-2 rounded-full bg-interprepai-600" 
+                               style={{ width: `${value || 0}%` }}
+                             ></div>
+                           </div>
+                         </div>
                       ))}
                     </div>
                   </CardContent>
