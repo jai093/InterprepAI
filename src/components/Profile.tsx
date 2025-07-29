@@ -79,6 +79,8 @@ export const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Ensure we save the email as well
     updateProfile.mutate({
       full_name: fullName,
       phone_number: phoneNumber,
@@ -87,6 +89,7 @@ export const Profile = () => {
       languages,
       avatar_url: avatarUrl,
       resume_url: resumeUrl,
+      email: user?.email || "",
     });
   };
 

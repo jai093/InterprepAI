@@ -108,52 +108,52 @@ const Dashboard = () => {
             {renderContent()}
 
             <TabsContent value="overview" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <Card className="w-full">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center">
+                    <CardTitle className="text-sm sm:text-base flex items-center">
                       <ChartBar className="mr-2 h-4 w-4" /> Interview Statistics
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Total Interviews</span>
-                        <span className="font-medium">{totalInterviews}</span>
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs sm:text-sm text-gray-500">Total Interviews</span>
+                        <span className="font-medium text-sm sm:text-base">{totalInterviews}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Average Score</span>
-                        <span className="font-medium">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs sm:text-sm text-gray-500">Average Score</span>
+                        <span className="font-medium text-sm sm:text-base">
                           {averageScore}%
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Last Interview</span>
-                        <span className="font-medium">
-                          {lastInterviewDate ? format(parseISO(lastInterviewDate), 'yyyy-MM-dd') : 'N/A'}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs sm:text-sm text-gray-500">Last Interview</span>
+                        <span className="font-medium text-xs sm:text-sm">
+                          {lastInterviewDate ? format(parseISO(lastInterviewDate), 'MM/dd/yy') : 'N/A'}
                         </span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="w-full">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center">
+                    <CardTitle className="text-sm sm:text-base flex items-center">
                       <TrendingUp className="mr-2 h-4 w-4" /> Skill Progress
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="space-y-2 sm:space-y-3">
                       {Object.entries(skillScores).map(([skill, value]) => (
                         <div key={skill} className="space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-xs capitalize">{skill.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <span className="text-xs font-medium">{value}%</span>
+                            <span className="text-xs sm:text-sm capitalize">{skill.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            <span className="text-xs sm:text-sm font-medium">{value}%</span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                             <div 
-                              className="h-1.5 rounded-full bg-interprepai-600" 
+                              className="h-1.5 sm:h-2 rounded-full bg-interprepai-600" 
                               style={{ width: `${value}%` }}
                             ></div>
                           </div>
@@ -198,63 +198,72 @@ const Dashboard = () => {
             <TabsContent value="progress">
               <Card>
                 <CardHeader>
-                  <CardTitle>Your Progress</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">Your Progress</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="space-y-4 sm:space-y-6">
                     <div>
-                      <h3 className="font-medium mb-2">Score Trend</h3>
-                      <div className="h-64">
+                      <h3 className="font-medium mb-2 text-sm sm:text-base">Score Trend</h3>
+                      <div className="h-48 sm:h-64 w-full">
                         {chartData.length > 0 ? (
-                          <ChartContainer
-                            config={{
-                              score: {
-                                label: "Score",
-                                theme: {
-                                  light: "#3b82f6",
-                                  dark: "#60a5fa",
+                          <div className="w-full h-full">
+                            <ChartContainer
+                              config={{
+                                score: {
+                                  label: "Score",
+                                  theme: {
+                                    light: "#3b82f6",
+                                    dark: "#60a5fa",
+                                  },
                                 },
-                              },
-                            }}
-                          >
-                            <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                              <XAxis dataKey="date" />
-                              <YAxis domain={[0, 100]} />
-                              <ChartTooltip
-                                content={
-                                  <ChartTooltipContent indicator="line" nameKey="name" />
-                                }
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="score"
-                                name="Score"
-                                stroke="var(--color-score)"
-                                activeDot={{ r: 8 }}
-                                strokeWidth={2}
-                              />
-                            </LineChart>
-                          </ChartContainer>
+                              }}
+                              className="h-full w-full"
+                            >
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                                  <XAxis 
+                                    dataKey="date" 
+                                    fontSize={12}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <YAxis 
+                                    domain={[0, 100]} 
+                                    fontSize={12}
+                                    tick={{ fontSize: 12 }}
+                                  />
+                                  <Tooltip />
+                                  <Line
+                                    type="monotone"
+                                    dataKey="score"
+                                    name="Score"
+                                    stroke="#3b82f6"
+                                    activeDot={{ r: 6 }}
+                                    strokeWidth={2}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </ChartContainer>
+                          </div>
                         ) : (
                           <div className="flex items-center justify-center h-full bg-gray-100 rounded-md">
-                            <p className="text-gray-500">Complete more interviews to see your progress</p>
+                            <p className="text-gray-500 text-xs sm:text-sm text-center px-4">Complete more interviews to see your progress</p>
                           </div>
                         )}
                       </div>
                     </div>
                     
                     <div>
-                      <h3 className="font-medium mb-2">Improvement Areas</h3>
-                      <div className="space-y-3">
+                      <h3 className="font-medium mb-2 text-sm sm:text-base">Improvement Areas</h3>
+                      <div className="space-y-2 sm:space-y-3">
                         {skillImprovements.map((skill, index) => (
                           <div key={index}>
                             <div className="flex justify-between mb-1">
-                              <span className="text-sm">{skill.name}</span>
+                              <span className="text-xs sm:text-sm">{skill.name}</span>
                               <span className="text-xs">{skill.improvement}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div className={`h-2 rounded-full ${skill.color}`} style={{ width: `${skill.value}%` }}></div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
+                              <div className={`h-1.5 sm:h-2 rounded-full ${skill.color}`} style={{ width: `${skill.value}%` }}></div>
                             </div>
                           </div>
                         ))}

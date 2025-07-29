@@ -13,6 +13,7 @@ export interface Profile {
   skills: string | null;
   languages: string | null;
   resume_url: string | null;
+  email: string | null;
   interview_preferences: any;
   created_at: string;
   updated_at: string;
