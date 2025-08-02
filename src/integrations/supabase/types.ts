@@ -17,6 +17,7 @@ export type Database = {
       assessment_invites: {
         Row: {
           assessment_id: string
+          candidate_email: string | null
           candidate_id: string
           completed_at: string | null
           created_at: string | null
@@ -24,9 +25,11 @@ export type Database = {
           link: string | null
           recruiter_id: string
           status: string | null
+          token: string | null
         }
         Insert: {
           assessment_id: string
+          candidate_email?: string | null
           candidate_id: string
           completed_at?: string | null
           created_at?: string | null
@@ -34,9 +37,11 @@ export type Database = {
           link?: string | null
           recruiter_id: string
           status?: string | null
+          token?: string | null
         }
         Update: {
           assessment_id?: string
+          candidate_email?: string | null
           candidate_id?: string
           completed_at?: string | null
           created_at?: string | null
@@ -44,6 +49,7 @@ export type Database = {
           link?: string | null
           recruiter_id?: string
           status?: string | null
+          token?: string | null
         }
         Relationships: [
           {

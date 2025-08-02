@@ -35,12 +35,14 @@ export default function CandidateInterview() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const token = searchParams.get("token");
   const assessmentId = searchParams.get("assessment");
   const inviteId = searchParams.get("invite");
   const candidateId = searchParams.get("candidate");
   const recruiterId = searchParams.get("r");
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [invite, setInvite] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [useStructuredAssessment, setUseStructuredAssessment] = useState(false);
@@ -61,14 +63,16 @@ export default function CandidateInterview() {
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    if (assessmentId) {
+    if (token) {
+      fetchAssessmentByToken();
+    } else if (assessmentId) {
       fetchAssessment();
     } else if (candidateId && recruiterId) {
       // Legacy support for old interview links
       setUseStructuredAssessment(false);
       setLoading(false);
     }
-  }, [assessmentId, candidateId, recruiterId]);
+  }, [token, assessmentId, candidateId, recruiterId]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -84,6 +88,65 @@ export default function CandidateInterview() {
     }
     return () => clearInterval(timer);
   }, [interviewStarted, useStructuredAssessment, interviewState.timeRemaining]);
+
+  const fetchAssessmentByToken = async () => {
+    if (!token) return;
+    
+    try {
+      // First get the invite by token
+      const { data: inviteData, error: inviteError } = await supabase
+        .from("assessment_invites")
+        .select(`
+          id,
+          assessment_id,
+          candidate_email,
+          status,
+          assessments (
+            id,
+            title,
+            description,
+            questions
+          )
+        `)
+        .eq("token", token)
+        .single();
+
+      if (inviteError) throw inviteError;
+      
+      if (!inviteData || !inviteData.assessments) {
+        throw new Error("Assessment not found for this token");
+      }
+
+      setInvite(inviteData);
+      
+      // Transform the assessment data
+      const transformedAssessment: Assessment = {
+        id: inviteData.assessments.id,
+        title: inviteData.assessments.title,
+        description: inviteData.assessments.description || "",
+        questions: Array.isArray(inviteData.assessments.questions) ? inviteData.assessments.questions as string[] : []
+      };
+      
+      setAssessment(transformedAssessment);
+      setUseStructuredAssessment(true);
+      
+      // Initialize responses array
+      setInterviewState(prev => ({
+        ...prev,
+        responses: new Array(transformedAssessment.questions.length).fill("")
+      }));
+    } catch (error: any) {
+      console.error("Error fetching assessment by token:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Invalid or expired assessment link",
+      });
+      navigate("/");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchAssessment = async () => {
     if (!assessmentId) return;
@@ -214,12 +277,23 @@ export default function CandidateInterview() {
     
     // Save interview results
     try {
-      if (inviteId && user) {
+      const currentInviteId = invite?.id || inviteId;
+      if (currentInviteId) {
+        // Update the invite status
+        await supabase
+          .from("assessment_invites")
+          .update({ 
+            status: "completed",
+            completed_at: new Date().toISOString()
+          })
+          .eq("id", currentInviteId);
+
+        // Save submission
         const { error } = await supabase
           .from("assessment_submissions")
           .insert({
-            invite_id: inviteId,
-            candidate_id: user.id,
+            invite_id: currentInviteId,
+            candidate_id: user?.id || null,
             responses: interviewState.responses,
             completed_at: new Date().toISOString()
           });

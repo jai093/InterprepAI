@@ -13,11 +13,13 @@ import { Mail, Calendar, User, Send, Plus } from "lucide-react";
 interface AssessmentInvite {
   id: string;
   assessment_id: string;
-  candidate_id: string;
+  candidate_id: string | null;
+  candidate_email: string;
   status: string;
   created_at: string;
   completed_at: string | null;
   link: string | null;
+  token: string;
   assessments: {
     title: string;
     description: string;
@@ -25,7 +27,7 @@ interface AssessmentInvite {
   profiles: {
     full_name: string;
     avatar_url: string;
-  };
+  } | null;
 }
 
 export default function InvitesPage() {
@@ -54,6 +56,8 @@ export default function InvitesPage() {
           id,
           assessment_id,
           candidate_id,
+          candidate_email,
+          token,
           status,
           created_at,
           completed_at,
@@ -127,42 +131,21 @@ export default function InvitesPage() {
         return;
       }
 
-      // Find the candidate profile by email - check if profile exists with this email
-      const { data: candidateData, error: candidateError } = await supabase
-        .from("profiles")
-        .select("id, email, full_name")
-        .ilike("email", `%${candidateEmail.trim().toLowerCase()}%`)
-        .maybeSingle();
+      // Generate unique token for this assessment
+      const token = crypto.randomUUID();
+      
+      // Generate invite link with token
+      const inviteLink = `${window.location.origin}/candidate-interview?token=${token}`;
 
-      if (candidateError) {
-        console.error("Candidate search error:", candidateError);
-        toast({
-          variant: "destructive",
-          title: "Search Error",
-          description: "Failed to search for candidate profile",
-        });
-        return;
-      }
-
-      if (!candidateData) {
-        toast({
-          variant: "destructive",
-          title: "Candidate Not Found",
-          description: "No registered candidate found with this email. Please ask them to sign up first as a candidate.",
-        });
-        return;
-      }
-
-      // Generate invite link
-      const inviteLink = `${window.location.origin}/candidate-interview?assessment=${selectedAssessment}&invite=${Date.now()}`;
-
-      // Create the invite
+      // Create the invite with candidate email (no need for existing profile)
       const { error: inviteError } = await supabase
         .from("assessment_invites")
         .insert({
           assessment_id: selectedAssessment,
           recruiter_id: user.id,
-          candidate_id: candidateData.id,
+          candidate_email: candidateEmail.trim().toLowerCase(),
+          candidate_id: null, // Will be filled when candidate takes the assessment
+          token: token,
           link: inviteLink,
           status: "sent"
         });
@@ -296,8 +279,11 @@ export default function InvitesPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">
-                        {invite.profiles?.full_name || "Unknown Candidate"}
+                        {invite.profiles?.full_name || invite.candidate_email}
                       </h3>
+                      <p className="text-xs text-gray-500">
+                        {invite.candidate_email}
+                      </p>
                       <p className="text-sm text-gray-600">
                         Assessment: {invite.assessments?.title}
                       </p>
