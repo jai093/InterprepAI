@@ -11,6 +11,17 @@ import {
   User,
   LogOut
 } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 const navigation = [
   { name: "Dashboard", href: "/hr", icon: LayoutDashboard },
@@ -23,53 +34,73 @@ const navigation = [
 export function HrSidebar() {
   const location = useLocation();
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
-    <div className="flex md:w-64 flex-col fixed inset-y-0 z-10 transform transition-transform duration-300 ease-in-out lg:translate-x-0">
-      <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="flex items-center flex-shrink-0 px-4">
-          <h2 className="text-lg md:text-xl font-bold text-indigo-900">InterprepAI HR</h2>
-        </div>
-        <div className="mt-8 flex-grow flex flex-col">
-          <nav className="flex-1 px-2 pb-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    isActive
-                      ? "bg-indigo-100 text-indigo-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    "group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors"
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      isActive ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500",
-                      "mr-3 flex-shrink-0 h-5 w-5"
-                    )}
-                    aria-hidden="true"
-                  />
-                  <span className="truncate">{item.name}</span>
-                </NavLink>
-              );
-            })}
-          </nav>
-          <div className="px-2 py-4 border-t border-gray-200">
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                window.location.href = "/";
-              }}
-              className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full transition-colors"
-            >
-              <LogOut className="mr-3 flex-shrink-0 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              <span className="truncate">Sign Out</span>
-            </button>
+    <Sidebar className="border-r border-gray-200">
+      <SidebarContent>
+        <div className="px-4 py-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-indigo-900">
+              InterprepAI HR
+            </h2>
+            <SidebarTrigger className="lg:hidden" />
           </div>
         </div>
-      </div>
-    </div>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <SidebarMenuItem key={item.name}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-indigo-100 text-indigo-900"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-5 w-5 flex-shrink-0",
+                            isActive ? "text-indigo-500" : "text-gray-400"
+                          )}
+                        />
+                        <span>{item.name}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <div className="mt-auto border-t border-gray-200 pt-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <button
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <LogOut className="h-5 w-5 flex-shrink-0 text-gray-400" />
+                  <span>Sign Out</span>
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
+      </SidebarContent>
+    </Sidebar>
   );
 }

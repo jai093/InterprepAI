@@ -2,6 +2,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { HrSidebar } from "@/components/hr/HrSidebar";
 import { HrCandidateTable } from "@/components/hr/HrCandidateTable";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function HrDashboard() {
   const { user } = useAuth();
@@ -16,21 +17,33 @@ export default function HrDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <HrSidebar />
-      <main className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 overflow-y-auto lg:ml-64">
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-indigo-900 mb-2 tracking-tighter">
-            InterprepAI HR Dashboard
-          </h1>
-          <div className="text-gray-500 text-sm md:text-base lg:text-lg">
-            View and manage your shortlisted/interviewed candidates
-          </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gray-50">
+        <HrSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white border-b border-gray-200 px-4 py-3 lg:hidden">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-semibold text-indigo-900">HR Dashboard</h1>
+              <SidebarTrigger />
+            </div>
+          </header>
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-6 md:mb-8">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-indigo-900 mb-2">
+                  HR Dashboard
+                </h1>
+                <p className="text-gray-600 text-sm md:text-base">
+                  View and manage your shortlisted/interviewed candidates
+                </p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <HrCandidateTable recruiterId={user.id} />
+              </div>
+            </div>
+          </main>
         </div>
-        <div className="overflow-x-auto">
-          <HrCandidateTable recruiterId={user.id} />
-        </div>
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }

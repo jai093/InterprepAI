@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon } from "lucide-react";
+import { Plus, Link as LinkIcon, User as UserIcon, Copy as CopyIcon, FileText } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import NewAssessmentDialog from "@/components/hr/assessment/NewAssessmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { HrSidebar } from "@/components/hr/HrSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 type Assessment = {
   id: string;
@@ -138,102 +140,155 @@ export default function HrAssessmentsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold">Assessments</h1>
-        <Button
-          className="bg-indigo-700 hover:bg-indigo-800 text-white flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base w-full sm:w-auto"
-          onClick={() => setOpen(true)}
-        >
-          <Plus className="w-4 h-4" />
-          Create Assessment
-        </Button>
-      </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow text-gray-500 min-h-[150px] flex flex-col items-center justify-center">
-        {loading ? (
-          <div>Loading assessments...</div>
-        ) : assessments.length === 0 ? (
-          <span>No assessments yet. Click "Create Assessment" to get started.</span>
-        ) : (
-          <div className="w-full">
-            <ul className="space-y-4">
-              {(assessments as Assessment[]).map((a: Assessment) => (
-                <li key={a.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0">
-                  <div>
-                    <div className="text-lg font-semibold text-indigo-900">{a.title}</div>
-                    <div className="text-xs text-gray-400">{new Date(a.created_at).toLocaleString()}</div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gray-50">
+        <HrSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white border-b border-gray-200 px-4 py-3 lg:hidden">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-semibold text-indigo-900">Assessments</h1>
+              <SidebarTrigger />
+            </div>
+          </header>
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-indigo-900 mb-2">Assessments</h1>
+                  <p className="text-gray-600 text-sm md:text-base">Create and manage interview assessments</p>
+                </div>
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 px-4 py-2 w-full sm:w-auto"
+                  onClick={() => setOpen(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Assessment
+                </Button>
+              </div>
+              
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span className="ml-3 text-gray-600">Loading assessments...</span>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
+                ) : assessments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments yet</h3>
+                    <p className="text-gray-500 mb-6">Get started by creating your first assessment</p>
                     <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex gap-1"
-                      onClick={() => setCandidateDialog({show: true, assessmentId: a.id})}
-                      title="Share to candidate"
+                      onClick={() => setOpen(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
-                      <UserIcon className="w-4 h-4" />
-                      Share to Candidate
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create First Assessment
                     </Button>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                ) : (
+                  <div className="space-y-4">
+                    {assessments.map((assessment) => (
+                      <div
+                        key={assessment.id}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                            {assessment.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 mb-2">
+                            {assessment.description || "No description"}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-400">
+                            <span>Created: {new Date(assessment.created_at).toLocaleDateString()}</span>
+                            <span>{assessment.questions.length} questions</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            onClick={() => setCandidateDialog({show: true, assessmentId: assessment.id})}
+                          >
+                            <UserIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">Share to Candidate</span>
+                            <span className="sm:hidden">Share</span>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
+
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg w-full p-0">
+        <DialogContent className="max-w-lg w-full mx-4">
           <NewAssessmentDialog onClose={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
 
       {/* Candidate Link Share Dialog */}
       <Dialog open={candidateDialog.show} onOpenChange={(v) => setCandidateDialog({show: v})}>
-        <DialogContent className="max-w-md w-full flex flex-col gap-1">
-          <div className="mb-2 font-semibold text-lg flex items-center gap-2"><UserIcon className="w-5 h-5" /> Share Assessment Link</div>
-          <div className="text-gray-500 mb-2">
-            Enter the candidate's email address (registered) to generate a unique interview link. 
-          </div>
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!candidateEmail) return;
-              await resolveCandidateId(candidateEmail);
-            }}
-          >
-            <input
-              type="email"
-              className="border p-2 rounded"
-              value={candidateEmail}
-              onChange={e => { setCandidateEmail(e.target.value); setCandidateResolvedId(null); }}
-              placeholder="candidate@email.com"
-              required
-            />
-            <Button type="submit" disabled={resolving} size="sm" className="self-start">{resolving ? "Searching..." : "Find Candidate"}</Button>
-          </form>
-          {candidateResolvedId && candidateDialog.assessmentId && (
-            <div className="flex flex-col gap-2 mt-2">
-              <div className="text-green-700 text-sm mb-1">User found. Share this link:</div>
-              <div className="flex gap-2 items-center">
-                <input
-                  readOnly
-                  className="w-full border border-gray-200 rounded px-2 py-1 bg-gray-50 text-xs"
-                  value={getAssessmentLink(candidateDialog.assessmentId, candidateResolvedId)}
-                />
-                <Button
-                  size="icon"
-                  variant="default"
-                  onClick={() => handleCopyLink(candidateDialog.assessmentId!, candidateResolvedId)}
-                  title="Copy assessment link"
-                >
-                  <CopyIcon className="w-4 h-4" />
-                </Button>
-              </div>
+        <DialogContent className="max-w-md w-full mx-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <UserIcon className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg font-semibold">Share Assessment Link</h2>
             </div>
-          )}
+            <p className="text-sm text-gray-600">
+              Enter the candidate's email address to generate a unique interview link.
+            </p>
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!candidateEmail) return;
+                await resolveCandidateId(candidateEmail);
+              }}
+            >
+              <input
+                type="email"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value={candidateEmail}
+                onChange={e => { setCandidateEmail(e.target.value); setCandidateResolvedId(null); }}
+                placeholder="candidate@email.com"
+                required
+              />
+              <Button 
+                type="submit" 
+                disabled={resolving} 
+                className="w-full sm:w-auto"
+              >
+                {resolving ? "Searching..." : "Find Candidate"}
+              </Button>
+            </form>
+            {candidateResolvedId && candidateDialog.assessmentId && (
+              <div className="space-y-3 mt-4 p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-700 font-medium">✓ User found. Share this link:</p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-md bg-gray-50"
+                    value={getAssessmentLink(candidateDialog.assessmentId, candidateResolvedId)}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleCopyLink(candidateDialog.assessmentId!, candidateResolvedId)}
+                    className="px-3"
+                  >
+                    <CopyIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </SidebarProvider>
   );
 }
