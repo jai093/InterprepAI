@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import { Mail, Calendar, User, Send, Plus } from "lucide-react";
-import { HrSidebar } from "@/components/hr/HrSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 interface AssessmentInvite {
   id: string;
@@ -204,146 +202,124 @@ export default function InvitesPage() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gray-50">
-        <HrSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="bg-white border-b border-gray-200 px-4 py-3 lg:hidden">
-            <div className="flex items-center justify-between">
-              <h1 className="text-lg font-semibold text-indigo-900">Interview Invites</h1>
-              <SidebarTrigger />
-            </div>
-          </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-            <div className="max-w-6xl mx-auto">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-indigo-900 mb-2">Interview Invites</h1>
-                  <p className="text-gray-600 text-sm md:text-base">Manage assessment invitations sent to candidates</p>
-                </div>
-                <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Send Invite
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md w-full mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Send Assessment Invite</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="email">Candidate Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={candidateEmail}
-                          onChange={(e) => setCandidateEmail(e.target.value)}
-                          placeholder="candidate@example.com"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="assessment">Select Assessment</Label>
-                        <select
-                          id="assessment"
-                          value={selectedAssessment}
-                          onChange={(e) => setSelectedAssessment(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Choose an assessment...</option>
-                          {assessments.map((assessment) => (
-                            <option key={assessment.id} value={assessment.id}>
-                              {assessment.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <Button onClick={sendInvite} className="w-full">
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Invitation
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {invites.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No invites sent yet</h3>
-                    <p className="text-gray-600 mb-4">Start by sending your first assessment invitation to a candidate</p>
-                    <Button onClick={() => setShowInviteDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Send First Invite
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {invites.map((invite) => (
-                    <Card key={invite.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4 md:p-6">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                          <div className="flex items-start md:items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                              <User className="h-6 w-6 text-indigo-600" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                {invite.profiles?.full_name || invite.candidate_email}
-                              </h3>
-                              {invite.profiles?.full_name && (
-                                <p className="text-sm text-gray-500 truncate">
-                                  {invite.candidate_email}
-                                </p>
-                              )}
-                              <p className="text-sm text-gray-600 truncate">
-                                Assessment: {invite.assessments?.title}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-gray-500">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  Sent: {new Date(invite.created_at).toLocaleDateString()}
-                                </span>
-                                {invite.completed_at && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    Completed: {new Date(invite.completed_at).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
-                            <Badge className={getStatusColor(invite.status)}>
-                              {invite.status.replace("_", " ").toUpperCase()}
-                            </Badge>
-                            {invite.link && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(invite.link!);
-                                  toast({ title: "Link copied to clipboard" });
-                                }}
-                                className="text-xs"
-                              >
-                                Copy Link
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </main>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">Interview Invites</h1>
+          <p className="text-sm sm:text-base text-gray-600">Manage assessment invitations sent to candidates</p>
         </div>
+        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Send Invite
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Assessment Invite</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Candidate Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={candidateEmail}
+                  onChange={(e) => setCandidateEmail(e.target.value)}
+                  placeholder="candidate@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="assessment">Select Assessment</Label>
+                <select
+                  id="assessment"
+                  value={selectedAssessment}
+                  onChange={(e) => setSelectedAssessment(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Choose an assessment...</option>
+                  {assessments.map((assessment) => (
+                    <option key={assessment.id} value={assessment.id}>
+                      {assessment.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button onClick={sendInvite} className="w-full">
+                <Send className="h-4 w-4 mr-2" />
+                Send Invitation
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    </SidebarProvider>
+
+      {invites.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No invites sent yet</h3>
+            <p className="text-gray-600 mb-4">Start by sending your first assessment invitation to a candidate</p>
+            <Button onClick={() => setShowInviteDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Send First Invite
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {invites.map((invite) => (
+            <Card key={invite.id}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <User className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">
+                        {invite.profiles?.full_name || invite.candidate_email}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {invite.candidate_email}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Assessment: {invite.assessments?.title}
+                      </p>
+                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Sent: {new Date(invite.created_at).toLocaleDateString()}
+                        </span>
+                        {invite.completed_at && (
+                          <span className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Completed: {new Date(invite.completed_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge className={getStatusColor(invite.status)}>
+                      {invite.status.replace("_", " ").toUpperCase()}
+                    </Badge>
+                    {invite.link && (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(invite.link!);
+                        toast({ title: "Link copied to clipboard" });
+                      }}>
+                        Copy Link
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
