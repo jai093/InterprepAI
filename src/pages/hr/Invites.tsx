@@ -114,6 +114,16 @@ export default function InvitesPage() {
       return;
     }
 
+    // Validate Gmail address
+    if (!candidateEmail.toLowerCase().includes("@gmail.com")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid Gmail address (@gmail.com)",
+      });
+      return;
+    }
+
     try {
       // First, check if current user is a recruiter
       const { data: recruiterData, error: recruiterError } = await supabase

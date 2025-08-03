@@ -614,6 +614,7 @@ export default function CandidateInterview() {
             jobRole: "N/A",
             duration: 10,
             difficulty: "medium",
+            customQuestions: assessment?.questions
           }}
           onEnd={handleInterviewEnd}
         />

@@ -15,6 +15,7 @@ interface InterviewWidgetProps {
     difficulty: string;
   };
   onSessionStart?: (sessionId: string) => void;
+  customQuestions?: string[];
 }
 
 // Use the agent id provided by the user
@@ -24,7 +25,8 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
   onEndInterview,
   showCamera = true,
   interviewConfig,
-  onSessionStart
+  onSessionStart,
+  customQuestions
 }) => {
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Array<{id: string, type: 'user' | 'ai', text: string, timestamp: Date}>>([]);
@@ -37,6 +39,25 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
 
   // Generate custom prompt based on interview config and profile
   const generateCustomPrompt = () => {
+    // If custom questions are provided, use them instead of general prompts
+    if (customQuestions && customQuestions.length > 0) {
+      let prompt = `You are an AI interviewer conducting a structured interview. You must ask these specific questions in order, one at a time:
+
+${customQuestions.map((q, index) => `${index + 1}. ${q}`).join('\n')}
+
+IMPORTANT INSTRUCTIONS:
+- Start with question 1 and wait for the candidate's response
+- Only ask one question at a time
+- After the candidate responds, ask the next question in the exact order provided
+- Do not ask any questions other than the ones listed above
+- Keep your responses natural and conversational, but stick to the question sequence
+- After all questions are answered, thank the candidate and end the interview
+
+Ask the first question now.`;
+      return prompt;
+    }
+
+    // Fallback to general interview questions
     let prompt = `You are an AI interviewer conducting a ${interviewConfig?.difficulty || 'medium'} level ${interviewConfig?.type || 'behavioral'} interview for the ${interviewConfig?.jobRole || 'Software Engineer'} position.`;
     
     if (interviewConfig?.type === 'roleSpecific') {
@@ -138,7 +159,9 @@ const InterviewWidget: React.FC<InterviewWidgetProps> = ({
             prompt: {
               prompt: customPrompt
             },
-            firstMessage: `Hello! I'm ready to begin your ${interviewConfig?.type || "behavioral"} interview for the ${interviewConfig?.jobRole || "Software Engineer"} position. Let's start with an introduction - tell me about yourself.`
+            firstMessage: customQuestions && customQuestions.length > 0 
+              ? `Hello! I'm ready to begin your structured interview. I have specific questions prepared for you. Let's start with the first question: ${customQuestions[0]}`
+              : `Hello! I'm ready to begin your ${interviewConfig?.type || "behavioral"} interview for the ${interviewConfig?.jobRole || "Software Engineer"} position. Let's start with an introduction - tell me about yourself.`
           }
         }
       });

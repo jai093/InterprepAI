@@ -11,6 +11,7 @@ interface InterviewConfig {
   jobRole: string;
   duration: number;
   difficulty: string;
+  customQuestions?: string[];
 }
 
 interface InterviewSessionProps {
@@ -266,6 +267,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           onEndInterview={endInterviewWithFeedback}
           showCamera={false}
           onSessionStart={onInterviewStarted}
+          customQuestions={config.customQuestions}
         />
         {loading && (
           <div className="mt-6 px-4 py-6 bg-white rounded-xl shadow text-center text-gray-700 border border-indigo-200">
