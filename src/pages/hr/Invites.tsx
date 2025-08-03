@@ -323,6 +323,13 @@ export default function InvitesPage() {
                         Copy Link
                       </Button>
                     )}
+                    {invite.status === "completed" && (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        window.open(`/hr/interview-review/${invite.id}`, '_blank');
+                      }}>
+                        View Review
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

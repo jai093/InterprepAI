@@ -15,6 +15,7 @@ import InvitesPage from "./pages/hr/Invites";
 import HRSettingsPage from "./pages/hr/Settings";
 import HrAssessmentsPage from "./pages/hr/Assessments";
 import HrProfilePage from "./pages/hr/Profile";
+import InterviewReview from "./pages/hr/InterviewReview";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function App() {
@@ -91,6 +92,14 @@ function App() {
           <HrProfilePage />
         </ProtectedRoute>
       } />
+      <Route path="/hr/interview-review/:inviteId" element={
+        <ProtectedRoute requireHR={true}>
+          <InterviewReview />
+        </ProtectedRoute>
+      } />
+      
+      {/* Public assessment interview route - no authentication required */}
+      <Route path="/candidate-interview" element={<CandidateInterview />} />
       <Route path="/candidate-interview/:candidateId" element={
         <ProtectedRoute>
           <CandidateInterview />
