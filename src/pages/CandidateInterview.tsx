@@ -279,12 +279,13 @@ export default function CandidateInterview() {
     try {
       const currentInviteId = invite?.id || inviteId;
       if (currentInviteId) {
-        // Update the invite status
+        // Update the invite status and link to candidate if they're logged in
         await supabase
           .from("assessment_invites")
           .update({ 
             status: "completed",
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
+            candidate_id: user?.id || null
           })
           .eq("id", currentInviteId);
 
