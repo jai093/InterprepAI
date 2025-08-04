@@ -100,6 +100,7 @@ function App() {
       
       {/* Public assessment interview route - no authentication required */}
       <Route path="/candidate-interview" element={<CandidateInterview />} />
+      <Route path="/interview" element={<CandidateInterview />} />
       <Route path="/candidate-interview/:candidateId" element={
         <ProtectedRoute>
           <CandidateInterview />

@@ -145,7 +145,7 @@ export default function InvitesPage() {
       const token = crypto.randomUUID();
       
       // Generate invite link with token
-      const inviteLink = `${window.location.origin}/candidate-interview?token=${token}`;
+      const inviteLink = `${window.location.origin}/interview?token=${token}`;
 
       // Create the invite with candidate email (no need for existing profile)
       const { error: inviteError } = await supabase
