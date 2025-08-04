@@ -77,28 +77,43 @@ export type Database = {
       }
       assessment_submissions: {
         Row: {
+          ai_analysis: Json | null
+          audio_url: string | null
           candidate_id: string
           completed_at: string | null
           feedback: string | null
           id: string
           invite_id: string
           responses: Json
+          session_duration: number | null
+          transcript: Json | null
+          video_url: string | null
         }
         Insert: {
+          ai_analysis?: Json | null
+          audio_url?: string | null
           candidate_id: string
           completed_at?: string | null
           feedback?: string | null
           id?: string
           invite_id: string
           responses: Json
+          session_duration?: number | null
+          transcript?: Json | null
+          video_url?: string | null
         }
         Update: {
+          ai_analysis?: Json | null
+          audio_url?: string | null
           candidate_id?: string
           completed_at?: string | null
           feedback?: string | null
           id?: string
           invite_id?: string
           responses?: Json
+          session_duration?: number | null
+          transcript?: Json | null
+          video_url?: string | null
         }
         Relationships: [
           {
