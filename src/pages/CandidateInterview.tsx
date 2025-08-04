@@ -342,16 +342,101 @@ export default function CandidateInterview() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Legacy interview handler
+  // Handle interview end for assessment-based interviews
   const handleInterviewEnd = async (feedback: FeedbackResult) => {
     setSaving(true);
     setInterviewResult(feedback);
 
     try {
-      // Find or create invite in DB
-      // Note: in real app, we would validate candidateId and recruiterId are present and sensible
+      let audioUrl = null;
+      let videoUrl = null;
+
+      // Upload media files if they exist
+      if ((feedback as any).audioBlob || (feedback as any).videoBlob) {
+        const formData = new FormData();
+        
+        if ((feedback as any).audioBlob) {
+          formData.append('audio', (feedback as any).audioBlob, 'interview-audio.webm');
+        }
+        if ((feedback as any).videoBlob) {
+          formData.append('video', (feedback as any).videoBlob, 'interview-video.webm');
+        }
+        
+        if (token && invite) {
+          formData.append('inviteId', invite.id);
+          formData.append('candidateId', user?.id || 'anonymous');
+        } else {
+          formData.append('inviteId', 'legacy');
+          formData.append('candidateId', candidateId || user?.id || 'anonymous');
+        }
+
+        try {
+          const uploadResponse = await fetch('/supabase/functions/v1/save-interview-media', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const { audioUrl: uploadedAudio, videoUrl: uploadedVideo } = await uploadResponse.json();
+            audioUrl = uploadedAudio;
+            videoUrl = uploadedVideo;
+            console.log('Media uploaded successfully:', { audioUrl, videoUrl });
+          }
+        } catch (uploadError) {
+          console.error('Error uploading media:', uploadError);
+        }
+      }
+
+      // If we have an assessment invite (token-based interview)
+      if (token && invite) {
+        // Create assessment submission with comprehensive interview data
+        const submissionData = {
+          invite_id: invite.id,
+          candidate_id: user?.id || null,
+          responses: feedback.transcripts || [],
+          feedback: feedback?.feedback || JSON.stringify(feedback),
+          audio_url: audioUrl,
+          video_url: videoUrl,
+          transcript: feedback.transcripts || [],
+          ai_analysis: {
+            voice_confidence: feedback.confidence_score || 0,
+            clarity_score: feedback.clarity || 0,
+            communication_score: feedback.interview_overall_score || 0,
+            facial_analysis: feedback.facial_analysis || {},
+            suggestions: feedback.suggestions || []
+          },
+          session_duration: feedback.duration || 0
+        };
+
+        const { error: submissionError } = await supabase
+          .from("assessment_submissions")
+          .insert(submissionData);
+
+        if (submissionError) {
+          throw new Error(submissionError.message);
+        }
+
+        // Update invite to mark as completed and link candidate
+        const { error: updateError } = await supabase
+          .from("assessment_invites")
+          .update({ 
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            candidate_id: user?.id || null
+          })
+          .eq("id", invite.id);
+
+        if (updateError) {
+          console.error("Error updating invite:", updateError);
+        }
+
+        setSessionComplete(true);
+        setSaveError(null);
+        return;
+      }
+
+      // Legacy interview handler (for non-assessment interviews)
       let inviteId: string | null = null;
-      // Try to find invite in DB
       let { data: invites } = await supabase
         .from("interview_invites")
         .select("id")
@@ -362,7 +447,6 @@ export default function CandidateInterview() {
       if (invites && invites.length > 0) {
         inviteId = invites[0].id;
       } else {
-        // Create the invite record
         const { data: created, error: createError } = await supabase
           .from("interview_invites")
           .insert([
@@ -391,8 +475,8 @@ export default function CandidateInterview() {
               ? feedback.transcripts.map((t: any) => `${t.question}\n${t.answer}`).join("\n\n")
               : feedback.transcript || null,
             ai_feedback: feedback?.feedback || JSON.stringify(feedback),
-            video_url: feedback.videoURL || feedback.video_url || null,
-            audio_url: feedback.audioURL || feedback.audio_url || null,
+            video_url: videoUrl || feedback.videoURL || feedback.video_url || null,
+            audio_url: audioUrl || feedback.audioURL || feedback.audio_url || null,
           },
         ]);
       if (resultError) throw new Error(resultError.message);

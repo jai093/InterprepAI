@@ -83,13 +83,19 @@ export default function InterviewReview() {
           completed_at,
           assessments (
             title,
-            description
+            description,
+            questions
           ),
           assessment_submissions (
             id,
             responses,
             feedback,
-            completed_at
+            completed_at,
+            audio_url,
+            video_url,
+            transcript,
+            ai_analysis,
+            session_duration
           )
         `)
         .eq("id", inviteId)
@@ -109,21 +115,26 @@ export default function InterviewReview() {
       }
 
       // Transform the data for display
+      const submission = inviteData.assessment_submissions?.[0];
+      const transcript = Array.isArray(submission?.transcript) ? submission.transcript : [];
+      const responses = Array.isArray(submission?.responses) ? submission.responses : [];
+      const aiAnalysis = typeof submission?.ai_analysis === 'object' && submission.ai_analysis !== null ? submission.ai_analysis : {};
+      
       const reviewData: InterviewReview = {
         id: inviteData.id,
         candidate_email: inviteData.candidate_email,
         assessment_title: inviteData.assessments?.title || "N/A",
-        completed_at: inviteData.completed_at || inviteData.assessment_submissions?.[0]?.completed_at || "",
+        completed_at: inviteData.completed_at || submission?.completed_at || "",
         status: inviteData.status,
-        transcript: generateTranscriptFromResponses(Array.isArray(inviteData.assessment_submissions?.[0]?.responses) ? inviteData.assessment_submissions[0].responses : []),
-        audio_url: "", // Will be populated from actual recording
-        video_url: "", // Will be populated from actual recording
-        responses: Array.isArray(inviteData.assessment_submissions?.[0]?.responses) ? inviteData.assessment_submissions[0].responses : [],
-        feedback: inviteData.assessment_submissions?.[0]?.feedback || {},
+        transcript: generateTranscriptFromResponses(transcript),
+        audio_url: submission?.audio_url || "",
+        video_url: submission?.video_url || "",
+        responses: responses,
+        feedback: submission?.feedback || {},
         candidate_name: inviteData.candidate_email?.split('@')[0] || "Candidate",
-        voice_analysis: generateMockVoiceAnalysis(),
-        facial_analysis: generateMockFacialAnalysis(),
-        overall_score: calculateOverallScore(Array.isArray(inviteData.assessment_submissions?.[0]?.responses) ? inviteData.assessment_submissions[0].responses : [])
+        voice_analysis: aiAnalysis || generateMockVoiceAnalysis(),
+        facial_analysis: (aiAnalysis as any)?.facial_analysis || generateMockFacialAnalysis(),
+        overall_score: (aiAnalysis as any)?.communication_score || calculateOverallScore(responses)
       };
 
       setInterview(reviewData);
@@ -139,11 +150,11 @@ export default function InterviewReview() {
     }
   };
 
-  const generateTranscriptFromResponses = (responses: any[]): string => {
-    if (!Array.isArray(responses)) return "No transcript available";
+  const generateTranscriptFromResponses = (transcript: any[]): string => {
+    if (!Array.isArray(transcript) || transcript.length === 0) return "No transcript available";
     
-    return responses.map((response, index) => 
-      `Q${index + 1}: ${response.question || `Question ${index + 1}`}\nA${index + 1}: ${response.answer || "No response recorded"}\n`
+    return transcript.map((entry, index) => 
+      `Q${index + 1}: ${entry.question || `Question ${index + 1}`}\nA${index + 1}: ${entry.answer || "No response recorded"}\n`
     ).join("\n");
   };
 
@@ -413,10 +424,10 @@ export default function InterviewReview() {
                       <div className="w-24 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-600 h-2 rounded-full" 
-                          style={{ width: `${interview.voice_analysis?.confidence_level || 0}%` }}
+                          style={{ width: `${interview.voice_analysis?.voice_confidence || interview.voice_analysis?.confidence_level || 0}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium">{interview.voice_analysis?.confidence_level || 0}%</span>
+                      <span className="text-sm font-medium">{interview.voice_analysis?.voice_confidence || interview.voice_analysis?.confidence_level || 0}%</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
