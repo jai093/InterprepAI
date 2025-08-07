@@ -93,6 +93,8 @@ export default function CandidateInterview() {
     if (!token) return;
     
     try {
+      console.log("Fetching assessment with token:", token);
+      
       // First get the invite by token
       const { data: inviteData, error: inviteError } = await supabase
         .from("assessment_invites")
@@ -111,21 +113,46 @@ export default function CandidateInterview() {
         .eq("token", token)
         .single();
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error("Invite error:", inviteError);
+        throw inviteError;
+      }
       
       if (!inviteData || !inviteData.assessments) {
+        console.error("No assessment data found for token");
         throw new Error("Assessment not found for this token");
       }
 
+      console.log("Found assessment data:", inviteData);
       setInvite(inviteData);
       
-      // Transform the assessment data
+      // Transform the assessment data to include questions as an array
+      const questions = inviteData.assessments.questions;
+      let questionArray: string[] = [];
+      
+      if (Array.isArray(questions)) {
+        questionArray = questions.filter((q): q is string => typeof q === 'string');
+      } else if (typeof questions === 'object' && questions !== null) {
+        // Handle case where questions might be stored as an object
+        questionArray = Object.values(questions).filter((q): q is string => typeof q === 'string');
+      } else if (typeof questions === 'string') {
+        // Handle case where it might be a JSON string
+        try {
+          const parsed = JSON.parse(questions);
+          questionArray = Array.isArray(parsed) ? parsed : [questions];
+        } catch {
+          questionArray = [questions];
+        }
+      }
+      
       const transformedAssessment: Assessment = {
         id: inviteData.assessments.id,
         title: inviteData.assessments.title,
         description: inviteData.assessments.description || "",
-        questions: Array.isArray(inviteData.assessments.questions) ? inviteData.assessments.questions as string[] : []
+        questions: questionArray
       };
+      
+      console.log("Transformed assessment:", transformedAssessment);
       
       setAssessment(transformedAssessment);
       setUseStructuredAssessment(true);
@@ -139,8 +166,8 @@ export default function CandidateInterview() {
       console.error("Error fetching assessment by token:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Invalid or expired assessment link",
+        title: "Assessment Not Found",
+        description: "The assessment link is invalid or has expired. Please contact the recruiter for a new link.",
       });
       navigate("/");
     } finally {
@@ -389,15 +416,15 @@ export default function CandidateInterview() {
 
       // If we have an assessment invite (token-based interview)
       if (token && invite) {
-        // Create assessment submission with comprehensive interview data
+      // Create assessment submission with comprehensive interview data
         const submissionData = {
           invite_id: invite.id,
           candidate_id: user?.id || null,
-          responses: feedback.transcripts || [],
+          responses: Array.isArray(feedback.transcripts) ? feedback.transcripts : [feedback.transcript || ""],
           feedback: feedback?.feedback || JSON.stringify(feedback),
           audio_url: audioUrl,
           video_url: videoUrl,
-          transcript: feedback.transcripts || [],
+          transcript: Array.isArray(feedback.transcripts) ? feedback.transcripts : [feedback.transcript || ""],
           ai_analysis: {
             voice_confidence: feedback.confidence_score || 0,
             clarity_score: feedback.clarity || 0,
