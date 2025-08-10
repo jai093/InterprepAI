@@ -30,7 +30,7 @@ function App() {
           <Dashboard />
         </ProtectedRoute>
       } />
-      <Route path="/interview" element={
+      <Route path="/practice-protected" element={
         <ProtectedRoute requireCandidate={true}>
           <InterviewSimulation />
         </ProtectedRoute>

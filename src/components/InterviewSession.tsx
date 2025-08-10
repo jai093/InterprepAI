@@ -173,13 +173,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
       const data = await res.json();
       console.log('Analysis response:', data);
       
-      // Create comprehensive feedback regardless of API response
-      let feedback;
-      
-      if (data.analysis && Object.keys(data.analysis).length > 0 && data.analysis.interview_overall_score) {
-        // Use real analysis data
+      let feedback: any;
+      if (data.analysis && Object.keys(data.analysis).length > 0) {
+        const overall = computeOverallScore(data.analysis);
         feedback = {
           ...data.analysis,
+          interview_overall_score: overall,
           date: new Date().toISOString(),
           duration: `${activeDuration} min`,
           type: config.type,
@@ -187,21 +186,14 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
           videoBlob: recorder.videoBlob,
           audioBlob: recorder.audioBlob,
         };
-        console.log('Using real analysis data');
+        console.log('Using analysis from ElevenLabs');
       } else {
-        // Generate mock feedback with realistic scores
+        // Fallback only if no analysis returned at all
         feedback = generateMockFeedback();
         feedback.videoBlob = recorder.videoBlob;
         feedback.audioBlob = recorder.audioBlob;
-        console.log('Using mock feedback - API returned insufficient data');
+        console.log('Using mock feedback - no analysis available');
       }
-      
-      // Ensure interview is always recognized by providing minimum required fields
-      feedback.interview_overall_score = feedback.interview_overall_score || Math.floor(Math.random() * 20) + 70; // 70-90
-      feedback.date = feedback.date || new Date().toISOString();
-      feedback.duration = feedback.duration || `${activeDuration} min`;
-      feedback.type = feedback.type || config.type;
-      feedback.target_role = feedback.target_role || config.jobRole;
       
       onEnd(feedback);
     } catch (e) {

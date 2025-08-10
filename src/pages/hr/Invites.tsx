@@ -46,6 +46,26 @@ export default function InvitesPage() {
     }
   }, [user]);
 
+  // Realtime updates for invites
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`assessment-invites:${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'assessment_invites',
+        filter: `recruiter_id=eq.${user.id}`
+      }, () => {
+        fetchInvites();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const fetchInvites = async () => {
     if (!user) return;
     
@@ -128,7 +148,7 @@ export default function InvitesPage() {
       // First, check if current user is a recruiter
       const { data: recruiterData, error: recruiterError } = await supabase
         .from("recruiters")
-        .select("id")
+        .select("id, name, email")
         .eq("id", user.id)
         .single();
 
@@ -148,7 +168,7 @@ export default function InvitesPage() {
       const inviteLink = `${window.location.origin}/interview?token=${token}`;
 
       // Create the invite with candidate email (no need for existing profile)
-      const { error: inviteError } = await supabase
+      const { data: createdInvite, error: inviteError } = await supabase
         .from("assessment_invites")
         .insert({
           assessment_id: selectedAssessment,
@@ -158,7 +178,9 @@ export default function InvitesPage() {
           token: token,
           link: inviteLink,
           status: "sent"
-        });
+        })
+        .select("id")
+        .single();
 
       if (inviteError) {
         console.error("Invite creation error:", inviteError);
@@ -168,6 +190,23 @@ export default function InvitesPage() {
           description: inviteError.message || "Could not create assessment invitation",
         });
         return;
+      }
+
+      // Attempt to send email via Edge Function (requires RESEND_API_KEY)
+      try {
+        const selected = assessments.find((a) => a.id === selectedAssessment);
+        await supabase.functions.invoke('send-assessment-invite', {
+          body: {
+            candidate_email: candidateEmail.trim().toLowerCase(),
+            assessment_title: selected?.title || 'Assessment',
+            recruiter_name: recruiterData?.name || user.email || 'Recruiter',
+            recruiter_email: recruiterData?.email || user.email || '',
+            invite_link: inviteLink,
+            invite_id: createdInvite?.id || ''
+          }
+        });
+      } catch (fnErr) {
+        console.warn('Email function failed (check RESEND_API_KEY):', fnErr);
       }
 
       toast({

@@ -57,7 +57,7 @@ export function AppSidebar() {
                   
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <Link to="/interview" className="flex px-4 h-8 w-full items-center space-x-3 text-sm rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-secondary">
+                      <Link to="/practice" className="flex px-4 h-8 w-full items-center space-x-3 text-sm rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-secondary">
                         <CalendarDays className="h-4 w-4" />
                         <span>Interview Simulation</span>
                       </Link>
