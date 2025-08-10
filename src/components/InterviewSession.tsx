@@ -78,6 +78,26 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ config, onEnd }) =>
   // Overwrite config.duration everywhere with 10 minutes for legacy safety
   const activeDuration = 10;
 
+  // Compute overall score from analysis sections (0-100)
+  const computeOverallScore = (analysis: any): number => {
+    const categories = ['responsesAnalysis', 'voiceAnalysis', 'facialAnalysis', 'bodyAnalysis'];
+    const sectionAverages: number[] = [];
+    for (const key of categories) {
+      const section = analysis?.[key];
+      if (section && typeof section === 'object') {
+        const values = Object.values(section).filter((v) => typeof v === 'number') as number[];
+        if (values.length) {
+          const avg = values.reduce((a, b) => a + b, 0) / values.length;
+          sectionAverages.push(avg);
+        }
+      }
+    }
+    if (!sectionAverages.length) return 0;
+    const overall = sectionAverages.reduce((a, b) => a + b, 0) / sectionAverages.length;
+    return Math.max(0, Math.min(100, Math.round(overall)));
+  };
+
+
   // Helper to generate mock feedback for demo purposes
   const generateMockFeedback = (): any => {
     return {
