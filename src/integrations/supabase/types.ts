@@ -624,6 +624,29 @@ export type Database = {
           webhook_data: Json | null
         }[]
       }
+      get_invite_by_token: {
+        Args: { invite_token: string }
+        Returns: {
+          assessment_id: string
+          candidate_email: string
+          candidate_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          link: string
+          recruiter_id: string
+          status: string
+          token: string
+        }[]
+      }
+      update_invite_by_token: {
+        Args: {
+          invite_token: string
+          new_candidate_id?: string
+          new_status?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
