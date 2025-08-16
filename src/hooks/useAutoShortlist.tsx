@@ -36,10 +36,9 @@ export function useAutoShortlist() {
         return;
       }
 
-      // Get all recruiters
+      // Get all recruiters using secure function
       const { data: recruiters, error: recruiterErr } = await supabase
-        .from("recruiters")
-        .select("*");
+        .rpc("get_all_recruiters_for_shortlist");
 
       if (recruiterErr) {
         toast({ title: "Error", description: "Failed to get recruiters list.", variant: "destructive" });

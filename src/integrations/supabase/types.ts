@@ -608,6 +608,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_recruiters_for_shortlist: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+        }[]
+      }
       get_batch_call_sessions: {
         Args: Record<PropertyKey, never>
         Returns: {
