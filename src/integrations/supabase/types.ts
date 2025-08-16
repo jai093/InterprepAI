@@ -175,6 +175,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          initiator_id: string | null
           phone_number: string
           prompts: string[]
           status: string
@@ -188,6 +189,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          initiator_id?: string | null
           phone_number: string
           prompts?: string[]
           status?: string
@@ -201,6 +203,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          initiator_id?: string | null
           phone_number?: string
           prompts?: string[]
           status?: string
@@ -627,6 +630,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          initiator_id: string | null
           phone_number: string
           prompts: string[]
           status: string

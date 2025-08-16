@@ -16,6 +16,7 @@ interface BatchCallRequest {
   interviewPrompts: string[];
   voiceId?: string;
   callbackUrl?: string;
+  initiatorId: string;
 }
 
 serve(async (req) => {
@@ -30,7 +31,7 @@ serve(async (req) => {
     );
 
     if (req.method === 'POST') {
-      const { candidateId, phoneNumber, interviewPrompts, voiceId = 'EXAVITQu4vr4xnSDxMaL', callbackUrl }: BatchCallRequest = await req.json();
+      const { candidateId, phoneNumber, interviewPrompts, voiceId = 'EXAVITQu4vr4xnSDxMaL', callbackUrl, initiatorId }: BatchCallRequest = await req.json();
 
       console.log('Starting batch call for candidate:', candidateId);
 
@@ -105,6 +106,7 @@ serve(async (req) => {
           audio_urls: audioUrls.map(a => a.audioUrl),
           status: 'ready',
           callback_url: callbackUrl,
+          initiator_id: initiatorId,
         })
         .select()
         .single();

@@ -4,11 +4,13 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { BatchCallFormData } from '@/types/batchCall';
 import { useBatchCallSessions } from '@/hooks/useBatchCallSessions';
+import { useAuth } from '@/contexts/AuthContext';
 import BatchCallForm from './batch-call/BatchCallForm';
 import BatchCallSessionsList from './batch-call/BatchCallSessionsList';
 
 const BatchCallManager: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { sessions, fetchSessions } = useBatchCallSessions();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<BatchCallFormData>({
@@ -23,6 +25,15 @@ const BatchCallManager: React.FC = () => {
   });
 
   const startBatchCall = async () => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to start a batch call.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.candidateId || !formData.phoneNumber) {
       toast({
         title: 'Missing Information',
@@ -41,6 +52,7 @@ const BatchCallManager: React.FC = () => {
           phoneNumber: formData.phoneNumber,
           interviewPrompts: formData.interviewPrompts,
           callbackUrl: 'https://interprep-ai.vercel.app/webhook/elevenlabs',
+          initiatorId: user.id, // Add the authenticated user as initiator
         },
       });
 
